@@ -48,17 +48,35 @@ Koneksi GitHub: `gh auth status` → Logged in sebagai `isac12345`, token valid,
 - Link: https://github.com/isac12345/Alpha/actions/runs/35424715970
 ```
 
-## Bug 5 — IN PROGRESS (batch 1): Kotlin compilation errors
+## Bug 5 — SELESAI: Kotlin compilation errors (100+ → 0)
 - Sumber: `gh run view 35424715970 --log-failed` → `:app:compileDebugKotlin FAILED`.
-- Fix batch 1 (belum di-push saat catatan ini ditulis):
-  - `RootShell.kt:18` const val List → val; `:62-64` map SuExecutor.ExecResult → RootShell.ExecResult; bare `return` dalam `withContext` → `return@withContext` (11 lokasi); `m.groupValues()[n]` → `m.groupValues[n]` (groupValues adalah List property).
+- Batch 1 (commit 9e6fd10, run 35425048357: 100+ → 64 error):
+  - `RootShell.kt:18` const val List → val; `:62-64` map SuExecutor.ExecResult → RootShell.ExecResult; bare `return` dalam `withContext` → `return@withContext` (11 lokasi); `m.groupValues()[n]` → `m.groupValues[n]`.
   - `LogFormat.kt` groupValues() → groupValues[] (6 lokasi).
-  - `FloatingBubbleService.kt:60-62` const val → val; tambah `import kotlin.math.abs` + `androidx.core.animation.doOnEnd`; 13 literal warna hex Long → `.toInt()`; `dotRadius` Int → Float (drawCircle butuh Float).
-- Belum disentuh (tunggu log fresh): smart cast mutable, nullable ViewPropertyAnimator ?., getChildAt, syntax 196/220/493/630, Fragments + ProfileMonitorService unresolved, GameAdapter listener mismatch.
-- Percobaan: 1 (batch 1).
+  - `FloatingBubbleService.kt:60-62` const val → val; tambah `import kotlin.math.abs` + `androidx.core.animation.doOnEnd`; 13 hex Long → `.toInt()`; `dotRadius` Int → Float.
+- Batch 2 (commit 12f7122, run 35425305786: 64 → 40 error; RootShell + FloatingBubble bersih):
+  - `RootShell.kt:122` `var w=0, h=0, dens=0` → 3 baris `var` (Kotlin tak boleh deklarasi koma).
+  - `FloatingBubbleService` `Gravity.TOP | Gravity.START` → `or` (3 lokasi, Kotlin tak punya `|`); animator `?.animate().` → `?.animate()?.`; `(collapsedView as? FrameLayout)`, `(expandedView as? ViewGroup)`, `(container as? ViewGroup)` casts; hapus `getLocationOnScreen(arrayOf)` ganda.
+- Batch 3 (commit 1d2a4b6, run 35425609761: 40 → 3 error):
+  - `AlphaApp.kt`: hapus libsu `com.topjohnwu.superuser.Shell` (dependensi tak ada) → Application kosong.
+  - `AddGameDialog/DexoptDialog/GamesFragment`: tambah `import androidx.core.widget.addTextChangedListener`; `DexoptDialog.filterApps` `pm` → `requireContext().packageManager`; `OnGameAddedListener` → `fun interface`; `GameAdapter(...)` wiring named args + object listener.
+  - `FloatingBubbleService`: `getToggleIntent/getShowIntent` instance → companion `@JvmStatic`; `ProfileMonitorService`: hapus import salah `com.alphabubble.FloatingBubbleService`, tambah `android.graphics.drawable.Icon` → `IconCompat`; `DisplayFragment` + `TuningFragment` tambah imports (DexoptDialog, ProfileMonitorService, FloatingBubbleService, LogAllDialog, RecyclerView, DiffUtil).
+- Batch 4 (commit a70ddc2, run 35425798781: 3 → 0 error Kotlin):
+  - `AddGameDialog.AppAdapter` inner class → biasa + param `getAll: () -> List<AppRow>` (inner tak boleh nested class di posisi itu).
+  - `ProfileMonitorService` `Icon.createWithResource` → `IconCompat.createWithResource` (compat Builder butuh IconCompat).
+- Percobaan: 4 batch, tiap batch menurunkan error. Tidak ada error yang gagal 3x.
 
-## Next step disarankan
-1. Commit + push hanya file wrapper: `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.jar`, `gradle/wrapper/gradle-wrapper.properties`.
-2. Trigger `gh workflow run` / `git tag` untuk build APK di GitHub Actions (ubuntu + JDK17 + SDK otomatis).
-3. Kalau mau build lokal di Termux, perlu install full SDK (tidak disarankan) atau pakai mirror + timeout yang ada di working tree saat ini.
-4. `versionCode=2` sinkron dengan `ALPHA_COMPANION_VER=2` → OK, jangan lupa bump berbarengan saat rilis.
+## Bug 6 — SELESAI: Orphaned framework res (DateTimeView)
+- Gejala: run 35425798781 Kotlin 0 error, tapi `:app:compileDebugJavaWithJavac FAILED` → `cannot find symbol: class DateTimeView` di `NotificationTemplatePartTimeBinding.java` (9 errors).
+- Akar masalah: `app/src/main/res/layout/notification_{action,action_tombstone,template_custom_big,template_icon_group,template_part_chronometer,template_part_time}.xml` adalah copy framework (ada `<DateTimeView>`, hidden API) + `values/public.xml` artifact apktool. Tidak direferensikan kode manapun (`grep R.layout.notification` kosong).
+- Solusi (commit 0cc0936): `git rm` 6 layout + `public.xml`.
+- Verifikasi: run 35425996649 → ✓ Build Debug APK, ✓ Upload APK dalam 2m36s.
+
+## Hasil build terakhir (apa adanya)
+```
+Run 35425996649 (push 0cc0936): SUCCESS
+- Set up job ✓, checkout ✓, JDK 17 ✓, chmod gradlew ✓, Build Debug APK ✓, Upload APK ✓
+- Link: https://github.com/isac12345/Alpha/actions/runs/35425996649
+- Artefak: Alpha-Debug-APK (5.4MB di Actions) → diunduh ke build-output/app-debug.apk (6.2M)
+- Stash Termux (tidak di-push): stash@{0} termux-workaround-mirror-timeout (settings.gradle.kts + gradle.properties)
+```
