@@ -163,6 +163,10 @@
         <item name="labelVisibilityMode">labeled</item>
     </style>
 
+    <!-- Base Widget.Alpha -->
+    <style name="Widget.Alpha" parent="android:Widget">
+    </style>
+
     <!-- Divider -->
     <style name="Widget.Alpha.Divider">
         <item name="android:background">@color/alpha_line</item>
