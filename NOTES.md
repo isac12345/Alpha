@@ -31,3 +31,11 @@
 - Temuan: `workflow_dispatch` 404 bila file workflow tidak ada di default branch (master) — diatasi dengan trigger `push` ke `fusion-v2` (paths: workflow, overlay, APK). Build-tools 37.0.0 menolak `--ks-pass:env`/`:file`; sintaks benar `--ks-pass env:KS_PASS` (spasi, sesuai `--help`).
 - Smoke test rebuild-tanpa-perubahan (run 35428755191): verify SUKSES, 2.3M, cert SHA-256 `a0698c50…` BEDA dari kunci lama `48:74:…` (benar: kunci baru), package `com.alphabubble` versionCode `1` tetap sama.
 - PENTING: aplikasi Alpha Control lama HARUS di-uninstall dulu sebelum pasang hasil pipeline, karena tanda tangan berubah (Android menolak update beda signer).
+
+## Pipeline terintegrasi (package.yml, 2026-09-19)
+
+- Alur: checkout → JDK 17 → apktool terbaru → cek `version.txt` vs `ALPHA_COMPANION_VER` (GAGAL bila beda) → decode APK repo (asli tak diubah) → overlay → patch `versionCode` apktool.yml dari version.txt → rebuild → zipalign → sign (PKCS12/alias alpha, secret mask+cleanup) → verify cert → aapt cek package + versionCode (GAGAL bila ≠ version.txt) → staging rsync (APK signed hanya di zip) → zip META-INF di root → upload.
+- `version.txt`=2 (sumber tunggal; naikkan tiap APK berubah + samakan `ALPHA_COMPANION_VER`). APK di-zip: versionCode 2, package `com.alphabubble`, cert baru `a0698c50…`.
+- Insiden: (1) `NumberFormatException "'2'"` — apktool 3 butuh bare int; (2) zip 20M — `apktool.jar` bocor dari root → pindah ke `work/tools/`; (3) `.gitignore` ikut ke-zip → exclude. Daftar file zip final IDENTIK dengan asli.
+- Flag basi: `alpha_companion_install_once` dulu skip bila flag ≥ VER tanpa cek terpasang — uninstall lalu reflash = APK tak terpasang (flag di `/data/adb/alpha/.companion_installed` selamat dari uninstall). Fix: flag hanya fast-path bila dumpsys cocok; bila basi lanjut install ulang.
+- Zip final: run 35429540702, `build-output/Alpha-Fusion-v2.zip` (5.4M). Link: https://github.com/isac12345/Alpha/actions/runs/35429540702

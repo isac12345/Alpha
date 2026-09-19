@@ -21,5 +21,6 @@
 - 2026-09-19: sambung pipeline ke packaging — `version.txt`=2 (sumber tunggal), `package.yml` terintegrasi (decode→overlay→patch versionCode→sign→enforce→staging→zip), fix flag basi di `companion_install.sh` (uninstall→reflash).
 - 2026-09-19: run `35429331531` GAGAL: `NumberFormatException: For input string: "'2'"` — apktool 3.0.3 mau versionCode TANPA kutip. Fix sed → bare number (percobaan 1).
 - 2026-09-19: run `35429383410` SUCCESS tapi zip 20M — bocor `apktool.jar` root (15.5M) karena download di root. Fix: apktool ke `work/tools/` (tercover exclude `work/`).
+- 2026-09-19: run `35429540702` SUCCESS. Zip final 5.4M di `build-output/`: daftar file identik asli, APK cert baru `a0698c50…`, package `com.alphabubble` versionCode 2 = version.txt = sh.
 - JANGAN merge ke master tanpa persetujuan user.
 - JANGAN merge ke master tanpa persetujuan user.
