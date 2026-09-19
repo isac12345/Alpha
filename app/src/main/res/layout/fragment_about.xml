@@ -38,7 +38,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/space_2"
                 android:lineSpacingExtra="4dp"
-                android:text="Gabungan 3 modul:\n- Alpha v1 (io/vm/thermal/net/gpu/devfreq)\n- Uperf Game Turbo (thread/cgroup + AsoulOpt, tanpa freq)\n- fas-rs (frame-aware scheduler, pemegang governor/freq)\n\nCredit upstream: Matt Yang & yinwanxi (Uperf), shadow3 & shadow3aaa (fas-rs)."
+                android:text="Gabungan 3 modul:\n- Alpha v1 (io/vm/thermal/net/gpu/devfreq)\n- Uperf Game Turbo (thread/cgroup + AsoulOpt, tanpa freq)\n- fas-rs (frame-aware scheduler, pemegang governor/freq)\n\nCredit upstream: Matt Yang &amp; yinwanxi (Uperf), shadow3 &amp; shadow3aaa (fas-rs)."
                 android:textAppearance="@style/TextAppearance.Alpha.Body" />
 
             <TextView
