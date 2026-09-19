@@ -22,13 +22,13 @@ android {
         create("release") {
             val keystorePath = System.getenv("KEYSTORE_PATH") ?: "../alpha-release.jks"
             val keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: "alpha-fusion-release"
-            val keyAlias = System.getenv("KEY_ALIAS") ?: "alpha"
-            val keyPassword = System.getenv("KEY_PASSWORD") ?: "alpha-fusion-release"
+            val keyAliasValue = System.getenv("KEY_ALIAS") ?: "alpha"
+            val keyPasswordValue = System.getenv("KEY_PASSWORD") ?: "alpha-fusion-release"
             
             storeFile = file(keystorePath)
             storePassword = keystorePassword
-            keyAlias = keyAlias
-            keyPassword = keyPassword
+            keyAlias = keyAliasValue
+            keyPassword = keyPasswordValue
         }
     }
 
@@ -65,10 +65,10 @@ android {
         viewBinding = true
     }
 
-    // Output APK name
+    // Output APK name (AGP 8.x compatible)
     applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "Alpha-${variant.versionName}-${variant.buildType.name}.apk"
+        variant.outputs.forEach { output ->
+            output.outputFileName = "Alpha-${variant.versionName}-${variant.buildType.name}.apk"
         }
     }
 }
