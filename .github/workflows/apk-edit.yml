@@ -1,5 +1,10 @@
 name: Edit APK (apktool)
+# NOTE: workflow_dispatch butuh file ini ada di default branch (master) —
+# GitHub 404 kalau tidak. Sampai ada di master, run lewat push ke fusion-v2.
 on:
+  push:
+    branches: [ "fusion-v2" ]
+    paths: [ ".github/workflows/apk-edit.yml", "apk-overlay/**", "companion/AlphaBubble.apk" ]
   workflow_dispatch:
 jobs:
   edit:
