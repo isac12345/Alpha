@@ -49,6 +49,17 @@ jobs:
           else
             echo "overlay empty, nothing changed"
           fi
+      - name: Apply smali patches (B1 activeDisplayInfo Override-first)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/RootShell.smali
+          echo "sebelum: $(grep -c '(?:Override|Physical)' "$F") pola lama"
+          sed -f apk-patches/b1-activeDisplayInfo.sed -i "$F"
+          test "$(grep -c 'Override size: |Physical size:' "$F")" = "1" || { echo "patch size gagal"; exit 1; }
+          test "$(grep -c 'Override density: |Physical density:' "$F")" = "1" || { echo "patch density gagal"; exit 1; }
+          test "$(grep -c '(?:Override|Physical)' "$F")" = "0" || { echo "pola lama masih ada"; exit 1; }
+          grep -n 'Override size: |Physical size:\|Override density: |Physical density:' "$F"
+          echo "patch B1 OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
@@ -96,7 +107,7 @@ jobs:
             --exclude=AGENTS.md --exclude=STATE.md --exclude=PLAN.md --exclude=NOTES.md \
             --exclude=.gitignore \
             --exclude=build-output/ --exclude=work/ --exclude=stage/ \
-            --exclude=apk-overlay/ --exclude=version.txt --exclude=Alpha-Fusion-v2.zip \
+            --exclude=apk-overlay/ --exclude=apk-patches/ --exclude=version.txt --exclude=Alpha-Fusion-v2.zip \
             ./ stage/
           cp work/AlphaBubble-signed.apk stage/companion/AlphaBubble.apk
           test -f stage/module.prop
