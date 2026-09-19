@@ -98,3 +98,10 @@ opsinya (c2) tulis ulang source menyamai perilaku (usaha besar, perlu persetujua
 - Insiden: (1) `NumberFormatException "'2'"` — apktool 3 butuh bare int; (2) zip 20M — `apktool.jar` bocor dari root → pindah ke `work/tools/`; (3) `.gitignore` ikut ke-zip → exclude. Daftar file zip final IDENTIK dengan asli.
 - Flag basi: `alpha_companion_install_once` dulu skip bila flag ≥ VER tanpa cek terpasang — uninstall lalu reflash = APK tak terpasang (flag di `/data/adb/alpha/.companion_installed` selamat dari uninstall). Fix: flag hanya fast-path bila dumpsys cocok; bila basi lanjut install ulang.
 - Zip final: run 35429540702, `build-output/Alpha-Fusion-v2.zip` (5.4M). Link: https://github.com/isac12345/Alpha/actions/runs/35429540702
+
+## v3 tested + merge master (2026-09-19)
+
+- Sudah: B1 patch 2 baris + manifest overlay + bump v3 + tag `v3-tested` + merge FF ke master (workflow apk-edit/decode/package active di master).
+- Hasil tes HP (laporan user): label resolusi benar, aplikasi normal.
+- Belum: B2 (timeout root, TUNDA), B3 (guard BatteryLab, DILEWATI — tombol tanpa id), F2 vibrator/toast (uji coba terpisah, perlu persetujuan), keystore final (fingerprint belum dibaca).
+- Usulan berikut (belum mulai): T4 countdown 15 dtk APPLY RES, B5 dexopt progres+hasil (cek status speed-profile, APK kini debuggable=false).
