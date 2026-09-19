@@ -87,7 +87,7 @@ jobs:
           BT=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
           echo "build-tools: $BT"
           ./work/tools/apktool b work/decode -o work/unsigned.apk
-      - name: Compile HideFeedback + inject classes5.dex
+      - name: Compile extra classes + inject classes5.dex
         run: |
           set -e
           BT=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
@@ -95,10 +95,11 @@ jobs:
           test -n "$AJAR" || { echo "android.jar tidak ketemu"; exit 1; }
           echo "android.jar: $AJAR"
           mkdir -p work/hf-classes
-          javac -source 8 -target 8 -cp "$AJAR" -d work/hf-classes java/com/alphabubble/HideFeedback.java 2>&1 | grep -v "bootstrap\|deprecat\|obsolete" || true
-          test -f work/hf-classes/com/alphabubble/HideFeedback.class || { echo "javac gagal"; exit 1; }
+          javac -source 8 -target 8 -cp "$AJAR" -d work/hf-classes $(find java -name '*.java') 2>&1 | grep -v "bootstrap\|deprecat\|obsolete" || true
+          test -f work/hf-classes/com/alphabubble/HideFeedback.class || { echo "javac HideFeedback gagal"; exit 1; }
+          test -f work/hf-classes/com/alphabubble/BubbleSettingsActivity.class || { echo "javac BubbleSettingsActivity gagal"; exit 1; }
           mkdir -p work/hf-dex
-          "$ANDROID_SDK_ROOT/build-tools/$BT/d8" --min-api 26 --output work/hf-dex/ work/hf-classes/com/alphabubble/HideFeedback.class
+          "$ANDROID_SDK_ROOT/build-tools/$BT/d8" --min-api 26 --output work/hf-dex/ $(find work/hf-classes -name '*.class')
           test -f work/hf-dex/classes.dex || { echo "d8 gagal"; exit 1; }
           unzip -l work/unsigned.apk | grep -E "classes[0-9]*\.dex"
           test -z "$(unzip -l work/unsigned.apk | grep 'classes5\.dex')" || { echo "classes5.dex sudah ada?!"; exit 1; }
@@ -138,7 +139,12 @@ jobs:
           unzip -p work/AlphaBubble-signed.apk classes5.dex > /tmp/hf5.dex
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/HideFeedback;" \
             || { echo "HideFeedback tidak ada di classes5.dex"; exit 1; }
-          echo "HideFeedback di classes5.dex OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/BubbleSettingsActivity;" \
+            || { echo "BubbleSettingsActivity tidak ada di classes5.dex"; exit 1; }
+          echo "2 kelas di classes5.dex OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump badging work/AlphaBubble-signed.apk | grep -q "com.alphabubble.BubbleSettingsActivity" \
+            || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
+          echo "activity di manifest OK"
       - name: Stage module tree (signed APK only in ZIP)
         run: |
           set -e
