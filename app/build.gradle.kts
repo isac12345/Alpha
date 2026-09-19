@@ -67,7 +67,7 @@ android {
 
     // Output APK name (AGP 8.x compatible)
     applicationVariants.all { variant ->
-        variant.outputs.forEach { output ->
+        for (output in variant.outputs) {
             output.outputFileName = "Alpha-${variant.versionName}-${variant.buildType.name}.apk"
         }
     }
