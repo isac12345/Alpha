@@ -5,6 +5,8 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -19,43 +21,89 @@ public final class BubbleSettingsActivity extends Activity {
     private static final String PREFS = "alpha_bubble";
     private static final String KEY_HIDDEN = "hidden";
 
+    private Switch swShow;
+    private TextView tvPermStatus;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.parseColor("#232325"));
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
         root.setPadding(pad, pad, pad, pad);
 
         TextView title = new TextView(this);
         title.setText("Pengaturan Bubble");
         title.setTextSize(20);
+        title.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        title.setTextColor(Color.parseColor("#f4f2ee"));
         root.addView(title);
+
+        tvPermStatus = new TextView(this);
+        tvPermStatus.setTypeface(Typeface.MONOSPACE);
+        tvPermStatus.setTextColor(Color.parseColor("#87878a"));
+        tvPermStatus.setTextSize(12);
+        root.addView(tvPermStatus);
 
         TextView desc = new TextView(this);
         desc.setText("Saklar di bawah mengontrol apakah bubble tampil. Perubahan tersimpan dan berlaku segera bila service hidup.");
+        desc.setTypeface(Typeface.MONOSPACE);
+        desc.setTextColor(Color.parseColor("#87878a"));
         root.addView(desc);
 
-        Switch sw = new Switch(this);
-        sw.setText("Tampilkan bubble");
-        boolean hidden = prefs().getBoolean(KEY_HIDDEN, false);
-        sw.setChecked(!hidden);
-        root.addView(sw);
+        swShow = new Switch(this);
+        swShow.setText("Tampilkan bubble");
+        swShow.setTypeface(Typeface.MONOSPACE);
+        swShow.setTextColor(Color.parseColor("#f4f2ee"));
+        root.addView(swShow);
 
-        sw.setOnCheckedChangeListener((buttonView, show) -> applyShow(show));
+        swShow.setOnCheckedChangeListener((buttonView, show) -> applyShow(show));
         setContentView(root);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (!Settings.canDrawOverlays(this)) {
+        refreshPermStatus();
+        resyncSwitch();
+    }
+
+    private void refreshPermStatus() {
+        boolean granted;
+        try {
+            granted = Settings.canDrawOverlays(this);
+        } catch (Exception e) {
+            Log.w(TAG, "refreshPermStatus: canDrawOverlays gagal: " + e);
+            granted = false;
+        }
+        try {
+            tvPermStatus.setText(granted
+                    ? "Izin overlay: aktif"
+                    : "Izin overlay: belum diberikan");
+        } catch (Exception e) {
+            Log.w(TAG, "refreshPermStatus: set teks gagal: " + e);
+        }
+    }
+
+    private void resyncSwitch() {
+        boolean hidden;
+        try {
+            hidden = prefs().getBoolean(KEY_HIDDEN, false);
+        } catch (Exception e) {
+            Log.w(TAG, "resyncSwitch: baca prefs gagal: " + e);
+            return;
+        }
+        try {
+            swShow.setOnCheckedChangeListener(null);
+            swShow.setChecked(!hidden);
+        } catch (Exception e) {
+            Log.w(TAG, "resyncSwitch: set switch gagal: " + e);
+        } finally {
             try {
-                Toast.makeText(this, "Izin tampil di atas aplikasi lain belum diberikan", Toast.LENGTH_LONG).show();
-                Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
-                startActivity(i);
+                swShow.setOnCheckedChangeListener((buttonView, show) -> applyShow(show));
             } catch (Exception e) {
-                Log.w(TAG, "onResume: buka overlay permission gagal: " + e);
+                Log.w(TAG, "resyncSwitch: pasang listener gagal: " + e);
             }
         }
     }
@@ -77,10 +125,36 @@ public final class BubbleSettingsActivity extends Activity {
         if (curHidden == wantHidden) {
             return;
         }
+        if (show) {
+            boolean granted;
+            try {
+                granted = Settings.canDrawOverlays(this);
+            } catch (Exception e) {
+                Log.w(TAG, "applyShow: canDrawOverlays gagal: " + e);
+                granted = false;
+            }
+            if (!granted) {
+                try {
+                    Toast.makeText(this, "Berikan izin tampil di atas aplikasi lain dulu", Toast.LENGTH_LONG).show();
+                    Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:" + getPackageName()));
+                    startActivity(i);
+                } catch (Exception e) {
+                    Log.w(TAG, "applyShow: buka overlay permission gagal: " + e);
+                }
+                refreshPermStatus();
+                resyncSwitch();
+                return;
+            }
+        }
         try {
             if (isServiceRunning(BubbleServiceName())) {
                 // Service hidup: biarkan service yang menulis prefs via toggle
-                // (xor di onStartCommand) supaya applyVisibility sinkron.
+                // (xor di onStartCommand, BubbleService.smali:2085-2097) supaya
+                // applyVisibility sinkron. Intent sama persis dengan aksi
+                // notifikasi: konstruktor (ctx, BubbleService.class) +
+                // setAction BUBBLE_TOGGLE, tanpa extras
+                // (BubbleService.smali:1608-1632).
                 Intent t = new Intent(this, Class.forName(BubbleServiceName()));
                 t.setAction("com.alphabubble.BUBBLE_TOGGLE");
                 startForegroundService(t);
