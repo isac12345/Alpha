@@ -16,4 +16,5 @@ Thumbs.db
 # Keys & secrets — JANGAN commit
 *.jks
 *.keystore
+keystore.properties
 local.properties
