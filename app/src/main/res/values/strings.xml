@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Alpha Control</string>
+    <string name="status_bar_notification_info_overflow">999+</string>
+
+    <string-array name="profile_names">
+        <item>Battery</item>
+        <item>Balanced</item>
+        <item>Performance</item>
+    </string-array>
+
+    <string name="nav_home">Home</string>
+    <string name="nav_games">Games</string>
+    <string name="nav_tuning">Tuning</string>
+    <string name="nav_display">Tampilan</string>
+    <string name="nav_about">About</string>
+
+    <string name="floating_service_name">Alpha Floating</string>
+    <string name="profile_tile_label">Alpha Profile</string>
+    <string name="profile_monitor_channel">Alpha Profile</string>
+    <string name="floating_channel">Alpha Floating</string>
+</resources>

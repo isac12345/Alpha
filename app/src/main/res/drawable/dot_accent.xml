@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:gravity="center" android:height="@dimen/alpha_dot_glow" android:width="@dimen/alpha_dot_glow">
+        <shape android:shape="oval">
+            <solid android:color="@color/alpha_accent_glow" />
+        </shape>
+    </item>
+    <item android:gravity="center" android:height="@dimen/alpha_dot_size" android:width="@dimen/alpha_dot_size">
+        <shape android:shape="oval">
+            <solid android:color="@color/alpha_accent" />
+        </shape>
+    </item>
+</layer-list>

@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+app/build/
+*.iml
+*.iws
+*.ipr
+*.iml
+
+# Keystore
+*.jks
+*.keystore
+
+# Local properties
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/

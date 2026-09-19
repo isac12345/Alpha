@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="alpha_accent">#ff4433</color>
+    <color name="alpha_accent_glow">#33ff4433</color>
+    <color name="alpha_bg">#232325</color>
+    <color name="alpha_dark">#0a0a0a</color>
+    <color name="alpha_dark2">#161616</color>
+    <color name="alpha_dark3">#1e1e1e</color>
+    <color name="alpha_ink">#f4f2ee</color>
+    <color name="alpha_ink_dim">#87878a</color>
+    <color name="alpha_line">#17ffffff</color>
+    <color name="alpha_seg_bg">#0fffffff</color>
+    <color name="alpha_transparent">#00000000</color>
+    <color name="androidx_core_ripple_material_light">#1f000000</color>
+    <color name="androidx_core_secondary_text_default_material_light">#8a000000</color>
+    <color name="notification_action_color_filter">@color/androidx_core_secondary_text_default_material_light</color>
+    <color name="notification_icon_bg_color">#ff9e9e9e</color>
+</resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_nav_home"
+        android:title="Home" />
+    <item
+        android:id="@+id/nav_games"
+        android:icon="@drawable/ic_nav_games"
+        android:title="Games" />
+    <item
+        android:id="@+id/nav_tuning"
+        android:icon="@drawable/ic_nav_tuning"
+        android:title="Tuning" />
+    <item
+        android:id="@+id/nav_display"
+        android:icon="@drawable/ic_nav_display"
+        android:title="Tampilan" />
+    <item
+        android:id="@+id/nav_about"
+        android:icon="@drawable/ic_nav_about"
+        android:title="About" />
+</menu>

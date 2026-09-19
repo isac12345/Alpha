@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/alpha_bg"
+    android:orientation="vertical"
+    android:padding="@dimen/space_4">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="GAME"
+            style="@style/AlphaSectionLabel" />
+
+        <Button
+            android:id="@+id/btnAddGame"
+            style="@style/Widget.Alpha.Button.Icon"
+            android:layout_width="@dimen/alpha_add_size"
+            android:layout_height="@dimen/alpha_add_size"
+            android:text="+" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvGamesEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_3"
+        android:text="Belum ada game terdaftar."
+        android:textAppearance="@style/TextAppearance.Alpha.Body" />
+
+    <EditText
+        android:id="@+id/etGameSearch"
+        style="@style/Widget.Alpha.TextInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/space_2"
+        android:hint="Cari game terdaftar..."
+        android:inputType="text" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvGames"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/space_2"
+        android:layout_weight="1"
+        android:layoutAnimation="@anim/layout_animation_games"
+        android:nestedScrollingEnabled="false" />
+</LinearLayout>

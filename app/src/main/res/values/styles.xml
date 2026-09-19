@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Theme -->
+    <style name="Theme.Alpha" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:textColorPrimary">@color/alpha_ink</item>
+        <item name="android:textColorSecondary">@color/alpha_ink_dim</item>
+        <item name="android:windowBackground">@color/alpha_bg</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:colorBackground">@color/alpha_bg</item>
+        <item name="android:navigationBarColor">@color/alpha_dark</item>
+        <item name="android:statusBarColor">@color/alpha_dark</item>
+    </style>
+
+    <!-- Typography Scale -->
+    <style name="TextAppearance.Alpha.Display" parent="android:TextAppearance">
+        <item name="android:textSize">28sp</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="TextAppearance.Alpha.Headline" parent="android:TextAppearance">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:letterSpacing">0.01</item>
+    </style>
+
+    <style name="TextAppearance.Alpha.Title" parent="android:TextAppearance">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="TextAppearance.Alpha.Body" parent="android:TextAppearance">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="TextAppearance.Alpha.BodySmall" parent="android:TextAppearance">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/alpha_ink_dim</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="TextAppearance.Alpha.Caption" parent="android:TextAppearance">
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">@color/alpha_ink_dim</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="TextAppearance.Alpha.Mono" parent="android:TextAppearance">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+
+    <style name="TextAppearance.Alpha.MonoSmall" parent="android:TextAppearance">
+        <item name="android:textSize">10sp</item>
+        <item name="android:textColor">@color/alpha_ink_dim</item>
+        <item name="android:fontFamily">monospace</item>
+    </style>
+
+    <!-- Section Label -->
+    <style name="AlphaSectionLabel" parent="TextAppearance.Alpha.Caption">
+        <item name="android:letterSpacing">0.15</item>
+    </style>
+
+    <!-- Button Styles -->
+    <style name="Widget.Alpha.Button.Primary" parent="android:Widget.Material.Button">
+        <item name="android:background">@drawable/btn_primary</item>
+        <item name="android:textColor">@color/alpha_dark</item>
+        <item name="android:textSize">@dimen/alpha_body_text</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:paddingHorizontal">16dp</item>
+        <item name="android:stateListAnimator">@animator/btn_elevation</item>
+    </style>
+
+    <style name="Widget.Alpha.Button.Secondary" parent="android:Widget.Material.Button">
+        <item name="android:background">@drawable/btn_secondary</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:textSize">@dimen/alpha_body_text</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:paddingHorizontal">16dp</item>
+    </style>
+
+    <style name="Widget.Alpha.Button.Tertiary" parent="android:Widget.Material.Button">
+        <item name="android:background">@color/alpha_transparent</item>
+        <item name="android:textColor">@color/alpha_ink_dim</item>
+        <item name="android:textSize">@dimen/alpha_body_text</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">40dp</item>
+        <item name="android:paddingHorizontal">12dp</item>
+    </style>
+
+    <style name="Widget.Alpha.Button.Segment" parent="android:Widget.Material.Button">
+        <item name="android:background">@drawable/btn_segment</item>
+        <item name="android:textColor">@color/alpha_ink_dim</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:minHeight">32dp</item>
+        <item name="android:paddingHorizontal">8dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <style name="Widget.Alpha.Button.Icon" parent="android:Widget.Material.Button">
+        <item name="android:background">@drawable/btn_icon</item>
+        <item name="android:textColor">@color/alpha_dark</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:minWidth">28dp</item>
+        <item name="android:minHeight">28dp</item>
+        <item name="android:padding">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+    </style>
+
+    <!-- Card Style -->
+    <style name="Widget.Alpha.Card">
+        <item name="android:background">@drawable/card_bg</item>
+        <item name="android:padding">@dimen/alpha_card_padding</item>
+    </style>
+
+    <!-- Input Style -->
+    <style name="Widget.Alpha.TextInput" parent="android:Widget.Material.EditText">
+        <item name="android:background">@drawable/field_bg</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:textColorHint">@color/alpha_ink_dim</item>
+        <item name="android:textSize">@dimen/alpha_body_text</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
+    <!-- Spinner Style -->
+    <style name="Widget.Alpha.Spinner" parent="android:Widget.Material.Spinner">
+        <item name="android:background">@drawable/field_bg</item>
+        <item name="android:textColor">@color/alpha_ink</item>
+        <item name="android:textSize">@dimen/alpha_body_text</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
+    <!-- Switch Style -->
+    <style name="Widget.Alpha.Switch" parent="android:Widget.Material.CompoundButton.Switch">
+        <item name="android:thumbTint">@color/alpha_accent</item>
+        <item name="android:trackTint">@color/alpha_seg_bg</item>
+    </style>
+
+    <!-- SeekBar Style -->
+    <style name="Widget.Alpha.SeekBar" parent="android:Widget.Material.SeekBar">
+        <item name="android:progressTint">@color/alpha_accent</item>
+        <item name="android:progressBackgroundTint">@color/alpha_seg_bg</item>
+    </style>
+
+    <style name="Widget.Alpha.BottomNavigationView" parent="Widget.MaterialComponents.BottomNavigationView">
+        <item name="android:background">@color/alpha_dark2</item>
+        <item name="itemIconTint">@color/bottom_nav_selector</item>
+        <item name="itemTextColor">@color/bottom_nav_selector</item>
+        <item name="labelVisibilityMode">labeled</item>
+    </style>
+
+    <!-- Divider -->
+    <style name="Widget.Alpha.Divider">
+        <item name="android:background">@color/alpha_line</item>
+        <item name="android:layout_height">@dimen/alpha_divider</item>
+    </style>
+
+    <!-- Notification Compat -->
+    <style name="TextAppearance.Compat.Notification" parent="@android:style/TextAppearance.Material.Notification" />
+    <style name="TextAppearance.Compat.Notification.Info" parent="@android:style/TextAppearance.Material.Notification.Info" />
+    <style name="TextAppearance.Compat.Notification.Line2" parent="@style/TextAppearance.Compat.Notification.Info" />
+    <style name="TextAppearance.Compat.Notification.Time" parent="@android:style/TextAppearance.Material.Notification.Time" />
+    <style name="TextAppearance.Compat.Notification.Title" parent="@android:style/TextAppearance.Material.Notification.Title" />
+
+    <style name="Widget.Compat.NotificationActionContainer" parent="">
+        <item name="android:background">@drawable/notification_action_background</item>
+    </style>
+    <style name="Widget.Compat.NotificationActionText" parent="">
+        <item name="android:textAppearance">?android:textAppearanceButton</item>
+        <item name="android:textSize">@dimen/notification_action_text_size</item>
+        <item name="android:textColor">@color/androidx_core_secondary_text_default_material_light</item>
+    </style>
+</resources>

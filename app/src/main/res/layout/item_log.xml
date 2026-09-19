@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/card_bg"
+    android:orientation="horizontal"
+    android:padding="@dimen/space_3">
+
+    <TextView
+        android:id="@+id/tvLogTime"
+        android:layout_width="56dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="00:00"
+        android:textAppearance="@style/TextAppearance.Alpha.MonoSmall" />
+
+    <TextView
+        android:id="@+id/tvLogStatus"
+        android:layout_width="72dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="APPLY"
+        android:textAppearance="@style/TextAppearance.Alpha.MonoSmall"
+        android:textColor="@color/alpha_accent" />
+
+    <TextView
+        android:id="@+id/tvLogMsg"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Log message"
+        android:textAppearance="@style/TextAppearance.Alpha.MonoSmall" />
+</LinearLayout>
