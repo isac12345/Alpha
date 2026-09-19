@@ -195,7 +195,7 @@ class FloatingBubbleService : Service() {
         root?.addView(collapsedView!!, FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.TOP | Gravity.START
+            Gravity.TOP or Gravity.START
         ))
 
         // Expanded View (Pill)
@@ -219,7 +219,7 @@ class FloatingBubbleService : Service() {
                 or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP | Gravity.START
+            gravity = Gravity.TOP or Gravity.START
         }
 
         // Restore saved position
@@ -255,7 +255,7 @@ class FloatingBubbleService : Service() {
         val circle = CircleView(this).apply {
             layoutParams = FrameLayout.LayoutParams(baseSize, baseSize)
         }
-        collapsedView?.addView(circle)
+        (collapsedView as? FrameLayout)?.addView(circle)
     }
 
     private fun createExpandedView() {
@@ -315,7 +315,7 @@ class FloatingBubbleService : Service() {
         }
 
         pillContainer.addView(content)
-        expandedView?.addView(pillContainer)
+        (expandedView as? ViewGroup)?.addView(pillContainer)
     }
 
     private fun createPillBackground(): android.graphics.drawable.GradientDrawable {
@@ -421,9 +421,8 @@ class FloatingBubbleService : Service() {
     }
 
     private fun isTouchOnExpanded(event: MotionEvent): Boolean {
-        expandedView?.getLocationOnScreen(arrayOf(0, 0))
         val loc = intArrayOf(0, 0)
-        expandedView?.getLocationOnScreen(loc)
+        (expandedView as? View)?.getLocationOnScreen(loc)
         return event.rawX >= loc[0] && event.rawX <= loc[0] + expandedView?.width!! &&
                event.rawY >= loc[1] && event.rawY <= loc[1] + expandedView!!.height!!
     }
@@ -434,24 +433,24 @@ class FloatingBubbleService : Service() {
         collapseJob?.cancel()
 
         collapsedView?.animate()
-            .alpha(0f)
-            .scaleX(0.8f)
-            .scaleY(0.8f)
-            .setDuration(150)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .start()
+            ?.alpha(0f)
+            ?.scaleX(0.8f)
+            ?.scaleY(0.8f)
+            ?.setDuration(150)
+            ?.setInterpolator(AccelerateDecelerateInterpolator())
+            ?.start()
 
         expandedView?.visibility = View.VISIBLE
         expandedView?.alpha = 0f
         expandedView?.scaleX = 0.8f
         expandedView?.scaleY = 0.8f
         expandedView?.animate()
-            .alpha(1f)
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(200)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .start()
+            ?.alpha(1f)
+            ?.scaleX(1f)
+            ?.scaleY(1f)
+            ?.setDuration(200)
+            ?.setInterpolator(AccelerateDecelerateInterpolator())
+            ?.start()
 
         // Update params for expanded
         val expandedSize = (120f * currentScale).toInt() // wider for pill
@@ -473,26 +472,26 @@ class FloatingBubbleService : Service() {
         collapseJob?.cancel()
 
         expandedView?.animate()
-            .alpha(0f)
-            .scaleX(0.8f)
-            .scaleY(0.8f)
-            .setDuration(150)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .withEndAction { expandedView?.visibility = View.GONE }
-            .start()
+            ?.alpha(0f)
+            ?.scaleX(0.8f)
+            ?.scaleY(0.8f)
+            ?.setDuration(150)
+            ?.setInterpolator(AccelerateDecelerateInterpolator())
+            ?.withEndAction { expandedView?.visibility = View.GONE }
+            ?.start()
 
         collapsedView?.animate()
-            .alpha(1f)
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(200)
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .start()
+            ?.alpha(1f)
+            ?.scaleX(1f)
+            ?.scaleY(1f)
+            ?.setDuration(200)
+            ?.setInterpolator(AccelerateDecelerateInterpolator())
+            ?.start()
 
         val baseSize = (44f * currentScale).toInt()
         params?.width = baseSize
         params?.height = baseSize
-        params?.gravity = Gravity.TOP | Gravity.START
+        params?.gravity = Gravity.TOP or Gravity.START
         root?.let { wm?.updateViewLayout(it, params!!) }
 
         scheduleIdleDim()
@@ -628,8 +627,8 @@ class FloatingBubbleService : Service() {
 
     private fun updateExpandedView() {
         expandedView?.let { container ->
-            val content = container.getChildAt(0) as? FrameLayout
-                    ?.getChildAt(1) as? LinearLayout
+            val frame = (container as? ViewGroup)?.getChildAt(0) as? FrameLayout
+            val content = frame?.getChildAt(1) as? LinearLayout
             if (content != null) {
                 for (i in 0..2) {
                     val tv = content.getChildAt(i) as? TextView
@@ -644,7 +643,7 @@ class FloatingBubbleService : Service() {
                     }
                 }
                 // Highlight active segment
-                val pillContainer = container.getChildAt(0) as? FrameLayout
+                val pillContainer = (container as? ViewGroup)?.getChildAt(0) as? FrameLayout
                 if (pillContainer != null) {
                     // Add highlight overlay for active segment
                     highlightActiveSegment(pillContainer, content, activeProfile)
@@ -699,9 +698,9 @@ class FloatingBubbleService : Service() {
             delay(3000)
             if (!isExpanded && !hidden) {
                 collapsedView?.animate()
-                    .alpha(0.4f)
-                    .setDuration(500)
-                    .start()
+                    ?.alpha(0.4f)
+                    ?.setDuration(500)
+                    ?.start()
                 // Snap half to edge
                 snapHalfToEdge()
             }

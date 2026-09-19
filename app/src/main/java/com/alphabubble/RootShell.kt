@@ -119,7 +119,9 @@ object RootShell {
     suspend fun displayInfo(): DisplayInfo? = withContext(Dispatchers.IO) {
         val r = suExec("dumpsys display 2>/dev/null | grep -m1 'mDisplayWidth\\|mDisplayHeight\\|mDensity\\|mRefreshRate'")
         if (!r.success) return@withContext null
-        var w = 0, h = 0, dens = 0
+        var w = 0
+        var h = 0
+        var dens = 0
         val rates = mutableListOf<Int>()
         for (line in r.out) {
             if (line.contains("mDisplayWidth")) w = line.substringAfterLast("=").trim().toIntOrNull() ?: 0
