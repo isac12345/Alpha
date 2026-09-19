@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Siluet bubble: lingkaran + ekor. Putih murni, tanpa warna lain. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,3C7.03,3 3,7.03 3,12c0,1.5 0.37,2.91 1.03,4.16L3,21l4.96,-1.02C9.2,20.62 10.57,21 12,21c4.97,0 9,-4.03 9,-9s-4.03,-9 -9,-9zM12,19c-1.15,0 -2.26,-0.28 -3.25,-0.82l-0.23,-0.12 -2.35,0.48 0.5,-2.28 -0.15,-0.24C6.02,14.98 5.75,13.75 5.75,12.5C5.75,9.02 8.52,6.25 12,6.25c1.66,0 3.22,0.65 4.39,1.82 1.18,1.18 1.82,2.74 1.82,4.4s-0.65,3.22 -1.82,4.39C15.22,18.35 13.67,19 12,19z" />
+</vector>
