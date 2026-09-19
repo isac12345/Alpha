@@ -31,6 +31,12 @@ supaya perilaku sama dengan APK asli. Tanpa decode, estimasi di bawah BISA meles
 
 Usulan urutan aman: (1) decode APK via pipeline → artifact smali+resources (read-only, tanpa ubah kode); (2) kerjakan (a) B3+T3-res; (3) (b)/(c) setelah persetujuan per item. JANGAN mulai (c) sebelum setuju.
 
+## Tambahan 2 — R1/F2 (2026-09-19, analisis selesai, BELUM eksekusi)
+
+- R1 resolusi+DPI otomatis (proposional, genap, preview sebelum Apply, acuan asli sekali-simpan, saklar DPI default nyala + manual, countdown 15 dtk, reset native keduanya): (c) seluruhnya. Fakta persistensi: override wm TERSIMPAN di `Settings.Global display_size_forced` → BERTAHAN setelah reboot (terbukti `432,960` saat override, kosong sesudah reset) → butuh kebijakan boot (re-apply vs reset native).
+- F2 bubble disembunyikan (long-press vs drag ambang gerak + getar + toast, service tetap jalan, notifikasi berubah teks/aksi, persist + ingat reboot, saklar pengaturan): (c). Fondasi ADA di source lama (long-press 800ms, haptic, persist `hidden`) tapi: tanpa ambang gerak, tanpa toast, `hidden` tidak dibaca saat start (lupa setelah reboot), notifikasi statis.
+- Tidak ada subset (a)/(b) yang aman dikerjakan tanpa decode (butuh nama resource + smali acuan APK baru). Menunggu persetujuan + decode.
+
 ## Berikutnya (satu per satu)
 - [ ] Tes flash `build-output/Alpha-Fusion-v2.zip` di HP (Magisk/KernelSU): cek boot, APK `com.alphabubble` versionCode 2 terpasang, uninstall-dulu bila signer lama.
 - [ ] Setelah terpasang OK: hapus APK/zip lama tak terpakai (`app-debug.apk`, `AlphaBubble-edited.apk` bila tak perlu).

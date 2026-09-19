@@ -47,6 +47,19 @@ Sumber kode: tag `backup-source-rebuild` (source lama). HP: Android 14, SDK 34
 5. `com.example.test` — TIDAK DITEMUKAN di: branch fusion-v2, tag backup-source-rebuild, `/data/adb/alpha/game_profile_map.conf` (isi: wobblylife, punishing grayraven, wutheringwaves), `games.toml` modul maupun `/sdcard/Android/fas-rs/games.toml`, `uperf.json`. Satu-satunya "example" adalah placeholder `com.example.game` di `item_game.xml:32` (teks preview layout, bukan data). Butuh info user: di layar mana melihatnya.
 6. UI = XML (17 file `res/layout`, Activity+Fragment, `git grep compose` → nol). Background: XML default `centerCrop` (`fragment_home.xml:25`, `fragment_display.xml:41`); preview kode CENTER_CROP/FIT_CENTER (`DisplayFragment.kt:244`, `HomeFragment.kt:137`); tidak ada fitXY; simpan mentah tanpa crop (`DisplayFragment.kt:321-338`), downsample max 1080 (blur di layar 1600, bukan gepeng). DIVERGENSI: prefs HP pakai `app_bg_uri` (content URI) sedangkan source lama pakai `bg_image_path` (file) — APK terpasang LEBIH BARU dari source tag. Penyebab gepeng kemungkinan di kode baru → perlu decode APK via pipeline untuk bukti, atau screenshot user.
 
+## Tambahan 2 — analisis R1/F2 (2026-09-19, read-only, BELUM eksekusi)
+
+R1 (resolusi+DPI otomatis) — semua poin = jalur (c), kode baru di `RootShell` + `DisplayFragment` + prefs baru:
+- Acuan asli belum ada → simpan sekali saat deteksi pertama (fisik dari `wm size` Physical + `wm density` Physical). Persen selalu relatif ke acuan (anti-menumpuk).
+- Rumus: w/h = genap terdekat dari (asli×p%), dpi = bulat(asli×p%) bila saklar nyala (default); bila mati → input manual dalam batas sistem (cek `wm density` range valid, tolak di luar).
+- Preview SEBELUM Apply + nilai aktif sistem SESUDAH (baca `wm size`/`wm density`, bukan dumpsys).
+- Countdown 15 dtk + auto-revert ukuran+DPI sekaligus; RESET NATIVE = `wm size reset` + `wm density reset`.
+- PERSISTENSI REBOOT — TERBUKTI YA: saat override 432x960, `settings get global display_size_forced` → `432,960` (tersimpan di Settings.Global → bertahan reboot); sesudah reset → kosong, `wm size` native. Artinya tanpa penanganan, override ikut reboot; modul/service saat ini tidak menyentuh wm sama sekali → perlu kebijakan (re-apply setting user vs reset native saat boot).
+F2 (bubble disembunyikan) — sebagian ADA di source lama, kurangnya = jalur (c):
+- ADA: long-press >800ms → haptic + hidden=true + persist `hidden` (`FloatingBubbleService.kt:410-417`); `hapticFeedback()` 30ms (`:747-754`); `applyVisibility()` (`:701-703`); aksi TOGGLE/SHOW (`:114-128`).
+- KURANG: (1) tanpa ambang gerak — drag lambat >800ms ikut menyembunyikan (konflik gesture); (2) tanpa toast; (3) `hidden` TIDAK dibaca saat service start (hanya di intent TOGGLE/SHOW) → setelah reboot bubble muncul lagi walau sebelumnya disembunyikan (`BubbleBootReceiver.kt:10-18` hanya cek autostart); (4) notifikasi tidak tahu status hidden (teks/aksi statis); (5) tap body saat ini unhide, bukan buka panel profil; (6) tanpa saklar di pengaturan.
+- Peringatan divergensi tetap berlaku: APK terpasang lebih baru dari tag (prefs `app_bg_uri`), jadi peta baris di atas acuan awal — wajib decode via pipeline sebelum tulis kode.
+
 ## Pipeline edit APK (`.github/workflows/apk-edit.yml`, 2026-09-19)
 
 - Cara kerja: checkout → setup JDK 17 → install apktool rilis terbaru (via GitHub API, tanpa versi hardcode) → `apktool d companion/AlphaBubble.apk` (file asli tidak diubah) → timpa dengan `apk-overlay/` bila ada isi (rsync, `.gitkeep` diabaikan) → `apktool b` → `zipalign` → `apksigner sign` dengan keystore dari secret `KEYSTORE_B64` (decode ke `$RUNNER_TEMP`, PKCS12, alias `alpha`, password `KEYSTORE_PASSWORD`, secret di-mask, file sementara dihapus + always-cleanup, keystore tidak di-upload) → `verify --print-certs` → upload artifact `AlphaBubble-edited`.
