@@ -1,206 +1,71 @@
-name: Build Alpha Control APK
+name: Build Alpha APK
 
 on:
   push:
-    branches: [main, master]
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: write
 
-env:
-  AGP_VERSION: "8.3.2"
-  KOTLIN_VERSION: "1.9.20"
-  COMPILE_SDK: 34
-  MIN_SDK: 26
-  TARGET_SDK: 34
-
 jobs:
   build:
-    name: Build Debug & Release APK
+    name: Build signed release APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: 17
-          cache: gradle
 
       - name: Set up Android SDK
-        run: |
-          mkdir -p ~/android-sdk/cmdline-tools
-          cd ~/android-sdk/cmdline-tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q commandlinetools-linux-11076708_latest.zip
-          mv cmdline-tools latest
-          export ANDROID_HOME=~/android-sdk
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125" "cmdline-tools;latest"
+        uses: android-actions/setup-android@v3
 
-      - name: Generate Gradle Wrapper
-        run: |
-          # Use Gradle 8.5 to match AGP 8.3.2 requirements
-          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip -q gradle-8.5-bin.zip
-          ./gradle-8.5/bin/gradle wrapper --gradle-version 8.5
-
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
+      - name: Set up Gradle 8.5
+        uses: gradle/actions/setup-gradle@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          gradle-version: "8.5"
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Make sure proguard file exists
+        run: test -f app/proguard-rules.pro || touch app/proguard-rules.pro
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Decode keystore (kalau secret tersedia)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/alpha.jks"
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/alpha.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Secret KEYSTORE_BASE64 kosong, APK ditandatangani debug key (signature berubah tiap build)."
+          fi
 
-      - name: Build Release APK (unsigned)
-        run: ./gradlew assembleRelease --no-daemon
+      - name: Build release APK
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --stacktrace
 
-      - name: Upload Debug APK
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk Alpha.apk
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Alpha-Debug
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 7
+          name: Alpha
+          path: Alpha.apk
+          retention-days: 30
 
-      - name: Upload Release APK (unsigned)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Alpha-Release-Unsigned
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 7
-
-  sign-and-release:
-    name: Sign Release & Create GitHub Release
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    timeout-minutes: 20
-    permissions:
-      contents: write
-      id-token: write
-
-    steps:
-      - name: Download Release APK
-        uses: actions/download-artifact@v4
-        with:
-          name: Alpha-Release-Unsigned
-          path: artifacts
-
-      - name: Setup Keystore
-        id: keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > alpha-release.jks
-          echo "KEYSTORE_PATH=alpha-release.jks" >> $GITHUB_OUTPUT
-          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_OUTPUT
-          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_OUTPUT
-          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_OUTPUT
-
-      - name: Sign APK
-        run: |
-          apksigner sign \
-            --ks ${{ steps.keystore.outputs.KEYSTORE_PATH }} \
-            --ks-pass pass:${{ steps.keystore.outputs.KEYSTORE_PASSWORD }} \
-            --ks-key-alias ${{ steps.keystore.outputs.KEY_ALIAS }} \
-            --key-pass pass:${{ steps.keystore.outputs.KEY_PASSWORD }} \
-            --v1-signing-enabled true \
-            --v2-signing-enabled true \
-            --v3-signing-enabled true \
-            --v4-signing-enabled false \
-            --out Alpha-signed.apk \
-            artifacts/*.apk
-
-      - name: Verify Signature
-        run: |
-          apksigner verify --print-certs Alpha-signed.apk
-
-      - name: Create GitHub Release
+      - name: Create GitHub Release (hanya kalau dipicu tag)
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: Alpha-signed.apk
-          name: Alpha Control ${{ github.ref_name }}
-          body: |
-            ## Alpha Control ${{ github.ref_name }}
-            
-            Companion app for **Alpha + Uperf + fas-rs Fusion** Magisk module.
-            
-            ### Changes
-            - Total redesign with Bottom Navigation (Home, Games, Tuning, Display, About)
-            - Modern black/white theme with teal accent
-            - Fixed background stretching (center-crop + EXIF rotation support)
-            - New floating profile switcher (collapsed circle + expanded pill)
-            - Persistent notification with profile actions
-            - Background transparency slider
-            - Floating size slider (60-150%)
-            - Quick Settings tile for profile switching
-            - Auto-start on boot
-            - Rename: "Alpha Bubble" → "Alpha"
-            
-            ### Requirements
-            - Root (Magisk/KernelSU/APatch)
-            - Alpha + Uperf + fas-rs Fusion module installed
-            - Android 8.0+ (API 26+)
-            
-            ### Credits
-            - **Alpha v1**: io/vm/thermal/net/gpu/devfreq tuning
-            - **Uperf Game Turbo**: Matt Yang & yinwanxi (thread/cgroup + AsoulOpt)
-            - **fas-rs**: shadow3 & shadow3aaa (frame-aware scheduler)
-            - **Companion rebuild**: somwan
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  lint:
-    name: Lint Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: 17
-
-      - name: Set up Android SDK
-        run: |
-          mkdir -p ~/android-sdk/cmdline-tools
-          cd ~/android-sdk/cmdline-tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q commandlinetools-linux-11076708_latest.zip
-          mv cmdline-tools latest
-          export ANDROID_HOME=~/android-sdk
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125" "cmdline-tools;latest"
-
-      - name: Generate Gradle Wrapper
-        run: |
-          # Use Gradle 8.5 to match AGP 8.3.2 requirements
-          wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-          unzip -q gradle-8.5-bin.zip
-          ./gradle-8.5/bin/gradle wrapper --gradle-version 8.5
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Run Lint
-        run: ./gradlew lintDebug --no-daemon
+          files: Alpha.apk
+          name: Alpha ${{ github.ref_name }}
