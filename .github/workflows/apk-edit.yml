@@ -40,11 +40,18 @@ jobs:
           else
             echo "overlay empty, nothing changed"
           fi
+      - name: Diagnose apksigner options (temporary)
+        run: |
+          BT=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
+          ls "$ANDROID_SDK_ROOT/build-tools"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/apksigner" sign --help 2>&1 | grep -iB1 -A3 -E "ks-pass|key-pass" | head -n 40
       - name: Rebuild, align, sign
         env:
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           set -e
+          echo "SKIP-SIGN-DIAGNOSIS-RUN"
+          exit 0
           echo "::add-mask::$KS_PASS"
           BT=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
           echo "build-tools: $BT"
