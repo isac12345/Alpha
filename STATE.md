@@ -7,5 +7,6 @@
 - APK asli: `companion/AlphaBubble.apk`, sha256 `159d4e771a6f1c0bd6ac480fa4f8f780eacb87c9f646d9d33a628a4daee89b48`.
 - module.prop: id=`alpha_uperf_fasrs_fusion`, version=v2, versionCode=2.
 - Sudah diverifikasi: exec bit + LF (script bersih, hanya biner + 1 md yang mengandung CR).
-- Belum: `.opencode/`, workflow packaging, run Actions, verifikasi zip hasil, bersih cache.
+- Belum: workflow packaging, run Actions, verifikasi zip hasil, bersih cache.
+- 2026-09-19: `.opencode/` disalin (AGENTS.md + agent/7 + skill/3 + command/5, 16 file, tanpa secret).
 - JANGAN merge ke master tanpa persetujuan user.
