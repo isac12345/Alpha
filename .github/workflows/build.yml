@@ -37,9 +37,11 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           api-level: ${{ env.COMPILE_SDK }}
-          build-tools-version: 34.0.0
-          ndk-version: r26c
-          cmdline-tools-version: latest
+          packages: |
+            platforms;android-${{ env.COMPILE_SDK }}
+            build-tools;34.0.0
+            ndk;r26c
+            cmdline-tools;latest
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -173,7 +175,11 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           api-level: ${{ env.COMPILE_SDK }}
-          cmdline-tools-version: latest
+          packages: |
+            platforms;android-${{ env.COMPILE_SDK }}
+            build-tools;34.0.0
+            ndk;r26c
+            cmdline-tools;latest
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
