@@ -35,14 +35,14 @@ object LogFormat {
         }
         var ts: Long = 0
         try {
-            val dt = tsFmt.parse(m.groupValues()[1])
+            val dt = tsFmt.parse(m.groupValues[1])
             if (dt != null) ts = dt.time
         } catch (e: Exception) {
             // ignore
         }
         val rel = relTime(ts, now)
-        val status = m.groupValues()[2]
-        val detail = m.groupValues()[3]
+        val status = m.groupValues[2]
+        val detail = m.groupValues[3]
         val msg = shortMsg(status, detail)
         return Compact(rel, status, msg)
     }
@@ -71,14 +71,14 @@ object LogFormat {
     private fun shortMsg(status: String, detail: String): String {
         val m = pathValRe.find(detail)
         if (m != null) {
-            val path = m.groupValues()[1]
-            val value = m.groupValues()[2]
+            val path = m.groupValues[1]
+            val value = m.groupValues[2]
             val name = path.substringAfterLast("/")
             return "$status $name=$value"
         }
         val m2 = pathRe.find(detail)
         if (m2 != null) {
-            val path = m2.groupValues()[1]
+            val path = m2.groupValues[1]
             val name = path.substringAfterLast("/")
             return "$status $name"
         }

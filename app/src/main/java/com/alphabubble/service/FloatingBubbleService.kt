@@ -48,6 +48,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
+import kotlin.math.abs
+import androidx.core.animation.doOnEnd
 
 class FloatingBubbleService : Service() {
 
@@ -57,12 +59,12 @@ class FloatingBubbleService : Service() {
         const val CHANNEL_ID = "alpha_floating"
         const val NOTIF_ID = 21
         const val PREFS_NAME = "alpha_bubble"
-        private const val PROFILES = listOf("battery", "balanced", "performance")
-        private const val SHORT = mapOf("battery" to "BAT", "balanced" to "BAL", "performance" to "PERF")
-        private const val PROFILE_COLORS = mapOf(
-            "battery" to 0xFF4CAF50,   // Green
-            "balanced" to 0xFF2196F3,  // Blue
-            "performance" to 0xFFFF5722 // Orange
+        private val PROFILES = listOf("battery", "balanced", "performance")
+        private val SHORT = mapOf("battery" to "BAT", "balanced" to "BAL", "performance" to "PERF")
+        private val PROFILE_COLORS = mapOf(
+            "battery" to 0xFF4CAF50.toInt(),   // Green
+            "balanced" to 0xFF2196F3.toInt(),  // Blue
+            "performance" to 0xFFFF5722.toInt() // Orange
         )
     }
 
@@ -318,9 +320,9 @@ class FloatingBubbleService : Service() {
 
     private fun createPillBackground(): android.graphics.drawable.GradientDrawable {
         return android.graphics.drawable.GradientDrawable().apply {
-            setColor(0xFF1E1E1E) // alpha_dark3
+            setColor(0xFF1E1E1E.toInt()) // alpha_dark3
             cornerRadius = 1000f
-            setStroke(2, 0x33FFFFFF) // Thin white stroke
+            setStroke(2, 0x33FFFFFF.toInt()) // Thin white stroke
         }
     }
 
@@ -329,7 +331,7 @@ class FloatingBubbleService : Service() {
         private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 2f
-            color = 0x33FFFFFF
+            color = 0x33FFFFFF.toInt()
         }
         private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -344,23 +346,23 @@ class FloatingBubbleService : Service() {
             val radius = (width / 2f) - 1f
 
             // Background circle
-            paint.color = 0xCC1E1E1E // Semi-transparent dark
+            paint.color = 0xCC1E1E1E.toInt() // Semi-transparent dark
             canvas.drawCircle(centerX, centerY, radius, paint)
 
             // Stroke
             canvas.drawCircle(centerX, centerY, radius, strokePaint)
 
             // Profile indicator dot (top-right)
-            val dotColor = PROFILE_COLORS[activeProfile] ?: 0xFFFFFFFF
+            val dotColor = PROFILE_COLORS[activeProfile] ?: 0xFFFFFFFF.toInt()
             dotPaint.color = dotColor
-            val dotRadius = (width * 0.18f).toInt()
+            val dotRadius = width * 0.18f
             val dotX = centerX + radius * 0.5f
             val dotY = centerY - radius * 0.5f
             canvas.drawCircle(dotX, dotY, dotRadius, dotPaint)
 
             // Profile letter
             val letter = SHORT[activeProfile] ?: "?"
-            textPaint.color = 0xFFFFFFFF
+            textPaint.color = 0xFFFFFFFF.toInt()
             textPaint.textSize = width * 0.35f
             val bounds = android.graphics.Rect()
             textPaint.getTextBounds(letter, 0, letter.length, bounds)
@@ -634,7 +636,7 @@ class FloatingBubbleService : Service() {
                     val profile = PROFILES[i]
                     val isActive = profile == activeProfile
                     tv?.apply {
-                        setTextColor(if (isActive) 0xFFFFFFFF else 0x88FFFFFF)
+                        setTextColor((if (isActive) 0xFFFFFFFF.toInt() else 0x88FFFFFF.toInt()))
                         setTypeface(null, if (isActive) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
                         // Update background per segment
                         val pillBg = (parent as? FrameLayout)?.getChildAt(0) as? View
@@ -657,18 +659,18 @@ class FloatingBubbleService : Service() {
 
         val activeView = content.getChildAt(index)
         val highlight = android.graphics.drawable.GradientDrawable().apply {
-            setColor(0xFFFFFFFF) // White for active
+            setColor(0xFFFFFFFF.toInt()) // White for active
             cornerRadius = 1000f
         }
         activeView.background = highlight
-        (activeView as? TextView)?.setTextColor(0xFF000000)
+        (activeView as? TextView)?.setTextColor(0xFF000000.toInt())
 
         // Reset others
         for (i in 0..2) {
             if (i != index) {
                 val other = content.getChildAt(i) as? TextView
                 other?.setBackgroundColor(Color.TRANSPARENT)
-                other?.setTextColor(0xFFFFFFFF)
+                other?.setTextColor(0xFFFFFFFF.toInt())
             }
         }
     }

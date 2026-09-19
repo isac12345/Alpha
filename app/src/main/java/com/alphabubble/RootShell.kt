@@ -15,7 +15,7 @@ object RootShell {
     const val DETECT_CONF = "/data/adb/alpha/detected.conf"
     const val PID_FILE = "/data/adb/alpha/monitor.pid"
     const val MODULE_ID = "alpha_uperf_fasrs_fusion"
-    private const val MODULE_BASES = listOf(
+    private val MODULE_BASES = listOf(
         "/data/adb/modules",
         "/data/adb/ksu/modules",
         "/data/adb/ap/modules"
@@ -60,7 +60,7 @@ object RootShell {
     private val suExecutor = SuExecutor.getInstance()
 
     private suspend fun suExec(cmd: String): ExecResult = withContext(Dispatchers.IO) {
-        suExecutor.exec(cmd)
+        suExecutor.exec(cmd).let { ExecResult(it.success, it.exitCode, it.out, it.err) }
     }
 
     suspend fun hasRoot(): Boolean = withContext(Dispatchers.IO) {
@@ -84,7 +84,7 @@ object RootShell {
 
     suspend fun findModulePath(ctx: Context): String? = withContext(Dispatchers.IO) {
         val cached = Prefs.getModulePath(ctx)
-        if (cached != null && File(cached).exists()) return cached
+        if (cached != null && File(cached).exists()) return@withContext cached
         val found = findModuleDirInternal()
         found?.let { Prefs.setModulePath(ctx, it) }
         found
@@ -110,7 +110,7 @@ object RootShell {
 
     suspend fun deviceInfo(ctx: Context, autoDetect: Boolean = false): ExecResult = withContext(Dispatchers.IO) {
         val r = redetect(ctx, autoDetect)
-        if (!r.success) return r
+        if (!r.success) return@withContext r
         val f = File(DETECT_CONF)
         if (f.exists()) ExecResult(true, 0, f.readLines(), emptyList())
         else ExecResult(false, -1, emptyList(), listOf("detected.conf not found"))
@@ -118,7 +118,7 @@ object RootShell {
 
     suspend fun displayInfo(): DisplayInfo? = withContext(Dispatchers.IO) {
         val r = suExec("dumpsys display 2>/dev/null | grep -m1 'mDisplayWidth\\|mDisplayHeight\\|mDensity\\|mRefreshRate'")
-        if (!r.success) return null
+        if (!r.success) return@withContext null
         var w = 0, h = 0, dens = 0
         val rates = mutableListOf<Int>()
         for (line in r.out) {
@@ -135,7 +135,7 @@ object RootShell {
 
     suspend fun renderGet(): RenderInfo? = withContext(Dispatchers.IO) {
         val r = suExec("cat /data/adb/alpha/render_backend 2>/dev/null")
-        if (!r.success || r.out.isEmpty()) return null
+        if (!r.success || r.out.isEmpty()) return@withContext null
         val active = r.out[0].trim()
         val r2 = suExec("ls /data/adb/alpha/render_backends/ 2>/dev/null")
         val backends = if (r2.success) r2.out.map { it.trim() }.filter { it.isNotEmpty() } else listOf(active)
@@ -163,10 +163,10 @@ object RootShell {
     suspend fun gameList(ctx: Context): List<GameEntry> = withContext(Dispatchers.IO) {
         val modulePath = findModulePath(ctx) ?: return@withContext emptyList()
         val mapFile = File(modulePath, "game_profile_map.conf")
-        if (!mapFile.exists()) return emptyList()
+        if (!mapFile.exists()) return@withContext emptyList()
         val lines = mapFile.readLines()
         val pkgMgr = ctx.packageManager
-        return lines.mapNotNull { line ->
+        return@withContext lines.mapNotNull { line ->
             val parts = line.split("=")
             if (parts.size != 2) return@mapNotNull null
             val pkg = parts[0].trim()
@@ -197,15 +197,15 @@ object RootShell {
 
     suspend fun monitorStatus(): MonitorStatus = withContext(Dispatchers.IO) {
         val pidFile = File(PID_FILE)
-        if (!pidFile.exists()) return MonitorStatus(false, null)
+        if (!pidFile.exists()) return@withContext MonitorStatus(false, null)
         val pid = pidFile.readText().trim().toIntOrNull()
-        if (pid == null) return MonitorStatus(false, null)
+        if (pid == null) return@withContext MonitorStatus(false, null)
         val r = suExec("kill -0 $pid 2>/dev/null && echo alive || echo dead")
         MonitorStatus(r.success && r.out.firstOrNull() == "alive", pid)
     }
 
     suspend fun setMonitor(start: Boolean): ExecResult = withContext(Dispatchers.IO) {
-        val modulePath = findModuleDirInternal() ?: return ExecResult(false, -1, emptyList(), listOf("Module not found"))
+        val modulePath = findModuleDirInternal() ?: return@withContext ExecResult(false, -1, emptyList(), listOf("Module not found"))
         val script = moduleScriptPath(modulePath, "monitor.sh")
         val action = if (start) "start" else "stop"
         suExec("sh $script $action")
@@ -213,20 +213,20 @@ object RootShell {
 
     suspend fun fullLog(limit: Int = 200): List<LogEntry> = withContext(Dispatchers.IO) {
         val r = suExec("grep -E '\\[(CPU_GOV|CPU_FREQ|KERNEL_BOOST|DEVFREQ|IO|VM|THERMAL|NET|GPU|APPLY|MONITOR)\\]' '$LOG_FILE' 2>/dev/null | tail -$limit")
-        if (!r.success) return emptyList()
-        return r.out.reversed().mapNotNull { line ->
+        if (!r.success) return@withContext emptyList()
+        return@withContext r.out.reversed().mapNotNull { line ->
             val m = Regex("\\[([A-Z_]+)\\]\\s+\\[([A-Z_]+)\\]\\s+(.*)").matchEntire(line.trim())
-            if (m != null) LogEntry(m.groupValues()[1], m.groupValues()[2], m.groupValues()[3])
+            if (m != null) LogEntry(m.groupValues[1], m.groupValues[2], m.groupValues[3])
             else LogEntry("", "", line.trim())
         }
     }
 
     suspend fun tailLog(limit: Int = 30): List<LogEntry> = withContext(Dispatchers.IO) {
         val r = suExec("grep -E '\\[(CPU_GOV|CPU_FREQ|KERNEL_BOOST|DEVFREQ|IO|VM|THERMAL|NET|GPU|APPLY|MONITOR)\\]' '$LOG_FILE' 2>/dev/null | tail -$limit")
-        if (!r.success) return emptyList()
-        return r.out.reversed().mapNotNull { line ->
+        if (!r.success) return@withContext emptyList()
+        return@withContext r.out.reversed().mapNotNull { line ->
             val m = Regex("\\[([A-Z_]+)\\]\\s+\\[([A-Z_]+)\\]\\s+(.*)").matchEntire(line.trim())
-            if (m != null) LogEntry(m.groupValues()[1], m.groupValues()[2], m.groupValues()[3])
+            if (m != null) LogEntry(m.groupValues[1], m.groupValues[2], m.groupValues[3])
             else LogEntry("", "", line.trim())
         }
     }
