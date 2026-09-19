@@ -25,6 +25,28 @@
 - File pertama di zip: `uninstall.sh`, `module.prop`, `companion/` — tanpa folder pembungkus ✓. Tidak ada `AGENTS.md`/`STATE.md`/`PLAN.md`/`NOTES.md`/`.opencode`/`.github`/`build-output` di dalam (satu-satunya hit grep adalah path arsip itu sendiri).
 - Link: https://github.com/isac12345/Alpha/actions/runs/35427306606
 
+## Investigasi Alpha Control (TAHAP 1, 2026-09-19, read-only + tes live aman)
+
+Sumber kode: tag `backup-source-rebuild` (source lama). HP: Android 14, SDK 34
+(`getprop ro.build.version.release`=14, `...sdk`=34). Resolusi native 720x1600, density 320.
+
+1. Notifikasi/bubble — BELUM seperti B1:
+- `AndroidManifest.xml:12` deklarasi POST_NOTIFICATIONS, tapi `git grep requestPermissions|ActivityCompat|checkSelfPermission` → NOL (tidak pernah diminta runtime).
+- `FloatingBubbleService.kt:107-111` startForeground(NOTIF_ID=21) + channel `alpha_floating` IMPORTANCE_LOW (163-168). Isi STATIS (171-186): "Alpha Floating", aksi Tampilkan/Sembunyikan saja — tanpa profil aktif, tanpa aksi Battery/Balanced/Perf, tanpa deleteIntent.
+- `ProfileMonitorService.kt:36-47,94-107` notifikasi "Alpha: <Profil>" + 3 aksi + tap→show bubble, poll `current_state` tiap 3 dtk (55-60). Hanya jalan bila `Prefs.isNotifEnabled` (default true, `Prefs.kt:72-73`).
+- Batasan Android 14: notif FGS IMPORTANCE_LOW bisa di-swipe user; tanpa deleteIntent tidak bisa tampilkan ulang otomatis.
+2. Resolusi — parser SALAH + tanpa feedback:
+- `RootShell.kt:151-155` apply hanya `wm size WxH` (tanpa density); `:157-159` reset hanya `wm size reset` (tanpa density reset). `DisplayFragment.kt:355-370` reload label bila success, tanpa toast gagal/berhasil.
+- `RootShell.kt:119-136` parse `dumpsys display | grep mDisplayWidth|...` — key TIDAK ADA di ROM ini (terbukti: perintah sama via su → kosong). Data nyata: `DisplayDeviceInfo{...720 x 1600...density 320}`, `mStableDisplaySize`, `supportedModes fps 60/90/120/144`.
+- Tes auto-reset 432x960 (60%): `wm size` → `Override size: 432x960`, tapi dumpsys TETAP fisik 720x1600. Jadi parser dumpsys tidak bisa baca Override; fix harus parse `wm size` (Physical vs Override) + `wm density`. Reset terverifikasi kembali native (hanya Physical).
+3. Dexopt — perintah sinkron, UX fire-and-forget:
+- `RootShell.kt:161-163` = `cmd package compile -m $mode -f $pkg` (selalu -f). `SuExecutor.kt:57` waitFor tanpa timeout.
+- `DexoptDialog.kt:44-50` panggil lalu abaikan hasil. Live `com.alphabubble`: before `[status=run-from-apk]` → Success 0.485s → after `[status=verify] [reason=cmdline]` (minta speed, dapat verify — kemungkinan karena `android:debuggable="true"` di manifest).
+4. Profil per game — JALAN (event-driven): map `/data/adb/alpha/game_profile_map.conf` format `pkg:profil`; `monitor.sh` logcat events + fallback polling 7/60 dtk; tulis `current_state` via `apply_now.sh`. Tes `com.android.settings:performance`: buka→performance ~4 dtk (`APPLY-EVENT`), tutup→battery(manual) ~5 dtk. Daftar asli dikembalikan identik (3 entri), tidak ada sisa.
+- BUG APP (bukan modul): `RootShell.kt:165-184` gameList baca `$modulePath/game_profile_map.conf` (TIDAK ADA di HP) dengan delimiter `=` (file nyata di `/data/adb/alpha/`, delimiter `:`). `removeGameFlow` (`:192-198`) tulis langsung file modul + `=`, bypass script. Akibat: daftar game di aplikasi tidak sinkron dengan modul.
+5. `com.example.test` — TIDAK DITEMUKAN di: branch fusion-v2, tag backup-source-rebuild, `/data/adb/alpha/game_profile_map.conf` (isi: wobblylife, punishing grayraven, wutheringwaves), `games.toml` modul maupun `/sdcard/Android/fas-rs/games.toml`, `uperf.json`. Satu-satunya "example" adalah placeholder `com.example.game` di `item_game.xml:32` (teks preview layout, bukan data). Butuh info user: di layar mana melihatnya.
+6. UI = XML (17 file `res/layout`, Activity+Fragment, `git grep compose` → nol). Background: XML default `centerCrop` (`fragment_home.xml:25`, `fragment_display.xml:41`); preview kode CENTER_CROP/FIT_CENTER (`DisplayFragment.kt:244`, `HomeFragment.kt:137`); tidak ada fitXY; simpan mentah tanpa crop (`DisplayFragment.kt:321-338`), downsample max 1080 (blur di layar 1600, bukan gepeng). DIVERGENSI: prefs HP pakai `app_bg_uri` (content URI) sedangkan source lama pakai `bg_image_path` (file) — APK terpasang LEBIH BARU dari source tag. Penyebab gepeng kemungkinan di kode baru → perlu decode APK via pipeline untuk bukti, atau screenshot user.
+
 ## Pipeline edit APK (`.github/workflows/apk-edit.yml`, 2026-09-19)
 
 - Cara kerja: checkout → setup JDK 17 → install apktool rilis terbaru (via GitHub API, tanpa versi hardcode) → `apktool d companion/AlphaBubble.apk` (file asli tidak diubah) → timpa dengan `apk-overlay/` bila ada isi (rsync, `.gitkeep` diabaikan) → `apktool b` → `zipalign` → `apksigner sign` dengan keystore dari secret `KEYSTORE_B64` (decode ke `$RUNNER_TEMP`, PKCS12, alias `alpha`, password `KEYSTORE_PASSWORD`, secret di-mask, file sementara dihapus + always-cleanup, keystore tidak di-upload) → `verify --print-certs` → upload artifact `AlphaBubble-edited`.
