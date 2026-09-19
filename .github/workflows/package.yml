@@ -1,0 +1,24 @@
+name: Package Alpha Fusion ZIP
+on:
+  push:
+    branches: [ "fusion-v2" ]
+  workflow_dispatch:
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build module ZIP (META-INF at root, no wrapper dir)
+        run: |
+          zip -r Alpha-Fusion-v2.zip . \
+            -x ".git/*" ".github/*" ".opencode/*" \
+            "AGENTS.md" "STATE.md" "PLAN.md" "NOTES.md" \
+            "build-output/*" "Alpha-Fusion-v2.zip"
+          unzip -l Alpha-Fusion-v2.zip | head -n 20
+          test -f META-INF/com/google/android/update-binary
+          test -f module.prop
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Alpha-Fusion-v2
+          path: Alpha-Fusion-v2.zip

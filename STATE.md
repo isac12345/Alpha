@@ -9,4 +9,5 @@
 - Sudah diverifikasi: exec bit + LF (script bersih, hanya biner + 1 md yang mengandung CR).
 - Belum: workflow packaging, run Actions, verifikasi zip hasil, bersih cache.
 - 2026-09-19: `.opencode/` disalin (AGENTS.md + agent/7 + skill/3 + command/5, 16 file, tanpa secret).
+- 2026-09-19: workflow `.github/workflows/package.yml` dibuat (zip META-INF di root, exclude docs/.opencode/build-output, upload artifact). Validasi YAML lokal diskip (no pyyaml, dilarang install); run Actions yang memvalidasi.
 - JANGAN merge ke master tanpa persetujuan user.
