@@ -15,6 +15,7 @@ import android.widget.Spinner
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.core.widget.addTextChangedListener
 import com.alphabubble.R
 import com.alphabubble.RootShell
 import kotlinx.coroutines.launch
@@ -77,6 +78,7 @@ class DexoptDialog : DialogFragment() {
     }
 
     private fun filterApps(query: String) {
+        val pm = requireContext().packageManager
         if (query.isBlank()) {
             filteredApps = allApps
         } else {

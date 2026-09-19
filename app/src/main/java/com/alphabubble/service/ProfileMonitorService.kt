@@ -10,8 +10,8 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.IBinder
+import android.graphics.drawable.Icon
 import androidx.core.app.NotificationCompat
-import com.alphabubble.FloatingBubbleService
 import com.alphabubble.NotifHelper
 import com.alphabubble.Prefs
 import com.alphabubble.R

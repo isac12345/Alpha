@@ -12,6 +12,9 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.DiffUtil
+import com.alphabubble.LogAllDialog
 import com.alphabubble.LogFormat
 import com.alphabubble.R
 import com.alphabubble.RootShell

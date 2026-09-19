@@ -66,6 +66,16 @@ class FloatingBubbleService : Service() {
             "balanced" to 0xFF2196F3.toInt(),  // Blue
             "performance" to 0xFFFF5722.toInt() // Orange
         )
+
+        @JvmStatic
+        fun getToggleIntent(ctx: Context): Intent {
+            return Intent(ctx, FloatingBubbleService::class.java).setAction(ACTION_TOGGLE)
+        }
+
+        @JvmStatic
+        fun getShowIntent(ctx: Context): Intent {
+            return Intent(ctx, FloatingBubbleService::class.java).setAction(ACTION_SHOW)
+        }
     }
 
     private var wm: WindowManager? = null
@@ -797,12 +807,4 @@ class FloatingBubbleService : Service() {
     }
 
     private fun dpToPx(dp: Float): Int = (dp * resources.displayMetrics.density).toInt()
-
-    fun getToggleIntent(ctx: Context): Intent {
-        return Intent(ctx, FloatingBubbleService::class.java).setAction(ACTION_TOGGLE)
-    }
-
-    fun getShowIntent(ctx: Context): Intent {
-        return Intent(ctx, FloatingBubbleService::class.java).setAction(ACTION_SHOW)
-    }
 }

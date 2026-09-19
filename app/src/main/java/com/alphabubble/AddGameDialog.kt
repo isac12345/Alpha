@@ -15,6 +15,7 @@ import android.widget.Spinner
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.core.widget.addTextChangedListener
 import com.alphabubble.R
 import kotlinx.coroutines.launch
 
@@ -32,7 +33,7 @@ class AddGameDialog : DialogFragment() {
         val isHeader: Boolean = false
     )
 
-    interface OnGameAddedListener {
+    fun interface OnGameAddedListener {
         fun onGameAdded(packageName: String, profile: String)
     }
 
@@ -98,7 +99,7 @@ class AddGameDialog : DialogFragment() {
         }
     }
 
-    class AppAdapter(
+    inner class AppAdapter(
         private val ctx: android.content.Context,
         private val onClick: (AppRow) -> Unit
     ) : androidx.recyclerview.widget.ListAdapter<AppRow, AppAdapter.VH>(AppDiffCallback()) {
@@ -129,10 +130,11 @@ class AddGameDialog : DialogFragment() {
         }
 
         fun filter(query: String) {
+            val outer = this@AddGameDialog.allApps
             if (query.isBlank()) {
-                submitList(allApps)
+                submitList(outer)
             } else {
-                val filtered = allApps.filter { it.isHeader || it.label.lowercase().contains(query.lowercase()) }
+                val filtered = outer.filter { it.isHeader || it.label.lowercase().contains(query.lowercase()) }
                 submitList(filtered)
             }
         }

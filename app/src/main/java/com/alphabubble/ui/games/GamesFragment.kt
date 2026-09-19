@@ -10,6 +10,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.core.widget.addTextChangedListener
 import com.alphabubble.AddGameDialog
 import com.alphabubble.R
 import com.alphabubble.RootShell
@@ -30,27 +31,33 @@ class GamesFragment : Fragment(R.layout.fragment_games) {
         etSearch = view.findViewById(R.id.etGameSearch)
 
         rvGames?.layoutManager = LinearLayoutManager(requireContext())
-        adapter = GameAdapter(requireContext()) { entry, profile ->
-            lifecycleScope.launch {
-                val result = RootShell.addGameFlow(requireContext(), entry.packageName, profile)
-                if (result.success) loadGames()
+        adapter = GameAdapter(
+            requireContext(),
+            onProfileChange = { entry, profile ->
+                lifecycleScope.launch {
+                    val result = RootShell.addGameFlow(requireContext(), entry.packageName, profile)
+                    if (result.success) loadGames()
+                }
+            },
+            onRemove = { entry ->
+                lifecycleScope.launch {
+                    val result = RootShell.removeGameFlow(requireContext(), entry.packageName)
+                    if (result.success) loadGames()
+                }
             }
-        } onRemove = { entry ->
-            lifecycleScope.launch {
-                val result = RootShell.removeGameFlow(requireContext(), entry.packageName)
-                if (result.success) loadGames()
-            }
-        }
+        )
         rvGames?.adapter = adapter
 
         view.findViewById<Button>(R.id.btnAddGame).setOnClickListener {
             val dialog = AddGameDialog()
-            dialog.setOnGameAddedListener { pkg, profile ->
-                lifecycleScope.launch {
-                    val result = RootShell.addGameFlow(requireContext(), pkg, profile)
-                    if (result.success) loadGames()
+            dialog.setOnGameAddedListener(object : AddGameDialog.OnGameAddedListener {
+                override fun onGameAdded(pkg: String, profile: String) {
+                    lifecycleScope.launch {
+                        val result = RootShell.addGameFlow(requireContext(), pkg, profile)
+                        if (result.success) loadGames()
+                    }
                 }
-            }
+            })
             dialog.show(childFragmentManager, "add_game")
         }
 

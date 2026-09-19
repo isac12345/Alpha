@@ -20,9 +20,12 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.alphabubble.DexoptDialog
 import com.alphabubble.Prefs
 import com.alphabubble.R
 import com.alphabubble.RootShell
+import com.alphabubble.service.FloatingBubbleService
+import com.alphabubble.service.ProfileMonitorService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
