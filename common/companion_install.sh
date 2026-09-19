@@ -8,7 +8,7 @@
 # alpha-bubble/app/build.gradle.kts setiap rilis baru. Kalau lupa bump,
 # update modul tidak akan meng-update APK (guard mengira sudah current).
 ALPHA_COMPANION_PKG="com.alphabubble"
-ALPHA_COMPANION_VER=2
+ALPHA_COMPANION_VER=1
 
 # $1 = path APK, $2 = flag file (berisi versionCode yang terakhir dipasang
 # oleh helper ini). Return 0 = APK sudah current (atau baru dipasang).

@@ -1,25 +1,19 @@
-# Gradle
-.gradle/
-build/
-app/build/
-*.iml
-*.iws
-*.ipr
-*.iml
+# Build outputs & artifacts
+build-output/
+*.apk
+*.zip
+# Payload modul yang WAJIB terlacak (pengecualian):
+!companion/AlphaBubble.apk
+!uperf/modules/asoulopt.zip
 
-# Keystore
-*.jks
-*.keystore
-
-# Local properties
-local.properties
-
-# OS
+# Temp / editor leftovers
+*.tmp
+*.bak
+*~
 .DS_Store
 Thumbs.db
 
-# IDE
-.idea/
-.vscode/
+# Keys & secrets — JANGAN commit
 *.jks
-alpha-release.jks
+*.keystore
+local.properties
