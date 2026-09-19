@@ -51,10 +51,10 @@ jobs:
       - name: Patch versionCode from version.txt
         run: |
           set -e
-          sed -i "s/^\(\s*versionCode:\).*/\1 '$V'/" work/decode/apktool.yml
-          grep -q "versionCode: '$V'" work/decode/apktool.yml \
+          sed -i -E "s/^(\s*versionCode:).*/\1 $V/" work/decode/apktool.yml
+          grep -qE "^[[:space:]]*versionCode: $V$" work/decode/apktool.yml \
             || { echo "patch versionCode gagal"; exit 1; }
-          grep "versionCode:" work/decode/apktool.yml
+          grep -E "versionCode:" work/decode/apktool.yml
       - name: Rebuild, align, sign
         env:
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
