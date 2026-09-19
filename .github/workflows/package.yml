@@ -155,7 +155,7 @@ jobs:
             --exclude=AGENTS.md --exclude=STATE.md --exclude=PLAN.md --exclude=NOTES.md \
             --exclude=.gitignore \
             --exclude=build-output/ --exclude=work/ --exclude=stage/ \
-            --exclude=apk-overlay/ --exclude=apk-patches/ --exclude=java/ --exclude=version.txt --exclude=Alpha-Fusion-v2.zip \
+            --exclude=apk-overlay/ --exclude=apk-patches/ --exclude=java/ --exclude=version.txt --exclude=Alpha-Fusion-v1.zip \
             ./ stage/
           cp work/AlphaBubble-signed.apk stage/companion/AlphaBubble.apk
           test -f stage/module.prop
@@ -164,11 +164,11 @@ jobs:
       - name: Build module ZIP (META-INF at root, no wrapper dir)
         run: |
           set -e
-          rm -f Alpha-Fusion-v2.zip
-          (cd stage && zip -r ../Alpha-Fusion-v2.zip .)
-          unzip -l Alpha-Fusion-v2.zip | head -n 20
+          rm -f Alpha-Fusion-v1.zip
+          (cd stage && zip -r ../Alpha-Fusion-v1.zip .)
+          unzip -l Alpha-Fusion-v1.zip | head -n 20
       - name: Upload ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: Alpha-Fusion-v2
-          path: Alpha-Fusion-v2.zip
+          name: Alpha-Fusion-v1
+          path: Alpha-Fusion-v1.zip

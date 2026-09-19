@@ -1,7 +1,7 @@
 id=alpha_uperf_fasrs_fusion
 name=Alpha Fusion
-version=v5
-versionCode=5
+version=v1
+versionCode=6
 author=somwan
 description=Alpha + Uperf + fas-rs fusion. Detail modul & kredit di aplikasi Alpha Control.
 updateJson=
