@@ -15,4 +15,5 @@
 - 2026-09-19: bersih cache `~/.gradle` (20M) + `~/.cache` (11M). Protected (`~/.config/opencode`, `~/.config/gh`, `~/.ssh`, `~/storage`) utuh.
 - 2026-09-19: cek keystore — keduanya alias `alpha`, fingerprint tak tampil tanpa password (Enter) → belum final; `.gitignore` + `keystore.properties`; git bersih dari jks.
 - 2026-09-19: secret KEYSTORE_B64 + KEYSTORE_PASSWORD ada (secret lama diabaikan). Workflow `apk-edit.yml` dibuat + `apk-overlay/.gitkeep`.
+- 2026-09-19: run `35428578321` GAGAL di step sign: `Unsupported option: --ks-pass:env` (build-tools 37.0.0; apktool rebuild SUKSES). Fix: password via `:file` (percobaan 1).
 - JANGAN merge ke master tanpa persetujuan user.

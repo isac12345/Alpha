@@ -51,14 +51,15 @@ jobs:
           ./apktool b work/decode -o work/unsigned.apk
           "$ANDROID_SDK_ROOT/build-tools/$BT/zipalign" -f 4 work/unsigned.apk work/aligned.apk
           echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          printf '%s' "$KS_PASS" > "$RUNNER_TEMP/ks.pass"
           "$ANDROID_SDK_ROOT/build-tools/$BT/apksigner" sign \
             --ks "$RUNNER_TEMP/release.keystore" --ks-type PKCS12 \
-            --ks-pass:env KS_PASS --ks-key-alias alpha --key-pass:env KS_PASS \
+            --ks-pass:file "$RUNNER_TEMP/ks.pass" --ks-key-alias alpha --key-pass:file "$RUNNER_TEMP/ks.pass" \
             --out work/AlphaBubble-edited.apk work/aligned.apk
-          rm -f "$RUNNER_TEMP/release.keystore"
+          rm -f "$RUNNER_TEMP/release.keystore" "$RUNNER_TEMP/ks.pass"
       - name: Remove temp keystore (always)
         if: always()
-        run: rm -f "$RUNNER_TEMP/release.keystore"
+        run: rm -f "$RUNNER_TEMP/release.keystore" "$RUNNER_TEMP/ks.pass"
       - name: Verify signature
         run: |
           set -e
