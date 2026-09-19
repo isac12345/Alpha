@@ -94,6 +94,7 @@ jobs:
           rsync -a \
             --exclude=.git/ --exclude=.github/ --exclude=.opencode/ \
             --exclude=AGENTS.md --exclude=STATE.md --exclude=PLAN.md --exclude=NOTES.md \
+            --exclude=.gitignore \
             --exclude=build-output/ --exclude=work/ --exclude=stage/ \
             --exclude=apk-overlay/ --exclude=version.txt --exclude=Alpha-Fusion-v2.zip \
             ./ stage/
