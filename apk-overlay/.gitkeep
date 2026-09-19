@@ -1,0 +1,2 @@
+# Folder ini menimpa hasil decode apktool (struktur sama, mis. res/values/strings.xml).
+# Kosong = rebuild tanpa perubahan. File .gitkeep ini diabaikan workflow.

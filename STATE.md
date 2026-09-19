@@ -14,4 +14,5 @@
 - Verifikasi: `module.prop` di root ✓, `META-INF/com/google/android/update-binary` ✓, sha256 `companion/AlphaBubble.apk` = `159d4e77...ee89b48` SAMA dengan asli ✓. Tidak ada folder pembungkus, tidak ada file exclude di dalam zip.
 - 2026-09-19: bersih cache `~/.gradle` (20M) + `~/.cache` (11M). Protected (`~/.config/opencode`, `~/.config/gh`, `~/.ssh`, `~/storage`) utuh.
 - 2026-09-19: cek keystore — keduanya alias `alpha`, fingerprint tak tampil tanpa password (Enter) → belum final; `.gitignore` + `keystore.properties`; git bersih dari jks.
+- 2026-09-19: secret KEYSTORE_B64 + KEYSTORE_PASSWORD ada (secret lama diabaikan). Workflow `apk-edit.yml` dibuat + `apk-overlay/.gitkeep`.
 - JANGAN merge ke master tanpa persetujuan user.
