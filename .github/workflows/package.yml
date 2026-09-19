@@ -78,7 +78,7 @@ jobs:
           grep -qE "^[[:space:]]*versionCode: $V$" work/decode/apktool.yml \
             || { echo "patch versionCode gagal"; exit 1; }
           grep -E "versionCode:" work/decode/apktool.yml
-      - name: Rebuild, align, sign
+      - name: Rebuild unsigned APK
         env:
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
@@ -106,6 +106,13 @@ jobs:
           (cd work && zip -q unsigned.apk classes5.dex && rm classes5.dex)
           unzip -l work/unsigned.apk | grep -E "classes[0-9]*\.dex"
           echo "inject classes5.dex OK"
+      - name: Align + sign
+        env:
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          set -e
+          echo "::add-mask::$KS_PASS"
+          BT=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
           "$ANDROID_SDK_ROOT/build-tools/$BT/zipalign" -f 4 work/unsigned.apk work/aligned.apk
           echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
           "$ANDROID_SDK_ROOT/build-tools/$BT/apksigner" sign \
