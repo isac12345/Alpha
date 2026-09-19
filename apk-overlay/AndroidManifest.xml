@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application android:allowBackup="false" android:appComponentFactory="androidx.core.app.CoreComponentFactory" android:debuggable="false" android:extractNativeLibs="false" android:icon="@drawable/ic_launcher_src" android:label="Alpha Control" android:name="com.alphabubble.AlphaApp" android:roundIcon="@drawable/ic_launcher_src" android:theme="@style/Theme.AlphaBubble">
         <activity android:exported="true" android:name="com.alphabubble.MainActivity">
             <intent-filter>
