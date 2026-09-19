@@ -7,7 +7,6 @@
 - APK asli: `companion/AlphaBubble.apk`, sha256 `159d4e771a6f1c0bd6ac480fa4f8f780eacb87c9f646d9d33a628a4daee89b48`.
 - module.prop: id=`alpha_uperf_fasrs_fusion`, version=v2, versionCode=2.
 - Sudah diverifikasi: exec bit + LF (script bersih, hanya biner + 1 md yang mengandung CR).
-- Belum: workflow packaging, run Actions, verifikasi zip hasil, bersih cache.
 - 2026-09-19: `.opencode/` disalin (AGENTS.md + agent/7 + skill/3 + command/5, 16 file, tanpa secret).
 - 2026-09-19: workflow `.github/workflows/package.yml` dibuat (zip META-INF di root, exclude docs/.opencode/build-output, upload artifact). Validasi YAML lokal diskip (no pyyaml, dilarang install); run Actions yang memvalidasi.
 - 2026-09-19: run `35427306606` (manual) + `35427296073` (push) → SUCCESS. Zip diunduh ke `build-output/Alpha-Fusion-v2.zip` (5.4M).
@@ -22,5 +21,4 @@
 - 2026-09-19: run `35429331531` GAGAL: `NumberFormatException: For input string: "'2'"` — apktool 3.0.3 mau versionCode TANPA kutip. Fix sed → bare number (percobaan 1).
 - 2026-09-19: run `35429383410` SUCCESS tapi zip 20M — bocor `apktool.jar` root (15.5M) karena download di root. Fix: apktool ke `work/tools/` (tercover exclude `work/`).
 - 2026-09-19: run `35429540702` SUCCESS. Zip final 5.4M di `build-output/`: daftar file identik asli, APK cert baru `a0698c50…`, package `com.alphabubble` versionCode 2 = version.txt = sh.
-- JANGAN merge ke master tanpa persetujuan user.
-- JANGAN merge ke master tanpa persetujuan user.
+- KONDISI TERAKHIR: zip sudah dibuild dan terverifikasi. Menunggu tes flash di HP. Belum merge ke master (jangan merge tanpa persetujuan user).
