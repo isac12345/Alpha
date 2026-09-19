@@ -152,7 +152,7 @@ jobs:
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/BubbleSettingsActivity;" \
             || { echo "BubbleSettingsActivity tidak ada di classes5.dex"; exit 1; }
           echo "2 kelas di classes5.dex OK"
-          "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump badging work/AlphaBubble-signed.apk | grep -q "com.alphabubble.BubbleSettingsActivity" \
+          "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump xmltree work/AlphaBubble-signed.apk AndroidManifest.xml | grep -q "BubbleSettingsActivity" \
             || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
           echo "activity di manifest OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump badging work/AlphaBubble-signed.apk | grep -c "launchable-activity" | grep -q "^1$" \
