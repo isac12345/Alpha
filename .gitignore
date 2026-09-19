@@ -21,3 +21,5 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+*.jks
+alpha-release.jks
