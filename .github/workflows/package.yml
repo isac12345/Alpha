@@ -24,11 +24,13 @@ jobs:
           echo "V=$V" >> "$GITHUB_ENV"
           grep -q "^ALPHA_COMPANION_VER=${V}$" common/companion_install.sh \
             || { echo "ALPHA_COMPANION_VER != version.txt, samakan dulu"; exit 1; }
-      - name: Install apktool (latest release, into work/)
+      - name: Install apktool (pinned v3.0.3, into work/)
         run: |
           set -e
           mkdir -p work/tools
-          TAG=$(curl -s https://api.github.com/repos/iBotPeaches/Apktool/releases/latest | jq -r .tag_name)
+          TAG="v3.0.3"
+          LATEST=$(curl -s https://api.github.com/repos/iBotPeaches/Apktool/releases/latest | jq -r .tag_name 2>/dev/null || echo "")
+          if [ -n "$LATEST" ] && [ "$LATEST" != "null" ]; then TAG="$LATEST"; fi
           echo "apktool tag: $TAG"
           VER=${TAG#v}
           curl -L -o work/tools/apktool.jar "https://github.com/iBotPeaches/Apktool/releases/download/${TAG}/apktool_${VER}.jar"
