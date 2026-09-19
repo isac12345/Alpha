@@ -64,13 +64,6 @@ android {
     buildFeatures {
         viewBinding = true
     }
-
-    // Output APK name (AGP 8.x compatible)
-    applicationVariants.all { variant ->
-        for (output in variant.outputs) {
-            output.outputFileName = "Alpha-${variant.versionName}-${variant.buildType.name}.apk"
-        }
-    }
 }
 
 dependencies {
