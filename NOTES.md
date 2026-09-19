@@ -111,3 +111,10 @@ opsinya (c2) tulis ulang source menyamai perilaku (usaha besar, perlu persetujua
 - Skema versi dikunci: nama versi v1 di mana-mana (module.prop `version=v1`, APK versionName v1 bawaan apktool, artifact `Alpha-Fusion-v1.zip`). versionCode internal = 6 (= version.txt = ALPHA_COMPANION_VER) agar companion_install ganti APK lama. Nomor build dicatat di sini, bukan di nama versi.
 - Isi: BubbleSettingsActivity (saklar tampilkan bubble, resync tanpa listener, overlay-perm saat ON, tema dashboard, Log.w) + activity LAUNCHER "Alpha Bubble" + classes5.dex berisi 2 kelas.
 - Saklar Notifikasi DITUNDA (FGS wajib notifikasi di 12+).
+
+## v1 build 7 (1 ikon + shortcut + ikon notif, 2026-09-19)
+
+- Skema versi: nama v1, internal 7 (= version.txt = ALPHA_COMPANION_VER = module.prop), artifact `Alpha-Fusion-v1.zip`.
+- Isi: B1 hapus LAUNCHER BubbleSettingsActivity (exported=false) + shortcut "Pengaturan Bubble" via `res/xml/shortcuts.xml` + `@string/bubble_settings_shortcut` (aapt2 menolak literal); B2 vector monokrom `ic_stat_alpha` id `0x7f05001a`, patch 1 konstanta `setSmallIcon`.
+- Insiden: badging tak list non-launcher activity → verify activity via xmltree.
+- Status: pipeline SUCCESS (run `35454848558`), zip `~/work/v7/Alpha-Fusion-v1.zip`, BELUM tes HP, JANGAN merge.
