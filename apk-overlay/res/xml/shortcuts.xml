@@ -3,8 +3,8 @@
     <shortcut
         android:shortcutId="bubble_settings"
         android:enabled="true"
-        android:shortcutShortLabel="Pengaturan Bubble"
-        android:shortcutLongLabel="Pengaturan Bubble">
+        android:shortcutShortLabel="@string/bubble_settings_shortcut"
+        android:shortcutLongLabel="@string/bubble_settings_shortcut">>
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.alphabubble"
