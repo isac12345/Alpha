@@ -4,11 +4,12 @@
 # service.sh (one-shot fallback saat boot, mencakup kasus flash via recovery
 # di mana pm tidak tersedia saat instalasi).
 #
-# PENTING: ALPHA_COMPANION_VER HARUS sama dengan versionCode di
-# alpha-bubble/app/build.gradle.kts setiap rilis baru. Kalau lupa bump,
-# update modul tidak akan meng-update APK (guard mengira sudah current).
+# PENTING: ALPHA_COMPANION_VER diambil dari version.txt di root repo
+# (sumber tunggal). Samakan setiap bump version.txt; workflow packaging
+# GAGAL kalau nilainya beda. versionCode APK hasil build juga dipatch
+# dari version.txt yang sama.
 ALPHA_COMPANION_PKG="com.alphabubble"
-ALPHA_COMPANION_VER=1
+ALPHA_COMPANION_VER=2
 
 # $1 = path APK, $2 = flag file (berisi versionCode yang terakhir dipasang
 # oleh helper ini). Return 0 = APK sudah current (atau baru dipasang).
@@ -28,8 +29,19 @@ alpha_companion_install_once() {
     _apk="$1"
     _flag="$2"
     [ -f "$_apk" ] || return 0
+    # Flag hanya fast-path bila yang terpasang benar-benar cocok.
+    # Tanpa cek ini, flag basi (mis. aplikasi di-uninstall lalu modul
+    # di-flash ulang, flag di /data/adb/alpha tetap ada) membuat
+    # instalasi terlewati dan APK baru tidak terpasang.
     if [ -f "$_flag" ] && [ "$(alpha_companion_flag_code "$_flag")" -ge "$ALPHA_COMPANION_VER" ] 2>/dev/null; then
-        return 0
+        _have="$(alpha_companion_installed_code)"
+        case "$_have" in
+            ''|*[!0-9]*) _have=0 ;;
+        esac
+        if [ "$_have" -ge "$ALPHA_COMPANION_VER" ] 2>/dev/null; then
+            return 0
+        fi
+        # Flag basi → lanjut pasang ulang di bawah.
     fi
     if ! command -v pm >/dev/null 2>&1; then
         return 1

@@ -18,4 +18,6 @@
 - 2026-09-19: run `35428578321` GAGAL di step sign: `Unsupported option: --ks-pass:env` (build-tools 37.0.0; apktool rebuild SUKSES). Fix: password via `:file` (percobaan 1).
 - 2026-09-19: run `35428651553` GAGAL juga: `Unsupported option: --ks-pass:file`. Diagnostik `--help` BT37: format benar `--ks-pass env:KS_PASS` (spasi, bukan titik-dua). Fix final (percobaan 2).
 - 2026-09-19: run `35428755191` SUCCESS (rebuild tanpa perubahan). APK di `build-output/AlphaBubble-edited.apk` (2.3M): verify OK, cert baru `a0698c50…` ≠ lama, package/versionCode sama.
+- 2026-09-19: sambung pipeline ke packaging — `version.txt`=2 (sumber tunggal), `package.yml` terintegrasi (decode→overlay→patch versionCode→sign→enforce→staging→zip), fix flag basi di `companion_install.sh` (uninstall→reflash).
+- JANGAN merge ke master tanpa persetujuan user.
 - JANGAN merge ke master tanpa persetujuan user.
