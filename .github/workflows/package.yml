@@ -97,6 +97,7 @@ jobs:
           mkdir -p work/hf-classes
           javac -source 8 -target 8 -cp "$AJAR" -d work/hf-classes java/com/alphabubble/HideFeedback.java 2>&1 | grep -v "bootstrap\|deprecat\|obsolete" || true
           test -f work/hf-classes/com/alphabubble/HideFeedback.class || { echo "javac gagal"; exit 1; }
+          mkdir -p work/hf-dex
           "$ANDROID_SDK_ROOT/build-tools/$BT/d8" --min-api 26 --output work/hf-dex/ work/hf-classes/com/alphabubble/HideFeedback.class
           test -f work/hf-dex/classes.dex || { echo "d8 gagal"; exit 1; }
           unzip -l work/unsigned.apk | grep -E "classes[0-9]*\.dex"
