@@ -6,7 +6,13 @@
 - [x] Zip 5.4M terverifikasi: `module.prop` root ✓, `update-binary` ✓, sha256 APK = asli ✓, tanpa folder pembungkus.
 - [x] Pipeline `apk-edit.yml`: rebuild + sign kunci baru (cert `a0698c50…` ≠ lama), smoke test SUCCESS.
 - [x] Pipeline terintegrasi: `version.txt`=2 sumber tunggal, enforce vs `ALPHA_COMPANION_VER`, patch versionCode bare int (apktool 3), apktool di `work/tools/`, `.gitignore` di-exclude.
-- [x] Fix flag basi `companion_install.sh` (uninstall→reflash tetap install ulang).
+## Revisi 2026-09-19 (setelah verifikasi smali HP live) — KOREKSI B1
+
+Bug resolusi yang beneran: `activeDisplayInfo()` (`RootShell.smali:812`) pakai `(?:Override|Physical)` + `find()` → regex engine cari dari kiri → `Physical size:` (baris pertama output `wm size`) SELALU menang, walau Override aktif. Dampak: label "Resolusi aktif saat ini" nunjukin nilai FISIK (720x1600) padahal override aktif 432x960.
+
+**Target patch B1 = `activeDisplayInfo()`: ubah jadi cek `Override size: (\d+)x(\d+)` DULU → null? fallback `Physical size:...`. Sama untuk density (`Override density` dulu). `displayInfo()` TIDAK diubah** (ia baseline fisik untuk kalkulasi persen anti-stacking, pembuktian `MainActivity$renderResolutionActive$1.smali:345-352` pakai `displayInfo.getWidth()` sebagai penyebut).
+
+Bukti klaim lama (`(?:Override|Physical) size:`) — `RootShell.smali:1040` (size) & `:1063` (density): keduanya `Regex(...); find$default(...,0,...)` — POSISI 0 → selalu match Physical. `find()` Kotlin = first match dari kiri, bukan scan alternation. Ini yang bikin `a)` overlay-only tidak cukup: bahkan sebagai fallback pun dapat nilai salah.
 - [x] Versi sinkron: `module.prop` versionCode=2 = `version.txt` = `ALPHA_COMPANION_VER`.
 
 ## Laporan jalur (TAHAP 2, 2026-09-19 — berubah setelah decode APK)
@@ -33,7 +39,7 @@ Decode APK `AlphaBubble.apk` (run `35436973720`, `/usr/tmp/opencode/decode`, jan
 ## Tambahan 2 — R1/F2 (2026-09-19, berubah setelah decode)
 
 - R1 resolusi+DPI: `applyDisplay` SUDAH apply size+density (`; wm density `), `resetDisplay` SUDAH reset keduanya. Yang belum: preview "%, DPI" sudah ada, tapi tanpa countdown, tanpa saklar DPI, tanpa even-rounding, `displayInfo` hanya baca Physical (Override belum). **Jalur (b) patch smali `displayInfo` + (a) overlay UI.**
-- F2 bubble hidden: `BubbleService$3.smali` punya 800ms threshold + `hidden` persist. Yang belum: tanpa `withTimeout`, tanpa vibrator/toast, `hidden` tidak dibaca saat `startFg()` (`bubble` muncul lagi setelah reboot), notifikasi statis ("Alpha Bubble"). **Jalur (b) patch `BubbleService.smali` + (a) overlay notif.**
+- F2 bubble hidden — KOREKSI (smali, bukan tag): `BubbleService$2$1.smali:44-81` hold-check ambang **500ms** (`0x1f4`), BUKAN 800ms; ada guard `moved` (BubbleService$2.smali:154-175 set moved saat gerak > slop, `:165` removeCallbacks bila slop terlampaui) → "tanpa ambang gerak" di tag WRONG; `hidden` **DIBACA** saat `attach()` (`BubbleService.smali:665` applyVisibility() dipanggil attach) → "hidden tidak dibaca saat startFg" WRONG (bubble tetap terlihat setelah reset). Yang BENAR-BENAR kurang di F2: (1) tanpa vibrator/toast saat hide (grep VibrationEffect|Toast = nol), (2) notifikasi statis "Alpha Bubble", (3) tanpa `withTimeout` pada holdCheck. **Jalur (b) patch BubbleService$2$1 (tambah vibrator/toast opsional) + (a) overlay notif.**
 - `openBatteryLab` selalu ada, tombol selalu tampil → **(a) overlay `activity_main.xml` + `AndroidManifest.xml`** untuk cek `resolveActivity` via intent filter (butuh smali guard, `(b)`).
 
 ## Berikutnya (satu per satu)
