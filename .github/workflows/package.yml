@@ -71,6 +71,16 @@ jobs:
           test "$(grep -c 'HideFeedback;->buzz' "$F")" = "1" || { echo "hook F2 gagal"; exit 1; }
           grep -n 'HideFeedback' "$F"
           echo "hook F2 OK"
+      - name: Apply B2 notif icon (setSmallIcon -> ic_stat_alpha)
+        run: |
+          set -e
+          F='work/decode/smali_classes4/com/alphabubble/BubbleService.smali'
+          echo "sebelum: $(grep -c '0x108009b' "$F") framework icon"
+          sed -f apk-patches/b2-notif-icon.sed -i "$F"
+          test "$(grep -c '0x7f05001a' "$F")" = "1" || { echo "patch B2 gagal"; exit 1; }
+          test "$(grep -c '0x108009b' "$F")" = "0" || { echo "ikon lama masih ada"; exit 1; }
+          grep -n '0x7f05001a' "$F"
+          echo "patch B2 OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
@@ -145,6 +155,12 @@ jobs:
           "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump badging work/AlphaBubble-signed.apk | grep -q "com.alphabubble.BubbleSettingsActivity" \
             || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
           echo "activity di manifest OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump badging work/AlphaBubble-signed.apk | grep -c "launchable-activity" | grep -q "^1$" \
+            || { echo "harus tepat 1 LAUNCHER activity"; exit 1; }
+          echo "satu LAUNCHER OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump resources work/AlphaBubble-signed.apk 2>/dev/null | grep -q "ic_stat_alpha" \
+            || { echo "ic_stat_alpha tidak ada di resources"; exit 1; }
+          echo "drawable ic_stat_alpha OK"
       - name: Stage module tree (signed APK only in ZIP)
         run: |
           set -e
