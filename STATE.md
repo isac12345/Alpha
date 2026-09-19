@@ -5,7 +5,7 @@
 - Backup: tag `backup-source-rebuild` → master `efaa117` (sudah push). Stash `termux-workaround-mirror-timeout` masih ada.
 - Sumber zip: `/sdcard/alpha/Alpha-fusion-v2-final.zip` (md5 `6c609177a75509104aa8d402f6017ee2`).
 - APK asli: `companion/AlphaBubble.apk`, sha256 `159d4e771a6f1c0bd6ac480fa4f8f780eacb87c9f646d9d33a628a4daee89b48`.
-- module.prop: id=`alpha_uperf_fasrs_fusion`, version=v2, versionCode=2.
+- module.prop: id=`alpha_uperf_fasrs_fusion`, version=v3, versionCode=3 (= version.txt = ALPHA_COMPANION_VER).
 - Sudah diverifikasi: exec bit + LF (script bersih, hanya biner + 1 md yang mengandung CR).
 - 2026-09-19: `.opencode/` disalin (AGENTS.md + agent/7 + skill/3 + command/5, 16 file, tanpa secret).
 - 2026-09-19: workflow `.github/workflows/package.yml` dibuat (zip META-INF di root, exclude docs/.opencode/build-output, upload artifact). Validasi YAML lokal diskip (no pyyaml, dilarang install); run Actions yang memvalidasi.
@@ -23,9 +23,9 @@
 - 2026-09-19: run `35429540702` SUCCESS. Zip final 5.4M di `build-output/`: daftar file identik asli, APK cert baru `a0698c50…`, package `com.alphabubble` versionCode 2 = version.txt = sh.
 - v3 DONE (2026-09-19, run `35445291496` SUCCESS): B1 Override-first regex-only (2 baris, grup unchanged) + manifest `POST_NOTIFICATIONS` + `debuggable=false` (nol dependensi debug di smali). B3 DILEWATI (tombol tanpa id). B2/F2 DITUNDA. versionCode 3 = version.txt = ALPHA_COMPANION_VER = module.prop. Zip 5.4M `~/work/v3/Alpha-Fusion-v2.zip`, APK sha256 `674df176...`. Belum merge master. Belum flash HP.
 - KONDISI SAAT INI (2026-09-19):
-  - HEAD: `d51c6ac` (branch `fusion-v2`, ahead 1 dari `origin/fusion-v2`). Working tree clean.
-  - Decode APK (run `35436973720`): artifact `/usr/tmp/opencode/decode` HILANG (reboot cleared `/usr/tmp`). Perlu re-download `gh run download 35436973720 -n AlphaBubble-decoded -D /usr/tmp/opencode/decode` atau re-run workflow `decode.yml` sebelum patch smali.
+  - HEAD: `e75a3fe` (branch `fusion-v2`, sinkron dengan `origin/fusion-v2`). Working tree clean.
+  - Decode ulang tersedia di `~/work/decode` (di luar repo, aman dari reboot). Jangan re-download kecuali perlu; perintah lama `/usr/tmp/opencode/decode` sudah tidak berlaku.
   - Temuan decode tercatat di NOTES.md § "Koreksi baseline dari smali APK asli" + PLAN.md § "Laporan jalur (TAHAP 2)". Rangkuman: APK = single-Activity programmatic (5040 baris smali), `BubbleService` (bukan Floating), TANPA `ProfileMonitorService`, TANPA `POST_NOTIFICATIONS`, prefs `app_bg_uri`. Game list SUDAH BENAR (`game_manager.sh` + JSON). Apply display SUDAH include density. Reset SUDAH reset keduanya. Long-press 800ms + persist `hidden` ADA (tanpa toast/vibrator). BatteryLab tanpa guard. Root tanpa timeout.
   - Jalur nyata: (a) overlay `res/`+`AndroidManifest.xml`, (b) patch smali kecil (perlu baca smali dulu), (c2) source Kotlin untuk fitur besar.
-  - Pipeline terintegrasi `package.yml` berfungsi: zip final 5.4M, APK cert baru `a0698c50…`, versionCode 2. Zip final di `build-output/Alpha-Fusion-v2.zip`.
-  - Belum eksekusi kode edit APK. Belum merge ke master. Belum flash ke HP.
+  - Pipeline terintegrasi `package.yml` berfungsi: zip v3 5.4M (`~/work/v3/Alpha-Fusion-v2.zip`), APK cert baru `a0698c50…`, package `com.alphabubble` versionCode 3 = version.txt = sh.
+  - B1 DONE (Override-first), manifest overlay DONE. B3 dilewati, B2/F2 ditunda. Belum merge ke master. Belum flash ke HP.
