@@ -10,8 +10,8 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.IBinder
-import android.graphics.drawable.Icon
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.drawable.IconCompat
 import com.alphabubble.NotifHelper
 import com.alphabubble.Prefs
 import com.alphabubble.R
@@ -133,7 +133,7 @@ class ProfileMonitorService : Service() {
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_IMMUTABLE else 0
         val pending = PendingIntent.getBroadcast(this, profile.hashCode(), intent, flags)
         return NotificationCompat.Action.Builder(
-            Icon.createWithResource(this, R.drawable.ic_notification_small),
+            IconCompat.createWithResource(this, R.drawable.ic_notification_small),
             NotifHelper.labelFor(profile),
             pending
         ).build()

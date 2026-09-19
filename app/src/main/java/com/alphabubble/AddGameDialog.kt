@@ -53,7 +53,7 @@ class AddGameDialog : DialogFragment() {
         spProfile?.adapter = profileAdapter
 
         rvApps.layoutManager = LinearLayoutManager(requireContext())
-        adapter = AppAdapter(requireContext()) { row ->
+        adapter = AppAdapter(requireContext(), { allApps }) { row ->
             if (!row.isHeader) {
                 val profile = profiles[spProfile?.selectedItemPosition ?: 1]
                 dismiss()
@@ -99,8 +99,9 @@ class AddGameDialog : DialogFragment() {
         }
     }
 
-    inner class AppAdapter(
+    class AppAdapter(
         private val ctx: android.content.Context,
+        private val getAll: () -> List<AppRow>,
         private val onClick: (AppRow) -> Unit
     ) : androidx.recyclerview.widget.ListAdapter<AppRow, AppAdapter.VH>(AppDiffCallback()) {
 
@@ -130,7 +131,7 @@ class AddGameDialog : DialogFragment() {
         }
 
         fun filter(query: String) {
-            val outer = this@AddGameDialog.allApps
+            val outer = getAll()
             if (query.isBlank()) {
                 submitList(outer)
             } else {
