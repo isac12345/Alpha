@@ -24,21 +24,22 @@ jobs:
           echo "V=$V" >> "$GITHUB_ENV"
           grep -q "^ALPHA_COMPANION_VER=${V}$" common/companion_install.sh \
             || { echo "ALPHA_COMPANION_VER != version.txt, samakan dulu"; exit 1; }
-      - name: Install apktool (latest release)
+      - name: Install apktool (latest release, into work/)
         run: |
           set -e
+          mkdir -p work/tools
           TAG=$(curl -s https://api.github.com/repos/iBotPeaches/Apktool/releases/latest | jq -r .tag_name)
           echo "apktool tag: $TAG"
           VER=${TAG#v}
-          curl -L -o apktool.jar "https://github.com/iBotPeaches/Apktool/releases/download/${TAG}/apktool_${VER}.jar"
-          curl -L -o apktool "https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool"
-          chmod +x apktool
-          ./apktool --version
+          curl -L -o work/tools/apktool.jar "https://github.com/iBotPeaches/Apktool/releases/download/${TAG}/apktool_${VER}.jar"
+          curl -L -o work/tools/apktool "https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool"
+          chmod +x work/tools/apktool
+          ./work/tools/apktool --version
       - name: Decode APK (original untouched)
         run: |
           set -e
           mkdir -p work
-          ./apktool d companion/AlphaBubble.apk -o work/decode -f
+          ./work/tools/apktool d companion/AlphaBubble.apk -o work/decode -f
       - name: Apply overlay (if any)
         run: |
           set -e
@@ -63,7 +64,7 @@ jobs:
           echo "::add-mask::$KS_PASS"
           BT=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
           echo "build-tools: $BT"
-          ./apktool b work/decode -o work/unsigned.apk
+          ./work/tools/apktool b work/decode -o work/unsigned.apk
           "$ANDROID_SDK_ROOT/build-tools/$BT/zipalign" -f 4 work/unsigned.apk work/aligned.apk
           echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
           "$ANDROID_SDK_ROOT/build-tools/$BT/apksigner" sign \
