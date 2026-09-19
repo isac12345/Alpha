@@ -40,33 +40,25 @@ jobs:
           else
             echo "overlay empty, nothing changed"
           fi
-      - name: Diagnose apksigner options (temporary)
-        run: |
-          BT=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
-          ls "$ANDROID_SDK_ROOT/build-tools"
-          "$ANDROID_SDK_ROOT/build-tools/$BT/apksigner" sign --help 2>&1 | grep -iB1 -A3 -E "ks-pass|key-pass" | head -n 40
       - name: Rebuild, align, sign
         env:
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           set -e
-          echo "SKIP-SIGN-DIAGNOSIS-RUN"
-          exit 0
           echo "::add-mask::$KS_PASS"
           BT=$(ls "$ANDROID_SDK_ROOT/build-tools" | sort -V | tail -1)
           echo "build-tools: $BT"
           ./apktool b work/decode -o work/unsigned.apk
           "$ANDROID_SDK_ROOT/build-tools/$BT/zipalign" -f 4 work/unsigned.apk work/aligned.apk
           echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          printf '%s' "$KS_PASS" > "$RUNNER_TEMP/ks.pass"
           "$ANDROID_SDK_ROOT/build-tools/$BT/apksigner" sign \
             --ks "$RUNNER_TEMP/release.keystore" --ks-type PKCS12 \
-            --ks-pass:file "$RUNNER_TEMP/ks.pass" --ks-key-alias alpha --key-pass:file "$RUNNER_TEMP/ks.pass" \
+            --ks-pass env:KS_PASS --ks-key-alias alpha --key-pass env:KS_PASS \
             --out work/AlphaBubble-edited.apk work/aligned.apk
-          rm -f "$RUNNER_TEMP/release.keystore" "$RUNNER_TEMP/ks.pass"
+          rm -f "$RUNNER_TEMP/release.keystore"
       - name: Remove temp keystore (always)
         if: always()
-        run: rm -f "$RUNNER_TEMP/release.keystore" "$RUNNER_TEMP/ks.pass"
+        run: rm -f "$RUNNER_TEMP/release.keystore"
       - name: Verify signature
         run: |
           set -e

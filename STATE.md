@@ -16,4 +16,5 @@
 - 2026-09-19: cek keystore — keduanya alias `alpha`, fingerprint tak tampil tanpa password (Enter) → belum final; `.gitignore` + `keystore.properties`; git bersih dari jks.
 - 2026-09-19: secret KEYSTORE_B64 + KEYSTORE_PASSWORD ada (secret lama diabaikan). Workflow `apk-edit.yml` dibuat + `apk-overlay/.gitkeep`.
 - 2026-09-19: run `35428578321` GAGAL di step sign: `Unsupported option: --ks-pass:env` (build-tools 37.0.0; apktool rebuild SUKSES). Fix: password via `:file` (percobaan 1).
+- 2026-09-19: run `35428651553` GAGAL juga: `Unsupported option: --ks-pass:file`. Diagnostik `--help` BT37: format benar `--ks-pass env:KS_PASS` (spasi, bukan titik-dua). Fix final (percobaan 2).
 - JANGAN merge ke master tanpa persetujuan user.
