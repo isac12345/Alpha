@@ -21,6 +21,7 @@
 - 2026-09-19: run `35429331531` GAGAL: `NumberFormatException: For input string: "'2'"` — apktool 3.0.3 mau versionCode TANPA kutip. Fix sed → bare number (percobaan 1).
 - 2026-09-19: run `35429383410` SUCCESS tapi zip 20M — bocor `apktool.jar` root (15.5M) karena download di root. Fix: apktool ke `work/tools/` (tercover exclude `work/`).
 - 2026-09-19: run `35429540702` SUCCESS. Zip final 5.4M di `build-output/`: daftar file identik asli, APK cert baru `a0698c50…`, package `com.alphabubble` versionCode 2 = version.txt = sh.
+- v3 DONE (2026-09-19, run `35445291496` SUCCESS): B1 Override-first regex-only (2 baris, grup unchanged) + manifest `POST_NOTIFICATIONS` + `debuggable=false` (nol dependensi debug di smali). B3 DILEWATI (tombol tanpa id). B2/F2 DITUNDA. versionCode 3 = version.txt = ALPHA_COMPANION_VER = module.prop. Zip 5.4M `~/work/v3/Alpha-Fusion-v2.zip`, APK sha256 `674df176...`. Belum merge master. Belum flash HP.
 - KONDISI SAAT INI (2026-09-19):
   - HEAD: `d51c6ac` (branch `fusion-v2`, ahead 1 dari `origin/fusion-v2`). Working tree clean.
   - Decode APK (run `35436973720`): artifact `/usr/tmp/opencode/decode` HILANG (reboot cleared `/usr/tmp`). Perlu re-download `gh run download 35436973720 -n AlphaBubble-decoded -D /usr/tmp/opencode/decode` atau re-run workflow `decode.yml` sebelum patch smali.

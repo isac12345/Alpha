@@ -42,10 +42,17 @@ Decode APK `AlphaBubble.apk` (run `35436973720`, `/usr/tmp/opencode/decode`, jan
 - F2 bubble hidden — KOREKSI (smali, bukan tag): `BubbleService$2$1.smali:44-81` hold-check ambang **500ms** (`0x1f4`), BUKAN 800ms; ada guard `moved` (BubbleService$2.smali:154-175 set moved saat gerak > slop, `:165` removeCallbacks bila slop terlampaui) → "tanpa ambang gerak" di tag WRONG; `hidden` **DIBACA** saat `attach()` (`BubbleService.smali:665` applyVisibility() dipanggil attach) → "hidden tidak dibaca saat startFg" WRONG (bubble tetap terlihat setelah reset). Yang BENAR-BENAR kurang di F2: (1) tanpa vibrator/toast saat hide (grep VibrationEffect|Toast = nol), (2) notifikasi statis "Alpha Bubble", (3) tanpa `withTimeout` pada holdCheck. **Jalur (b) patch BubbleService$2$1 (tambah vibrator/toast opsional) + (a) overlay notif.**
 - `openBatteryLab` selalu ada, tombol selalu tampil → **(a) overlay `activity_main.xml` + `AndroidManifest.xml`** untuk cek `resolveActivity` via intent filter (butuh smali guard, `(b)`).
 
-## Berikutnya (satu per satu)
-- [ ] Baca smali relevan dari decode (BubbleService, MainActivity bagian resolusi/dexopt, RootShell displayInfo/gameList) → tentukan patch (b) yang aman.
-- [ ] Overlay (a): `AndroidManifest.xml` + `POST_NOTIFICATIONS`, `activity_main.xml` guard BatteryLab, `res/values/` konsistensi.
-- [ ] Patch (b): `displayInfo` parse Override, `BubbleService` hidden persist on boot + withTimeout, guard BatteryLab.
-- [ ] (c2) fitur besar setelah persetujuan user per item.
-- [ ] Tes flash di HP setelah pipeline + verifikasi.
+## Berikutnya (satu per satu — REVISI 2026-09-19, setelah verifikasi smali)
+
+- [x] **B1 (DONE, run 35445291496)**: patch `RootShell.activeDisplayInfo()` → Override-FIRST, `displayInfo()` TIDAK diubah.
+- [x] **Overlay manifest (DONE)**: `POST_NOTIFICATIONS` + `debuggable=false` (cek smali: nol dependensi debug).
+- [ ] **B3 (DILEWATI)**: tombol tanpa `android:id` (layout:92, hanya `onClick`) → guard butuh patch menengah. Try/catch fallback Settings sudah ada (`MainActivity.smali:5030-5037`), tanpa crash. Tidak ada perubahan B3 di v3.
+- [ ] **B2 (TUNDA)** + **F2 (TUNDA)**: sesuai instruksi.
+- [ ] Tes flash v3 di HP + verifikasi.
 - [ ] Finalisasi keystore + merge (BUTUH persetujuan).
+
+## Nota verifikasi (jangan ubah tanpa bukti smali ulang)
+- F2 bubble: hold-threshold smali = **500ms** (`BubbleService$2.smali:416` = `0x1f4`), BUKAN 800ms; ada guard `moved` (`BubbleService$2.smali:153-166`); `hidden` **DIBACA** saat `attach()` (`BubbleService.smali:665` → `applyVisibility`) → patch hidden-persist/reboot TIDAK diperlukan. Yang benar-benar kurang: vibrator/toast saat hide + notif statis — **DITUNDA** (opsional, butuh persetujuan).
+- B1 resolusi: `activeDisplayInfo()` (bukan `displayInfo()`) yang bermasalah — `find()` dari kiri selalu match `Physical size:` (baris pertama output `wm size`). Patch v3 = regex-only Override-FIRST (tanpa instruksi/label baru, grup 1-2 unchanged). `displayInfo()` tetap Physical murni = baseline persen anti-stacking.
+- BatteryLab: `openBatteryLab` explicit intent (`MainActivity.smali:5004`) + try/catch fallback Settings (`:5030-5037`), tanpa guard `resolveActivity`, tombol tanpa id → **B3 DILEWATI** (butuh patch menengah).
+- Root: tanpa `withTimeout` (`RootShell$exec$2.smali`, `BubbleService.su` waitFor) → **B2 DITUNDA**.
