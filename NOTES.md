@@ -60,7 +60,31 @@ F2 (bubble disembunyikan) — sebagian ADA di source lama, kurangnya = jalur (c)
 - KURANG: (1) tanpa ambang gerak — drag lambat >800ms ikut menyembunyikan (konflik gesture); (2) tanpa toast; (3) `hidden` TIDAK dibaca saat service start (hanya di intent TOGGLE/SHOW) → setelah reboot bubble muncul lagi walau sebelumnya disembunyikan (`BubbleBootReceiver.kt:10-18` hanya cek autostart); (4) notifikasi tidak tahu status hidden (teks/aksi statis); (5) tap body saat ini unhide, bukan buka panel profil; (6) tanpa saklar di pengaturan.
 - Peringatan divergensi tetap berlaku: APK terpasang lebih baru dari tag (prefs `app_bg_uri`), jadi peta baris di atas acuan awal — wajib decode via pipeline sebelum tulis kode.
 
+## Koreksi baseline dari smali APK asli (decode run 35436973720, 2026-09-19)
+
+Decode `companion/AlphaBubble.apk` (43M di `/usr/tmp/opencode/decode`, luar repo, jangan commit).
+Fakta arsitektur: single-Activity programmatic (`MainActivity.smali` 5040 baris, NOL `*Fragment*.smali`),
+`BubbleService` (bukan Floating), `ProfileTileService`, TANPA `ProfileMonitorService`.
+Manifest APK: 7 permission, TANPA POST_NOTIFICATIONS (beda dari manifest tag).
+`MainActivity` pakai key `app_bg_uri`/`app_bg_alpha` (cocok prefs HP) — tag (`bg_image_path`, Fragment) MENYIMPANG:
+analisis TAHAP 1 dari tag hanya acuan awal, yang berlaku di bawah ini.
+- Resolusi: `RootShell.displayInfo` SUDAH baca `wm size`+`wm density` (regex Physical saja — Override belum);
+`applyDisplay` = `wm size WxH; wm density D`; `resetDisplay` = keduanya di-reset. UI: preview "%, DPI", tanpa countdown
+(`grep pertahankan|countdown` nol), tanpa saklar DPI/manual, tanpa even-rounding (0 `and-int`).
+- Game: `gameList`/`removeGameFlow` LEWAT `game_manager.sh`+`game_add.sh` + parse JSON (`parseGameArray`) — bug path+delimiter
+dari tag SUDAH TIDAK ADA di APK. Monitor terbukti jalan (tes live).
+- Dexopt: mode speed/everything/verify/space/speed-profile, selalu ` -f `; UI programmatic (`openDexopt`), tanpa progres/durasi.
+- Bubble: long-press 800ms + persist `hidden` ADA; TANPA vibrator/toast (`grep VibrationEffect|Toast` nol).
+- BatteryLab: explicit intent tanpa guard (`openBatteryLab`, fallback Settings); tombol selalu tampil (`activity_main.xml:92`).
+- Root: hanya `waitFor`, tanpa `withTimeout` di mana pun.
+- `com.example.test`: tetap tidak ditemukan di smali/res/state/toml/uperf.json.
+KESIMPULAN JALUR: (c)-via-tag GUGUR (arsitektur beda). Jalur nyata = (a) overlay `res/`+`AndroidManifest.xml`,
+(b) patch smali. Fitur besar baru (editor crop, countdown UI, photo picker) via smali = tidak layak;
+opsinya (c2) tulis ulang source menyamai perilaku (usaha besar, perlu persetujuan + spesifikasi perilaku dari smali).
+
 ## Pipeline edit APK (`.github/workflows/apk-edit.yml`, 2026-09-19)
+
+- Cara kerja: checkout → setup JDK 17 → install apktool rilis terbaru (via GitHub API, tanpa versi hardcode) → `apktool d companion/AlphaBubble.apk` (file asli tidak diubah)
 
 - Cara kerja: checkout → setup JDK 17 → install apktool rilis terbaru (via GitHub API, tanpa versi hardcode) → `apktool d companion/AlphaBubble.apk` (file asli tidak diubah) → timpa dengan `apk-overlay/` bila ada isi (rsync, `.gitkeep` diabaikan) → `apktool b` → `zipalign` → `apksigner sign` dengan keystore dari secret `KEYSTORE_B64` (decode ke `$RUNNER_TEMP`, PKCS12, alias `alpha`, password `KEYSTORE_PASSWORD`, secret di-mask, file sementara dihapus + always-cleanup, keystore tidak di-upload) → `verify --print-certs` → upload artifact `AlphaBubble-edited`.
 - Temuan: `workflow_dispatch` 404 bila file workflow tidak ada di default branch (master) — diatasi dengan trigger `push` ke `fusion-v2` (paths: workflow, overlay, APK). Build-tools 37.0.0 menolak `--ks-pass:env`/`:file`; sintaks benar `--ks-pass env:KS_PASS` (spasi, sesuai `--help`).

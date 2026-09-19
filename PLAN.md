@@ -9,36 +9,37 @@
 - [x] Fix flag basi `companion_install.sh` (uninstall→reflash tetap install ulang).
 - [x] Versi sinkron: `module.prop` versionCode=2 = `version.txt` = `ALPHA_COMPANION_VER`.
 
-## Laporan jalur (TAHAP 2, 2026-09-19 — investigasi selesai, BELUM eksekusi)
+## Laporan jalur (TAHAP 2, 2026-09-19 — berubah setelah decode APK)
 
-Legenda: (a)=overlay resource, (b)=patch smali kecil, (c)=butuh source Kotlin.
-APK terpasang lebih baru dari source tag (prefs `app_bg_uri` vs `bg_image_path`) →
-untuk (c), pertama decode APK via pipeline dan diff smali vs tag sebelum tulis kode,
-supaya perilaku sama dengan APK asli. Tanpa decode, estimasi di bawah BISA meleset.
+Decode APK `AlphaBubble.apk` (run `35436973720`, `/usr/tmp/opencode/decode`, jangan commit):
+- Single-Activity programmatic (`MainActivity.smali` 5040 baris, NOL Fragment).
+- `BubbleService` (bukan `FloatingBubbleService`), `ProfileTileService`, TANPA `ProfileMonitorService`.
+- Manifest: 7 permission, TANPA `POST_NOTIFICATIONS` (beda dari manifest tag).
+- Prefs: `app_bg_uri`/`app_bg_alpha` (cocok HP), TANPA `bg_image_path`.
+- Game: lewat `game_manager.sh` + `engine_manager.sh`, parse JSON (`parseGameArray`) — **bug path+delimiter SUDAH TIDAK ADA di APK**.
+- Resolusi: baca `wm size`+`wm density` (regex Physical saja, Override belum), apply keduanya, reset keduanya.
+- Dexopt: speed/everything/verify/space/speed-profile, selalu `-f`, tanpa progres/durasi.
+- Bubble: long-press 800ms + persist `hidden` ADA; TANPA vibrator/toast.
+- BatteryLab: explicit intent tanpa guard (fallback Settings).
+- Root: hanya `waitFor`, tanpa `withTimeout`.
 
-- B1 notifikasi ongoing+aksi+tap panel+deleteIntent+runtime permission: (c) — teks/aksi/channel hardcoded di Kotlin (`FloatingBubbleService.kt:171-186`, `ProfileMonitorService.kt:94-107`).
-- B2 editor crop + photo picker + simpan internal: (c) — alur `copyImageToInternal` (`DisplayFragment.kt:321-338`).
-- B3 Tools gaya Dashboard + dialog Dexopt: (a) — layout/drawable/style (`dialog_dexopt.xml`, `pill_solid`, font mono). AMAN, tapi butuh nama resource asli dari decode dulu (tanpa itu = menebak).
-- B4 resolusi baca `wm size`/`wm density` + toast: (c) — `RootShell.displayInfo/applyDisplay/resetDisplay` + `DisplayFragment.kt:340-370`.
-- B5 dexopt progres + opsi Paksa/Reset + before/after: (c) — `DexoptDialog.kt:44-50` + `RootShell.dexopt`.
-- B6 profil per game (path + delimiter `=`→`:`): (c) ideal; (b) kandidat kecil (2 fungsi `gameList`/`removeGameFlow`) — putuskan setelah lihat smali hasil decode.
-- F1 kustomisasi bubble (ukuran/bentuk/gambar/transparansi/preview/reset): (c).
-- T1 satu sumber profil: (c) — `current_state` sudah ada; yang kurang sinkronisasi push ke notif/bubble/tile/Dashboard.
-- T2 log (tap-full, waktu relatif, salin): (c); padding tombol log: (a).
-- T3 kontras tab/padding/bahasa: (a); ikon+nama game (pola seperti picker Dexopt): (c).
-- T4 countdown 15 dtk + auto-revert, konfirmasi Skia, root timeout + error jelas, hide Battery Lab: (c). Catatan: tombol Battery Lab TIDAK ADA di source lama (grep nol) — hanya di APK baru.
-- T5 hapus `com.example.test`: data, bukan build — DITUNDA sampai lokasi terbukti (tidak ditemukan di repo/state/toml/uperf.json; butuh info user).
+**JALUR NYATA (bukan estimasi tag lagi):**
+- **(a) overlay resource** = aman: `AndroidManifest.xml` (tambah `POST_NOTIFICATIONS`), `res/layout/activity_main.xml` (tambah guard tombol BatteryLab), `res/values/` (warna/teks).
+- **(b) patch smali kecil** = kandidat: timeout root (`withTimeoutOrNull`), guard BatteryLab (`resolveActivity`), `displayInfo` parse Override (`Override size: (\d+)x(\d+)`), `gameList` delimiter `:`. Perlu telusuri smali dulu.
+- **(c2) source Kotlin** = fitur besar: editor crop, countdown UI, photo picker, F1 bubble kustom, T1 sinkronisasi. Usaha besar, perlu spesifikasi perilaku dari smali.
 
-Usulan urutan aman: (1) decode APK via pipeline → artifact smali+resources (read-only, tanpa ubah kode); (2) kerjakan (a) B3+T3-res; (3) (b)/(c) setelah persetujuan per item. JANGAN mulai (c) sebelum setuju.
+**Prioritas eksekusi:** (1) baca smali yang relevan → tentukan patch (b) mana yang aman; (2) overlay (a) B3+T3 + POST_NOTIFICATIONS; (3) (c2) setelah persetujuan per item.
 
-## Tambahan 2 — R1/F2 (2026-09-19, analisis selesai, BELUM eksekusi)
+## Tambahan 2 — R1/F2 (2026-09-19, berubah setelah decode)
 
-- R1 resolusi+DPI otomatis (proposional, genap, preview sebelum Apply, acuan asli sekali-simpan, saklar DPI default nyala + manual, countdown 15 dtk, reset native keduanya): (c) seluruhnya. Fakta persistensi: override wm TERSIMPAN di `Settings.Global display_size_forced` → BERTAHAN setelah reboot (terbukti `432,960` saat override, kosong sesudah reset) → butuh kebijakan boot (re-apply vs reset native).
-- F2 bubble disembunyikan (long-press vs drag ambang gerak + getar + toast, service tetap jalan, notifikasi berubah teks/aksi, persist + ingat reboot, saklar pengaturan): (c). Fondasi ADA di source lama (long-press 800ms, haptic, persist `hidden`) tapi: tanpa ambang gerak, tanpa toast, `hidden` tidak dibaca saat start (lupa setelah reboot), notifikasi statis.
-- Tidak ada subset (a)/(b) yang aman dikerjakan tanpa decode (butuh nama resource + smali acuan APK baru). Menunggu persetujuan + decode.
+- R1 resolusi+DPI: `applyDisplay` SUDAH apply size+density (`; wm density `), `resetDisplay` SUDAH reset keduanya. Yang belum: preview "%, DPI" sudah ada, tapi tanpa countdown, tanpa saklar DPI, tanpa even-rounding, `displayInfo` hanya baca Physical (Override belum). **Jalur (b) patch smali `displayInfo` + (a) overlay UI.**
+- F2 bubble hidden: `BubbleService$3.smali` punya 800ms threshold + `hidden` persist. Yang belum: tanpa `withTimeout`, tanpa vibrator/toast, `hidden` tidak dibaca saat `startFg()` (`bubble` muncul lagi setelah reboot), notifikasi statis ("Alpha Bubble"). **Jalur (b) patch `BubbleService.smali` + (a) overlay notif.**
+- `openBatteryLab` selalu ada, tombol selalu tampil → **(a) overlay `activity_main.xml` + `AndroidManifest.xml`** untuk cek `resolveActivity` via intent filter (butuh smali guard, `(b)`).
 
 ## Berikutnya (satu per satu)
-- [ ] Tes flash `build-output/Alpha-Fusion-v2.zip` di HP (Magisk/KernelSU): cek boot, APK `com.alphabubble` versionCode 2 terpasang, uninstall-dulu bila signer lama.
-- [ ] Setelah terpasang OK: hapus APK/zip lama tak terpakai (`app-debug.apk`, `AlphaBubble-edited.apk` bila tak perlu).
-- [ ] Finalisasi keystore rilis (baca fingerprint dengan password; tentukan kandidat A vs B).
-- [ ] Merge `fusion-v2` → master (BUTUH persetujuan user, jangan otomatis).
+- [ ] Baca smali relevan dari decode (BubbleService, MainActivity bagian resolusi/dexopt, RootShell displayInfo/gameList) → tentukan patch (b) yang aman.
+- [ ] Overlay (a): `AndroidManifest.xml` + `POST_NOTIFICATIONS`, `activity_main.xml` guard BatteryLab, `res/values/` konsistensi.
+- [ ] Patch (b): `displayInfo` parse Override, `BubbleService` hidden persist on boot + withTimeout, guard BatteryLab.
+- [ ] (c2) fitur besar setelah persetujuan user per item.
+- [ ] Tes flash di HP setelah pipeline + verifikasi.
+- [ ] Finalisasi keystore + merge (BUTUH persetujuan).
