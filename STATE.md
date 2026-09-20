@@ -1,5 +1,7 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- Fix1 build 11 (2026-09-20): VerifyError dexoptDone — hook warisi v1 bertipe Context, signature minta Activity (`MainActivity$openDexopt$3$1$1$1$1.smali`, log crash 09-20 09:45 PID 22101). Fix: signature terima Context + cast aman + UI dipost ke main looper. confirmKeep sama. Commit tertunda (gabung build 11).
+
 - Branch: `fusion-v2` (tracking `origin/fusion-v2`). Master TIDAK disentuh sejak backup.
 - HEAD: tree modul dari `Alpha-fusion-v2-final.zip` (158 file) + `.gitignore` + `AGENTS.md`.
 - Backup: tag `backup-source-rebuild` → master `efaa117` (sudah push). Stash `termux-workaround-mirror-timeout` masih ada.

@@ -117,6 +117,16 @@ jobs:
           sed -f apk-patches/b10b-dynnotif.sed -i "$F"
           test "$(grep -c 'DynNotif;->refresh' "$F")" = "1" || { echo "hook notif gagal"; exit 1; }
           echo "hook notif OK"
+      - name: Apply Fix5 hooks (bg pick + gravity)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          sed -f apk-patches/b11a-bgpick.sed -i "$F"
+          test "$(grep -c 'BgEditor;->handlePick' "$F")" = "1" || { echo "hook bgpick gagal"; exit 1; }
+          echo "hook bgpick OK"
+          sed -f apk-patches/b11b-bggravity.sed -i "$F"
+          test "$(grep -c 'setGravity(I)V' "$F")" = "1" || { echo "hook gravity gagal"; exit 1; }
+          echo "hook gravity OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
@@ -198,6 +208,9 @@ jobs:
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/DynNotif;" \
             || { echo "DynNotif tidak ada di classes5.dex"; exit 1; }
           echo "7 kelas di classes5.dex OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/BgEditor;" \
+            || { echo "BgEditor tidak ada di classes5.dex"; exit 1; }
+          echo "8 kelas di classes5.dex OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump xmltree work/AlphaBubble-signed.apk AndroidManifest.xml | grep -q "BubbleSettingsActivity" \
             || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
           echo "activity di manifest OK"
