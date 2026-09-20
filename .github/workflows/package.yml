@@ -188,3 +188,8 @@ jobs:
         with:
           name: Alpha-Fusion-v1
           path: Alpha-Fusion-v1.zip
+      - name: Upload signed APK (test)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlphaBubble-signed
+          path: work/AlphaBubble-signed.apk
