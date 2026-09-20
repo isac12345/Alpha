@@ -1,5 +1,17 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- TIM v1 SELESAI (2026-09-21): 1 leader + dev-apk + dev-modul; 12 skill di
+  ~/.config/opencode/skills/ (6 superpowers + 4 proyek + 2 lama); 3 agent di
+  ~/.config/opencode/agent/. Backup: ~/work/backup-opencode-20260921-0502.
+  AGENTS.md baru 20 baris. Skill ditolak: NOL (6 kandidat lolos: tanpa
+  unduh/eksekusi jaringan, tanpa exfil, tanpa izin luas). Uji: dev-modul
+  tambah seksi TIM v1 6 baris di NOTES.md (cabang kerja → merge 77d5c7d,
+  review TERIMA 0 revisi). Model: leader
+  opencode/muse-spark-1.3-contributor-free; dev-apk
+  openrouter/poolside/laguna-s-2.1:free; dev-modul opencode/mimo-v2.5-free
+  (model-health.md tidak ada → fallback). SDD disesuaikan ke OpenCode.
+  Restart opencode agar config baru terbaca. Master tak disentuh, tanpa force.
+
 - GANTI RENCANA TANPA KOMBO (2026-09-21, DIJEDA atas permintaan user):
   Pekerjaan APK/modul DIJEDA. Tanpa sentuh perangkat (tanpa pm/su/input/screenshot/tulis /sys|/proc/reboot/flash).
   Versi v1, tanpa force push, master tidak disentuh, tanpa cetak/commit secret (API key dibaca dari config, tidak dicetak).
