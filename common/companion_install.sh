@@ -9,7 +9,7 @@
 # GAGAL kalau nilainya beda. versionCode APK hasil build juga dipatch
 # dari version.txt yang sama.
 ALPHA_COMPANION_PKG="com.alphabubble"
-ALPHA_COMPANION_VER=8
+ALPHA_COMPANION_VER=9
 
 # $1 = path APK, $2 = flag file (berisi versionCode yang terakhir dipasang
 # oleh helper ini). Return 0 = APK sudah current (atau baru dipasang).

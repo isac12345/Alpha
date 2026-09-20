@@ -92,6 +92,21 @@ jobs:
           test "$(grep -c 'HomeCards;->maybeOnboard' "$F")" = "1" || { echo "hook onboard gagal"; exit 1; }
           grep -n 'HomeCards' "$F"
           echo "hook Batch1 OK"
+      - name: Apply Batch2 Tools hooks (dexopt x2 + res confirm)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          sed -f apk-patches/b9a-dexopt-start.sed -i "$F"
+          test "$(grep -c 'ToolsKit;->dexoptStart' "$F")" = "1" || { echo "hook dexoptStart gagal"; exit 1; }
+          echo "hook dexoptStart OK"
+          F='work/decode/smali_classes3/com/alphabubble/MainActivity$openDexopt$3$1$1$1$1.smali'
+          sed -f apk-patches/b9b-dexopt-done.sed -i "$F"
+          test "$(grep -c 'ToolsKit;->dexoptDone' "$F")" = "1" || { echo "hook dexoptDone gagal"; exit 1; }
+          echo "hook dexoptDone OK"
+          F='work/decode/smali_classes3/com/alphabubble/MainActivity$applyResolution$1$1$1.smali'
+          sed -f apk-patches/b9c-res-confirm.sed -i "$F"
+          test "$(grep -c 'ToolsKit;->confirmKeep' "$F")" = "1" || { echo "hook confirmKeep gagal"; exit 1; }
+          echo "hook confirmKeep OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
@@ -166,7 +181,9 @@ jobs:
             || { echo "HomeCards tidak ada di classes5.dex"; exit 1; }
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/HelperGuard;" \
             || { echo "HelperGuard tidak ada di classes5.dex"; exit 1; }
-          echo "4 kelas di classes5.dex OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/ToolsKit;" \
+            || { echo "ToolsKit tidak ada di classes5.dex"; exit 1; }
+          echo "5 kelas di classes5.dex OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump xmltree work/AlphaBubble-signed.apk AndroidManifest.xml | grep -q "BubbleSettingsActivity" \
             || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
           echo "activity di manifest OK"
