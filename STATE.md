@@ -1,5 +1,14 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- CHECKPOINT FINAL FASE 0 (2026-09-20 19:30, rincian ~/work/CHECKPOINT-final.md):
+  Pekerja: NOL berjalan. HEAD=0944574. final-apk: A1+A3 SELESAI, A2 SEPARUH
+  (bug toggle diperbaiki 0944574, review TERIMA; "berlaku langsung" jadi
+  "berlaku saat dibuka ulang"). final-modul: M1,M2,M4-M7 SELESAI; M3 SEPARUH
+  (GPU_MAX_FREQ tercatat tapi tune_gpu belum pakai); M8 SEPARUH (tanpa counter
+  2x); M9 SEPARUH (sandbox 10/10 klaim pekerja; alpha-diag ditulis, tak
+  dijalankan). Review M1-M9: GAGAL 3x, belum terbaca. Run: 5 terpakai.
+  Serah-terima BELUM. FASE 1 rombak tim berikutnya.
+
 - BUILD 15 (2026-09-20, TERIMA D+E, review terbaca):
   Audit b14: A1 SEBAGIAN (alpha/corner masih aktif), A2 a-c SUDAH + d BELUM
   (res60-100 mentah), A3 tombol galeri BELUM + chip SUDAH + dialog SEBAGIAN
