@@ -15,32 +15,26 @@
 - Script `.sh` dan `META-INF/.../update-binary` wajib executable (`100755` di git) dan line ending LF.
 - JANGAN commit `*.jks`, `*.keystore`, `*.apk`, `*.zip`, atau isi `build-output/`.
 
-## 3. Aturan direktur-pekerja (ARSITEKTUR 2026-09-20, ROMBAK FASE 1 19:45)
+## 3. Aturan direktur-pekerja (ARSITEKTUR 2026-09-20 malam)
 
-- Status kombo (terverifikasi 19:45): Alpha-fast OK, Budak OK;
-  Alpha-code + Alpha-review GAGAL (`Unexpected server error`, 3x tiap kombo,
-  dilaporkan, tidak diubah sendiri). Selama keduanya gagal: pekerja code
-  (dev-smali/java/res/modul) dan reviewer TIDAK bisa dipakai; qa (fast) BISA.
-  Eskalasi: direktur kerjakan sendiri bagian kecil + catat alasan di STATE.md.
-- Direktur (agent `direktur`, Budak) TIDAK implementasi kode. Tugas: tulis brief
-  `/data/data/com.termux/files/home/work/tasks/<id>.md` (PATH ABSOLUT, daftar
-  file eksklusif per pekerja), delegasikan via `~/bin/karyawan` (maks 2 paralel),
-  baca laporan + diff, jalankan reviewer (git-only) + tester, putuskan
-  TERIMA / REVISI (maks 2 putaran) / KOREKSI KECIL (~20 baris) / BUANG, catat di
-  STATE.md, dan satu-satunya yang merge ke `fusion-v2`. Master tidak disentuh.
-  Bila pekerja gagal 2 putaran, direktur boleh kerjakan sendiri + catat alasan.
-- Review yang GAGAL dijalankan = "review GAGAL", DIULANG, jangan diganti
-  pemeriksaan lain. Tiap item wajib punya review terbaca SEBELUM diterima.
-- Pekerja paralel DILARANG mengedit file yang sama; bila tumpang tindih,
-  kerjakan berurutan.
-- Pekerja (`dev-apk`: java/smali/XML/workflow; `dev-modul`: shell/config/uperf/fasrs;
-  `debugger`: crash) kerja HANYA di worktree `~/work/wt/<id>`, cabang
-  `work/<id>-<suffix>` dari fusion-v2, commit trailer `Worker: <agent>`.
-  DILARANG menyentuh fusion-v2/master. Lapor: ringkasan, `git diff --stat`,
-  bukti, hal yang belum pasti.
-- Pendukung: planner (sebelum brief), explorer (baca kode besar), researcher
-  (docs resmi), reviewer (setelah lapor, sebelum merge), tester (verifikasi
-  statis; tes perangkat hanya bila user mengetik "HP bebas"), critic (cek akhir).
-- Build: Actions (`package.yml` jalan untuk `fusion-v2` + `work/*`); Termux hanya
-  edit teks, git, gh. Version: `version.txt` = `ALPHA_COMPANION_VER` =
-  `module.prop` versionCode, naik per build.
+- Kombo (terverifikasi via curl /v1/chat/completions, biasa + tools):
+  Budak OK, Alpha-code OK, Alpha-code-b OK, Alpha-fast OK, Alpha-review OK.
+  Via `opencode run`: Alpha-fast + Budak OK; Alpha-code/code-b/review GAGAL
+  (`Unexpected server error`, berulang, dilaporkan, kombo tidak diubah).
+- Agent: dev-smali + dev-java = Alpha-code; dev-modul + dev-res = Alpha-code-b;
+  explorer + researcher + qa + ci = Alpha-fast; reviewer + debugger =
+  Alpha-review; direktur = Budak. Semua mode `all`.
+- Kepemilikan file: dev-smali (apk-patches/, overlay manifest), dev-java
+  (java/), dev-res (apk-overlay/res/), dev-modul (common/, uperf/, fasrs/,
+  skrip root, sandbox), qa (baca + tulis ~/work/qa/), ci (.github/,
+  version.txt, module.prop, package.yml, dokumen serah-terima),
+  reviewer/debugger/explorer/researcher (baca saja). Lintas kepemilikan
+  dicatat di BOARD.md.
+- Direktur tidak menulis kode: tulis brief berkriteria, tugaskan sesuai
+  kepemilikan, gelombang maks 3 paralel, baca BOARD.md + report.md (bukan
+  log), putuskan TERIMA / REVISI (maks 2 putaran) / KOREKSI KECIL (<=20
+  baris) / ESKALASI (ulang model Alpha-review sebagai pekerja). Direktur
+  kerjakan sendiri hanya setelah 2 putaran gagal terdokumentasi + error
+  persis, hasil wajib diperiksa reviewer. Polling ≤1x/10 menit via
+  ~/bin/tunggu. Alur: pekerja → qa → reviewer → direktur merge ke
+  fusion-v2. Hanya direktur yang merge. Master tidak disentuh.
