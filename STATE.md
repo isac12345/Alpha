@@ -1,5 +1,12 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- MODE DIREKTUR 2026-09-20: TAHAP 0 lolos (Alpha-think/fast + Budak ada).
+  TAHAP 1 selesai (model agent, karyawan, aturan, tabel uji NOTES).
+  DELEGASI GAGAL: `opencode run --agent <subagent>` → "agent is a subagent,
+  not a primary agent" + model default mimo-auto Unsupported (log
+  ~/work/logs/karyawan-debugger-*.log). Sesuai aturan: KERJA SENDIRI + catat.
+  Semua tahap di bawah dikerjakan direktur langsung.
+
 - Fix1 build 11 (2026-09-20): VerifyError dexoptDone — hook warisi v1 bertipe Context, signature minta Activity (`MainActivity$openDexopt$3$1$1$1$1.smali`, log crash 09-20 09:45 PID 22101). Fix: signature terima Context + cast aman + UI dipost ke main looper. confirmKeep sama. Commit tertunda (gabung build 11).
 
 - Branch: `fusion-v2` (tracking `origin/fusion-v2`). Master TIDAK disentuh sejak backup.
