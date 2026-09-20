@@ -23,7 +23,16 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 # --- Uperf backend cleanup (kept minimal & non-blocking) ---
+# M6: hanya hapus config uperf/fas-rs/AsoulOpt bila penanda Alpha ada.
+# JANGAN pernah hapus config modul lain.
 UPERF_USER_PATH="/sdcard/Android/yc/uperf"
+ALPHA_MARKER="/data/adb/alpha/.alpha_installed"
+
+# Pastikan penanda Alpha ada (ditulis oleh customize.sh saat install)
+ALPHA_OWNED=0
+if [ -f "$ALPHA_MARKER" ]; then
+    ALPHA_OWNED=1
+fi
 
 uperf_on_remove() {
     while [ "$(getprop sys.boot_completed)" != "1" ]; do
@@ -37,13 +46,20 @@ uperf_on_remove() {
     done
     rm -f "$test_file"
 
-    killall uperf 2>/dev/null
-    # simpan perapp config user, hapus sisanya
-    if [ -d "$UPERF_USER_PATH" ]; then
-        cp -af "$UPERF_USER_PATH/perapp_powermode.txt" /sdcard/ 2>/dev/null
-        rm -rf "$UPERF_USER_PATH"
-        mkdir -p "$UPERF_USER_PATH"
-        mv -f /sdcard/perapp_powermode.txt "$UPERF_USER_PATH/" 2>/dev/null
+    # M6: hapus config hanya jika Alpha adalah pemilik
+    if [ "$ALPHA_OWNED" = "1" ]; then
+        killall uperf 2>/dev/null
+        # simpan perapp config user, hapus sisanya
+        if [ -d "$UPERF_USER_PATH" ]; then
+            cp -af "$UPERF_USER_PATH/perapp_powermode.txt" /sdcard/ 2>/dev/null
+            rm -rf "$UPERF_USER_PATH"
+            mkdir -p "$UPERF_USER_PATH"
+            mv -f /sdcard/perapp_powermode.txt "$UPERF_USER_PATH/" 2>/dev/null
+        fi
+        # hapus marker supaya tidak double-cleanup di boot berikutnya
+        rm -f "$ALPHA_MARKER" 2>/dev/null
+    else
+        echo "[UNINSTALL] uperf config dilewati (bukan pemilik Alpha)"
     fi
 }
 # jangan blokir proses uninstall/boot
@@ -55,10 +71,13 @@ fasrs_on_remove() {
     until [ -d "$FASRS_DIR" ] && [ -d /data ]; do
         sleep 1
     done
-    killall fas-rs 2>/dev/null
-    rm -rf "$FASRS_DIR"
-    rm -f /data/powercfg.json
-    rm -f /data/powercfg.sh
+    # M6: hapus config fas-rs HANYA bila penanda Alpha ada
+    if [ "$ALPHA_OWNED" = "1" ]; then
+        killall fas-rs 2>/dev/null
+        rm -rf "$FASRS_DIR"
+        rm -f /data/powercfg.json
+        rm -f /data/powercfg.sh
+    fi
 }
 (fasrs_on_remove &)
 
