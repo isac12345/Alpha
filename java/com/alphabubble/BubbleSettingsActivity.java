@@ -96,14 +96,10 @@ public final class BubbleSettingsActivity extends Activity {
                         float sc = minScale + (maxScale - minScale) * v / (float) MAX_PROGRESS;
                         prefs().edit().putFloat("bubble_scale", sc).apply();
                         tvSizeValue.setText(String.format("%.0f%%", sc * 100));
-                        // Terapkan segera bila service hidup (BubbleStyle.apply baca prefs tiap panggil)
-                        if (isServiceRunning(BubbleServiceName())) {
-                            try {
-                                Intent t = new Intent(BubbleSettingsActivity.this, Class.forName(BubbleServiceName()));
-                                t.setAction("com.alphabubble.BUBBLE_TOGGLE");
-                                startForegroundService(t);
-                            } catch (Throwable ignored) {}
-                        }
+                        // Hanya simpan prefs. BubbleStyle.apply baca bubble_scale dari prefs
+                        // TIAP dipanggil; applyLook dipanggil saat service attach/updateSelection.
+                        // Tidak kirim BUBBLE_TOGGLE — itu XOR 'hidden' & panggil applyVisibility
+                        // tanpa applyLook (BubbleService.smali:2085-2100).
                     }
                     catch (Throwable t) { Log.w(TAG, "size gagal: " + t); }
                 }
@@ -111,7 +107,7 @@ public final class BubbleSettingsActivity extends Activity {
                 @Override public void onStopTrackingTouch(android.widget.SeekBar s) {
                     try {
                         Toast.makeText(BubbleSettingsActivity.this,
-                                "Tersimpan & berlaku segera", Toast.LENGTH_SHORT).show();
+                                "Tersimpan & berlaku", Toast.LENGTH_SHORT).show();
                     } catch (Throwable t) { Log.w(TAG, "size toast gagal: " + t); }
                 }
             });
