@@ -64,8 +64,6 @@ public final class BubbleStyle {
         if (sp.getBoolean("helper_disabled", false)) return;
         float scale = sp.getFloat(KEY_SCALE, SCALE_DEF);
         if (scale < SCALE_MIN || scale > SCALE_MAX) scale = SCALE_DEF;
-        int alpha = sp.getInt(KEY_ALPHA, 255);
-        int corner = sp.getInt(KEY_CORNER, 31);
         try {
             java.lang.reflect.Field fRoot = svc.getClass().getDeclaredField("root");
             fRoot.setAccessible(true);
