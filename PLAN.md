@@ -12,17 +12,17 @@
 - [x] Overlay kecil: kontras tab, padding log, id-ID.
 - [x] alpha-test full: 6/7 → 7/7 (service wajar mati saat autostart off).
 
-## Batch 2 (build 9)
-- [ ] C3 dexopt progres + hasil (cek speed-profile, debuggable=false).
-- [ ] C2 revert resolusi otomatis (root penjaga).
-- [ ] Restyle Tools (overlay).
-- [ ] BLOCKED: konfirmasi render backend — `applyRender()` private tak bisa dipanggil balik dari Java tanpa reflection rapuh (`MainActivity.smali:860`, tombol lambda$5 `:1409` langsung invoke). Error: tidak ada jalur 1-baris aman. Dikeluarkan dari build 9.
+## Batch 2 (build 9) — PIPELINE SUCCESS, tag batch2-built
+- [x] C3 dexopt progres + hasil (run `35480098420`).
+- [x] C2 revert resolusi otomatis (root penjaga).
+- [x] Restyle Tools (overlay).
+- [ ] BLOCKED: konfirmasi render backend (alasan di atas).
 
-## Batch 3 (build 10)
-- [ ] C1 kustomisasi bubble (slider ukuran tersimpan, alpha via bg_alpha bawaan, latar galeri via crop; bentuk penuh butuh rework view — parsial).
-- [ ] Notifikasi dinamis: judul profil aktif + aksi Show/Hide + Pengaturan.
-- [ ] Editor crop background (center-crop persegi 256px, simpan cache, tulis app_bg_uri).
-- [ ] BLOCKED: aksi profil per-item di notifikasi (PROFILE_* tanpa handler di onStartCommand `BubbleService.smali:2053-2105` — hanya BUBBLE_TOGGLE; butuh patch menengah). Dikeluarkan dari build 10.
+## Batch 3 (build 10) — PIPELINE SUCCESS, tag batch3-built, tes UI ditunda
+- [x] C1 kustomisasi bubble (slider ukuran, crop latar galeri; bentuk penuh parsial).
+- [x] Notifikasi dinamis: judul profil aktif + aksi Show/Hide + Pengaturan.
+- [x] Editor crop background (center-crop 256px, cache, app_bg_uri).
+- [ ] BLOCKED: aksi profil per-item (alasan di atas).
 
 ## Backlog
 - [ ] B2 timeout perintah root.

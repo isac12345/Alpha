@@ -125,3 +125,10 @@ opsinya (c2) tulis ulang source menyamai perilaku (usaha besar, perlu persetujua
 - Insiden alpha-test: cp langsung ke /data/local/tmp gagal (Permission denied) → via /sdcard + su cp; BubbleService tidak terdaftar saat autostart off (wajar) → start manual → retry 7/7.
 - Bukti: hook Batch1 OK, 4 kelas dex OK, versionCode 8, cert SAMA. Kartu BUBBLE tampil di dump UI. Zip `~/work/v8/Alpha-Fusion-v1.zip`, APK `88961b26...`.
 - BELUM tes user. JANGAN merge master.
+
+## v1 build 9 Batch 2 + build 10 Batch 3 (2026-09-20)
+
+- Build 9 (run `35480098420`): ToolsKit (dexopt progres+hasil, countdown revert 15 dtk) + 3 hooks + restyle Tools. BLOCKED: render confirm. Tag `batch2-built`. APK `/sdcard/alpha/AlphaBubble-b9.apk` (`99d4c1c9...`).
+- Build 10 (run `35480723146`): BubbleStyle + DynNotif + crop UI + 2 hooks, 7 kelas dex, versionCode 10. BLOCKED: aksi profil per-item. Tag `batch3-built`. APK `/sdcard/alpha/AlphaBubble-b10.apk` (`83df3047...`).
+- Tes perangkat build 10: STATIS SAJA (Chrome di depan saat build selesai; tes UI + install ditunda). alpha-test penuh dijadwalkan serah-terima bila layar aman.
+- Cert SAMA semua build (timpa tanpa uninstall).
