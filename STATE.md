@@ -1,5 +1,12 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- CHECKPOINT DIJEDA (2026-09-20 20:20, rincian ~/work/CHECKPOINT.md):
+  Pekerja NOL. HEAD=8edb53a. final-apk=0944574 (A1+A3 SELESAI, A2 SEPARUH,
+  review TERIMA, BELUM merge). final-modul=c0917d9 (M1,M2,M4-M7 SELESAI;
+  M3+M8 koreksi direktur; M9 SEPARUH; review modul BELUM terbaca).
+  Serah-terima BELUM (tag, b16, CEK_MALAM). Run: 8 terpakai.
+  DIJEDA atas permintaan user, lanjutkan setelah tim siap.
+
 - CHECKPOINT FINAL FASE 0 (2026-09-20 19:30, rincian ~/work/CHECKPOINT-final.md):
   Pekerja: NOL berjalan. HEAD=0944574. final-apk: A1+A3 SELESAI, A2 SEPARUH
   (bug toggle diperbaiki 0944574, review TERIMA; "berlaku langsung" jadi
