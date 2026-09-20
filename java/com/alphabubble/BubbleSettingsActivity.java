@@ -23,6 +23,8 @@ public final class BubbleSettingsActivity extends Activity {
 
     private Switch swShow;
     private TextView tvPermStatus;
+    private android.widget.SeekBar sbSize;
+    private TextView tvSizeValue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,14 +78,20 @@ public final class BubbleSettingsActivity extends Activity {
             lbSize.setTypeface(Typeface.MONOSPACE);
             lbSize.setTextColor(Color.parseColor("#87878a"));
             root.addView(lbSize);
-            android.widget.SeekBar sbSize = new android.widget.SeekBar(this);
+            tvSizeValue = new TextView(this);
+            tvSizeValue.setTypeface(Typeface.MONOSPACE);
+            tvSizeValue.setTextColor(Color.parseColor("#f4f2ee"));
+            tvSizeValue.setTextSize(14);
+            root.addView(tvSizeValue);
+            sbSize = new android.widget.SeekBar(this);
             sbSize.setMax(80);
-            float sc = prefs().getFloat("bubble_scale", 1.0f);
-            if (sc < 0.6f || sc > 1.4f) sc = 1.0f;
-            sbSize.setProgress(Math.round((sc - 0.6f) * 100));
             sbSize.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
                 @Override public void onProgressChanged(android.widget.SeekBar s, int v, boolean f) {
-                    try { prefs().edit().putFloat("bubble_scale", 0.6f + v / 100.0f).apply(); }
+                    try {
+                        float sc = 0.6f + v / 100.0f;
+                        prefs().edit().putFloat("bubble_scale", sc).apply();
+                        tvSizeValue.setText(String.format("%.0f%%", sc * 100));
+                    }
                     catch (Throwable t) { Log.w(TAG, "size gagal: " + t); }
                 }
                 @Override public void onStartTrackingTouch(android.widget.SeekBar s) {}
@@ -95,11 +103,13 @@ public final class BubbleSettingsActivity extends Activity {
                 }
             });
             root.addView(sbSize);
+            refreshSlider();
             android.widget.Button bReset = new android.widget.Button(this);
             bReset.setText("Reset ke bawaan");
             bReset.setTypeface(Typeface.MONOSPACE);
             bReset.setOnClickListener(v -> {
                 BubbleStyle.resetDefaults(this);
+                refreshSlider();
                 try {
                     Toast.makeText(this, "Kembali bawaan", Toast.LENGTH_SHORT).show();
                 } catch (Throwable t) { Log.w(TAG, "reset toast gagal: " + t); }
@@ -173,6 +183,18 @@ public final class BubbleSettingsActivity extends Activity {
             } catch (Throwable t) {
                 Log.w(TAG, "resyncSwitch: pasang listener gagal: " + t);
             }
+        }
+    }
+
+    private void refreshSlider() {
+        if (sbSize == null) return;
+        try {
+            float sc = prefs().getFloat("bubble_scale", 1.0f);
+            if (sc < 0.6f || sc > 1.4f) sc = 1.0f;
+            sbSize.setProgress(Math.round((sc - 0.6f) * 100));
+            if (tvSizeValue != null) tvSizeValue.setText(String.format("%.0f%%", sc * 100));
+        } catch (Throwable t) {
+            Log.w(TAG, "refreshSlider gagal: " + t);
         }
     }
 
