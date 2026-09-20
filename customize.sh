@@ -36,6 +36,9 @@ WORK_DIR="/data/adb/alpha"
 ui_print "- Menyiapkan direktori kerja Alpha: $WORK_DIR"
 mkdir -p "$WORK_DIR"
 chmod 0755 "$WORK_DIR"
+# M6: tulis penanda Alpha — uninstall.sh pakai ini untuk menentukan
+# apakah config uperf/fas-rs milik Alpha boleh dihapus.
+printf '%s\n' "1" > "$WORK_DIR/.alpha_installed" 2>/dev/null
 
 # Bersihkan cache deteksi lama saat reinstall agar hardware terdeteksi ulang
 rm -f "$WORK_DIR/detected.conf"
@@ -64,6 +67,36 @@ if [ -f "$MODPATH/uperf/script/libsysinfo.sh" ]; then
     if [ "$UPERF_CFGNAME" != "unsupported" ] && [ -f "$MODPATH/uperf/config/$UPERF_CFGNAME.json" ]; then
         mkdir -p "$UPERF_USER_PATH"
         cp -f "$MODPATH/uperf/config/$UPERF_CFGNAME.json" "$UPERF_USER_PATH/uperf.json"
+        # M1: Nonaktifkan modul cpu di salinan uperf.json — Alpha/fas-rs
+        # memegang penuh kendali CPU governor/freq, supaya tidak rebutan.
+        # Cek verifikasi: pastikan baris setelah "cpu": berisi "enable": false.
+        _uperf_cpu_tmp="$UPERF_USER_PATH/.uperf.json.cpu_tmp"
+        cp -f "$UPERF_USER_PATH/uperf.json" "$_uperf_cpu_tmp" 2>/dev/null
+        if sed -i '/"cpu":/{n;s/"enable": true/"enable": false/}' "$UPERF_USER_PATH/uperf.json" 2>/dev/null \
+           && grep -A1 '"cpu"' "$UPERF_USER_PATH/uperf.json" 2>/dev/null | grep -q '"enable": false'; then
+            # M1: Validasi JSON setelah modifikasi — pastikan tidak corrupt
+            _json_ok=0
+            if command -v python3 >/dev/null 2>&1; then
+                python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$UPERF_USER_PATH/uperf.json" 2>/dev/null && _json_ok=1
+            elif command -v jq >/dev/null 2>&1; then
+                jq empty "$UPERF_USER_PATH/uperf.json" 2>/dev/null && _json_ok=1
+            else
+                # Fallback: validasi struktur dasar (buka+tutup kurung)
+                _opens=$(tr -cd '{' < "$UPERF_USER_PATH/uperf.json" 2>/dev/null | wc -c)
+                _closes=$(tr -cd '}' < "$UPERF_USER_PATH/uperf.json" 2>/dev/null | wc -c)
+                [ "$_opens" -gt 0 ] 2>/dev/null && [ "$_opens" = "$_closes" ] 2>/dev/null && _json_ok=1
+            fi
+            if [ "$_json_ok" = "1" ]; then
+                ui_print "- Uperf cpu.enable dinonaktifkan (Alpha/fas-rs pegang CPU)."
+            else
+                cp -f "$_uperf_cpu_tmp" "$UPERF_USER_PATH/uperf.json" 2>/dev/null
+                ui_print "! Peringatan: uperf.json corrupt setelah edit, file asli dipertahankan."
+            fi
+        else
+            cp -f "$_uperf_cpu_tmp" "$UPERF_USER_PATH/uperf.json" 2>/dev/null
+            ui_print "! Peringatan: gagal nonaktifkan cpu.enable, uperf.json asli dipertahankan."
+        fi
+        rm -f "$_uperf_cpu_tmp" 2>/dev/null
         [ ! -e "$UPERF_USER_PATH/perapp_powermode.txt" ] && cp -f "$MODPATH/uperf/config/perapp_powermode.txt" "$UPERF_USER_PATH/perapp_powermode.txt"
         # Injeksi idempoten rule "Alpha-FasrsManaged" (exclusion game fas-rs).
         # Struktur object PERSIS mengikuti rule sejenis yang sudah ada di
@@ -222,7 +255,7 @@ if [ "$FASRS_SUPPORTED" = "1" ] && [ -f "$MODPATH/fasrs/fas-rs" ]; then
     set_perm_recursive "$MODPATH/fasrs" 0 0 0755 0644
     set_perm "$MODPATH/fasrs/fas-rs" 0 0 0755
     sh "$MODPATH/fasrs/init_vtools.sh" "$(realpath "$MODPATH/module.prop")"
-    resetprop fas-rs-installed true 2>/dev/null
+    setprop fas-rs-installed true 2>/dev/null
     ui_print "- fas-rs siap. Konfigurasi ada di: $FASRS_DIR"
 else
     ui_print "- Melewati setup fas-rs (syarat tidak terpenuhi atau binary tidak ada)."

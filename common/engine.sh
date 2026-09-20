@@ -523,6 +523,18 @@ tune_gpu_mali() {
     fi
     local mali_hw_max
     mali_hw_max=$(printf '%s\n' "$mali_table" | sort -nr | head -n 1)
+    # M3: bila defaults.conf mencatat GPU_MAX_FREQ valid dan <= tabel,
+    # pakai itu sebagai acuan 100% (bawaan perangkat, bukan tabel OPP).
+    if [ -n "${GPU_MAX_FREQ:-}" ]; then
+        case "$GPU_MAX_FREQ" in ''|*[!0-9]*) ;;
+            *)
+                if [ "$GPU_MAX_FREQ" -gt 0 ] 2>/dev/null && [ "$GPU_MAX_FREQ" -le "$mali_hw_max" ] 2>/dev/null; then
+                    log_msg "INFO" "$category" "M3: acuan GPU_MAX_FREQ=$GPU_MAX_FREQ (defaults.conf)"
+                    mali_hw_max="$GPU_MAX_FREQ"
+                fi
+                ;;
+        esac
+    fi
     local mali_percent="${GPU_FREQ_MAX_PERCENT:-100}"
     case "$mali_percent" in
         ''|*[!0-9]*) mali_percent=100 ;;
@@ -665,9 +677,39 @@ tune_io() {
 
 # --- 6. TUNE VIRTUAL MEMORY (VM) ---
 # Tweak VM standard Linux yang aman dan teruji
+# M4: battery profile — swap>=stock bila zRAM aktif
 tune_vm() {
     local category="VM"
-    apply_tweak "$category" "$PROC_SYS_PREFIX/vm/swappiness" "$VM_SWAPPINESS"
+    local vm_swap="$VM_SWAPPINESS"
+
+    # M4: bila profile battery DAN zRAM aktif, pastikan swappiness >= stock
+    if [ "${ACTIVE_PROFILE:-balanced}" = "battery" ] && [ -n "${VM_SWAPPINESS:-}" ]; then
+        local zram_active=0
+        _zram_dir="${SYSFS_BLOCK_PREFIX:-/sys/block}/zram0"
+        if [ -d "$_zram_dir" ] 2>/dev/null || command -v zramctl >/dev/null 2>&1; then
+            local zram_size
+            zram_size=$(cat "$_zram_dir/disksize" 2>/dev/null | tr -d '[:space:]')
+            case "$zram_size" in ''|*[!0-9]*) zram_size=0 ;; esac
+            [ "$zram_size" -gt 0 ] 2>/dev/null && zram_active=1
+        fi
+        if [ "$zram_active" = "1" ] && [ -n "${VM_SWAPPINESS:-}" ]; then
+            local stock_swap="${VM_SWAPPINESS:-60}"
+            # defaults.conf bawaan; fallback 60 bila belum ada
+            local conf_dir="${ALPHA_CONF_DIR:-/data/adb/alpha}"
+            if [ -f "$conf_dir/defaults.conf" ]; then
+                local stock_from_conf
+                stock_from_conf=$(grep '^VM_SWAPPINESS=' "$conf_dir/defaults.conf" 2>/dev/null | cut -d= -f2)
+                case "$stock_from_conf" in ''|*[!0-9]*) stock_from_conf=60 ;; esac
+                stock_swap="$stock_from_conf"
+            fi
+            if [ "$vm_swap" -lt "$stock_swap" ] 2>/dev/null; then
+                vm_swap="$stock_swap"
+                log_msg "INFO" "$category" "M4: battery swap=$VM_SWAPPINESS < stock=$stock_swap, raised to $stock_swap (zRAM active)"
+            fi
+        fi
+    fi
+
+    apply_tweak "$category" "$PROC_SYS_PREFIX/vm/swappiness" "$vm_swap"
     apply_tweak "$category" "$PROC_SYS_PREFIX/vm/vfs_cache_pressure" "$VM_VFS_CACHE_PRESSURE"
     apply_tweak "$category" "$PROC_SYS_PREFIX/vm/dirty_ratio" "$VM_DIRTY_RATIO"
     apply_tweak "$category" "$PROC_SYS_PREFIX/vm/dirty_background_ratio" "$VM_DIRTY_BACKGROUND_RATIO"
@@ -760,38 +802,31 @@ tune_render() {
         fi
     fi
     local render_prop="debug.hwui.renderer"
-    local render_setter=""
-    if command -v resetprop >/dev/null 2>&1; then
-        render_setter="resetprop"
-    elif command -v setprop >/dev/null 2>&1; then
-        render_setter="setprop"
-    else
-        log_msg "SKIPPED" "$category" "resetprop/setprop tidak tersedia"
+    # M7: pakai setprop (bukan resetprop) untuk semua debug.* property.
+    # setprop tidak bisa menghapus property secara sempurna, jadi untuk
+    # nilai default: log "perlu reboot" + beri tahu aplikasi.
+    if ! command -v setprop >/dev/null 2>&1; then
+        log_msg "SKIPPED" "$category" "setprop tidak tersedia"
         return 0
     fi
     if [ "$render_want" = "default" ]; then
-        if [ "$render_setter" = "resetprop" ]; then
-            if resetprop -d "$render_prop" 2>/dev/null; then
-                log_msg "APPLIED" "$category" "prop dihapus, kembali default (efek setelah restart aplikasi)"
-                return 0
-            fi
-            log_msg "FAILED" "$category" "gagal menghapus $render_prop"
-            return 1
-        fi
-        log_msg "SKIPPED" "$category" "resetprop tidak ada, default tidak bisa dihapus aman"
+        # M7: resetprop -d diganti — setprop tidak bisa hapus debug.* prop.
+        # Log bahwa reboot + restart aplikasi diperlukan.
+        log_msg "INFO" "$category" "$render_prop=default → log 'perlu reboot' + restart aplikasi (setprop tidak bisa hapus prop secara sempurna)"
+        echo "[M7] RENDER: $render_prop=dipulihkan ke default → perlu reboot + restart aplikasi" >> "${ALPHA_LOG_FILE:-/data/adb/alpha/alpha.log}" 2>/dev/null
         return 0
     fi
-    if "$render_setter" "$render_prop" "$render_want" 2>/dev/null; then
+    if setprop "$render_prop" "$render_want" 2>/dev/null; then
         local render_cur
         render_cur=$(getprop "$render_prop" 2>/dev/null)
         if [ "$render_cur" = "$render_want" ]; then
             log_msg "APPLIED" "$category" "$render_prop=$render_want (efek setelah restart aplikasi)"
             return 0
         fi
-        log_msg "FAILED" "$category" "verifikasi readback gagal: $render_cur != $render_want"
-        return 1
+        log_msg "WARN" "$category" "readback belum update: $render_cur != $render_want (efek setelah restart aplikasi)"
+        return 0
     fi
-    log_msg "FAILED" "$category" "set $render_prop=$render_want ditolak"
+    log_msg "FAILED" "$category" "setprop $render_prop=$render_want gagal"
     return 1
 }
 
@@ -832,24 +867,41 @@ alpha_opp_cap_pick() {
     fi
 }
 
-# --- 9. TUNE NETWORK (Adaptasi HSIN: BBR/Cubic selection & TCP Fast Open) ---
+# --- 9. TUNE NETWORK (Adaptasi HSIN: TCP Congestion selection & TCP Fast Open) ---
+# M5: respek NET_TCP_PREFERENCE — pilih HANYA dari daftar available.
+# Urutan prioritas: NET_TCP_PREFERENCE → bbr (jika ada) → cubic fallback.
 tune_network() {
     local category="NET"
     local tcp_node="$PROC_SYS_PREFIX/net/ipv4/tcp_congestion_control"
     local avail_node="$PROC_SYS_PREFIX/net/ipv4/tcp_available_congestion_control"
     local tfo_node="$PROC_SYS_PREFIX/net/ipv4/tcp_fastopen"
     
-    # 1. Pilih TCP Congestion Control terbaik
+    # 1. Baca available congestion control
     local avail_cc=""
     if [ -f "$avail_node" ]; then
         avail_cc=$(cat "$avail_node" 2>/dev/null)
     fi
 
-    local selected_cc
-    case " $avail_cc " in
-        *" bbr "*) selected_cc="bbr" ;;
-        *) selected_cc="cubic" ;;
-    esac
+    local selected_cc=""
+    # M5: pilih pertama dari NET_TCP_PREFERENCE yang ada di available list
+    local _pref="${NET_TCP_PREFERENCE:-bbr cubic}"
+    for _try in $_pref; do
+        case " $avail_cc " in
+            *" $_try "*)
+                selected_cc="$_try"
+                break
+                ;;
+        esac
+    done
+    
+    # Fallback: bbr jika ada, lalu cubic
+    if [ -z "$selected_cc" ]; then
+        case " $avail_cc " in
+            *" bbr "*) selected_cc="bbr" ;;
+            *) selected_cc="cubic" ;;
+        esac
+    fi
+    log_msg "INFO" "$category" "NET_TCP_PREFERENCE=$_pref available='$avail_cc' selected=$selected_cc"
 
     # Always use the gateway so missing/unwritable nodes are logged as SKIPPED/FAILED.
     apply_tweak "$category" "$tcp_node" "$selected_cc"
