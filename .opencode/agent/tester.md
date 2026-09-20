@@ -1,3 +1,4 @@
+model: 9router/Alpha-fast
 ---
 description: Tulis dan jalankan test, cek hasilnya dengan bukti output.
 mode: subagent

@@ -1,3 +1,4 @@
+model: 9router/Alpha-think
 ---
 description: Periksa ulang jawaban akhir dan tandai klaim yang belum ada buktinya.
 mode: subagent

@@ -1,3 +1,4 @@
+model: 9router/Alpha-think
 ---
 description: Cari bug, edge case, dan klaim yang belum terverifikasi dalam perubahan kode.
 mode: subagent

@@ -132,3 +132,12 @@ opsinya (c2) tulis ulang source menyamai perilaku (usaha besar, perlu persetujua
 - Build 10 (run `35480723146`): BubbleStyle + DynNotif + crop UI + 2 hooks, 7 kelas dex, versionCode 10. BLOCKED: aksi profil per-item. Tag `batch3-built`. APK `/sdcard/alpha/AlphaBubble-b10.apk` (`83df3047...`).
 - Tes perangkat build 10: STATIS SAJA (Chrome di depan saat build selesai; tes UI + install ditunda). alpha-test penuh dijadwalkan serah-terima bila layar aman.
 - Cert SAMA semua build (timpa tanpa uninstall).
+
+## Uji model Budak (2026-09-20, TAHAP 1)
+
+| Model | Agent uji | Tugas | Hasil |
+|---|---|---|---|
+| 9router/Alpha-fast | explorer | baca version.txt | OK, tanpa tool mentah bocor |
+| 9router/Alpha-think | planner | baca version.txt | OK, tanpa tool mentah bocor |
+
+Server: `http://127.0.0.1:20128/v1/models` ada `Alpha-think`, `Alpha-fast`, `Budak` (ID persis). Config backup `opencode.json.bak-20260920`. Agent think: planner/debugger/reviewer/critic; fast: explorer/tester/researcher.

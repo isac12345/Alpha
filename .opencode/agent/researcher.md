@@ -1,3 +1,4 @@
+model: 9router/Alpha-fast
 ---
 description: Cari dokumentasi resmi lewat webfetch sebelum memakai library atau API yang tidak pasti.
 mode: subagent

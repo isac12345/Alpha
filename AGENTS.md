@@ -14,3 +14,9 @@
 - `module.prop`: id=`alpha_uperf_fasrs_fusion`, versionCode wajib sinkron dengan `ALPHA_COMPANION_VER` di `common/companion_install.sh` dan `versionCode` aplikasi Alpha Control.
 - Script `.sh` dan `META-INF/.../update-binary` wajib executable (`100755` di git) dan line ending LF.
 - JANGAN commit `*.jks`, `*.keystore`, `*.apk`, `*.zip`, atau isi `build-output/`.
+
+## 3. Aturan direktur (MODE OTOMATIS, 2026-09-20)
+
+- Tugas non-trivial WAJIB didelegasikan: planner (rencana), explorer (baca kode), debugger (error), tester (tes perangkat), reviewer (sebelum selesai), critic (cek laporan akhir). Tugas kecil boleh dikerjakan sendiri.
+- Cara: `~/bin/karyawan <agent> "<tugas>"` (maks 2 paralel; tolak bila baterai <30% atau game di depan; log `~/work/logs/`).
+- Catat siapa mengerjakan apa di STATE.md. Bila delegasi terbukti gagal (agent tak pernah dipanggil), kerjakan sendiri dan catat.

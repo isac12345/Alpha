@@ -1,3 +1,4 @@
+model: 9router/Alpha-think
 ---
 description: Pecah tugas besar jadi langkah kecil, identifikasi risiko dan kriteria selesai tiap langkah.
 mode: subagent

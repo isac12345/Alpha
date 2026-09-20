@@ -1,3 +1,4 @@
+model: 9router/Alpha-fast
 ---
 description: Baca dan petakan codebase, read-only. Kembalikan ringkasan pendek berisi temuan dan bukti.
 mode: subagent

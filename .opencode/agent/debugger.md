@@ -1,3 +1,4 @@
+model: 9router/Alpha-think
 ---
 description: Reproduksi error, telusuri akar masalah dari log, uji hipotesis satu per satu, baru perbaiki.
 mode: subagent
