@@ -92,23 +92,30 @@ public final class BubbleSettingsActivity extends Activity {
             sbSize.setMax(MAX_PROGRESS);
             sbSize.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
                 @Override public void onProgressChanged(android.widget.SeekBar s, int v, boolean f) {
-                    try {
+                    HelperGuard.run(BubbleSettingsActivity.this, "sizeSlider", () -> {
                         float sc = minScale + (maxScale - minScale) * v / (float) MAX_PROGRESS;
                         prefs().edit().putFloat("bubble_scale", sc).apply();
                         tvSizeValue.setText(String.format("%.0f%%", sc * 100));
-                        // Hanya simpan prefs. BubbleStyle.apply baca bubble_scale dari prefs
-                        // TIAP dipanggil; applyLook dipanggil saat service attach/updateSelection.
-                        // Tidak kirim BUBBLE_TOGGLE — itu XOR 'hidden' & panggil applyVisibility
-                        // tanpa applyLook (BubbleService.smali:2085-2100).
-                    }
-                    catch (Throwable t) { Log.w(TAG, "size gagal: " + t); }
+                        // Kirim refresh ke service hidup supaya applyLook dipanggil
+                        // (butuh hook smali di BubbleService utk handle BUBBLE_STYLE_REFRESH).
+                        if (isServiceRunning(BubbleServiceName())) {
+                            try {
+                                Intent t = new Intent(BubbleSettingsActivity.this,
+                                        Class.forName(BubbleServiceName()));
+                                t.setAction("com.alphabubble.BUBBLE_STYLE_REFRESH");
+                                startForegroundService(t);
+                            } catch (Throwable t2) {
+                                Log.w(TAG, "style refresh intent gagal: " + t2);
+                            }
+                        }
+                    });
                 }
                 @Override public void onStartTrackingTouch(android.widget.SeekBar s) {}
                 @Override public void onStopTrackingTouch(android.widget.SeekBar s) {
-                    try {
+                    HelperGuard.run(BubbleSettingsActivity.this, "sizeToast", () -> {
                         Toast.makeText(BubbleSettingsActivity.this,
                                 "Tersimpan & berlaku", Toast.LENGTH_SHORT).show();
-                    } catch (Throwable t) { Log.w(TAG, "size toast gagal: " + t); }
+                    });
                 }
             });
             root.addView(sbSize);
