@@ -1,5 +1,30 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Build 15 — audit b14 + D/E (2026-09-20)
+
+Audit statis b14 (langsung, direktur):
+
+| Poin | Status | Bukti |
+|---|---|---|
+| A1 bubble bawaan, hanya ukuran | SEBAGIAN | scale+clamp OK (BubbleStyle.java:65-66); tapi `setImageAlpha` (:100) + `setClipToOutline` (:102) masih aktif |
+| A2a slider baca tersimpan | SUDAH | prefs baca + clamp (BubbleSettingsActivity.java:197-198) |
+| A2b tulis tiap geser | SUDAH | onProgressChanged tulis prefs (:96-98) |
+| A2c refresh pasca-reset | SUDAH | reset panggil refreshSlider (:116-117) |
+| A2d tombol persen XML | BELUM | res60-100 tanpa fontFamily/background (activity_main.xml:66-70) |
+| A3 tombol galeri/banner | BELUM | btnAppBackground/Default tanpa gaya (:60-61) |
+| A3 chip seg profil | SUDAH | segBattery dkk benar (:24-26) |
+| A3 dialog crop | SEBAGIAN | monospace+radius OK, tapi radius tanpa ×density (BgEditor.java:181) |
+| A3 label slider | SUDAH | tvSizeValue + refreshSlider (:86-90, :194-204) |
+
+Dikerjakan: b15-d (A1 → skala-only, hapus alpha/corner apply + dead code)
++ b15-e (A2d/A3 → 7 tombol pill monospace). File disjoint: D=java, E=XML.
+Review: b14 diulang TERBACA (radius bug, dual key app_bg_crop/app_bg_uri,
+klaim ToolsKit tanpa bukti) → koreksi 8d89df4. D TERIMA + koreksi dead code.
+E TERIMA. Tester 4/4 PASS. Run tugas final: 2/10
+(`35501446870` aturan, `35502125769` build 15).
+Diketahui belum dikerjakan: ToolsKit.styleDialog radius juga tanpa ×density
+(ToolsKit.java:107) — pola sama, untuk build berikut.
+
 ## Arsitektur direktur-pekerja + pilot build 14 (2026-09-20)
 
 - Direktur (`direktur`, 9router/Budak): brief, delegasi, seleksi, merge. Pekerja:

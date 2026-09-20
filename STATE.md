@@ -1,6 +1,20 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
-- ARSITEKTUR DIREKTUR-PEKERJA + PILOT BUILD 14 (2026-09-20, TERIMA gabungan):
+- BUILD 15 (2026-09-20, TERIMA D+E, review terbaca):
+  Audit b14: A1 SEBAGIAN (alpha/corner masih aktif), A2 a-c SUDAH + d BELUM
+  (res60-100 mentah), A3 tombol galeri BELUM + chip SUDAH + dialog SEBAGIAN
+  (radius tanpa density) + label SUDAH.
+  Alur diperbaiki: brief path ABSOLUT, reviewer bash git-only (git diff/show/log
+  allow, lain deny — terverifikasi), pekerja disjoint (D=java, E=XML).
+  Review b14 yang GAGAL diulang TERBACA (temuan: radius tanpa density, dual key
+  crop/uri, klaim ToolsKit tanpa bukti) → koreksi 1 blok (8d89df4).
+  b15-d TERIMA (hapus alpha/corner apply, commit 891f126 + koreksi dead code
+  7aea74e, review TERIMA); b15-e TERIMA (7 tombol pill monospace, bb27915,
+  review TERIMA). Merge + bump 15 (945280d). Build 15 SUCCESS run
+  `35502125769` (package) — anggaran tugas final: 2/10 run.
+  APK `/sdcard/alpha/AlphaBubble-b15.apk` (`6b7c0e28...`, 2.3M) +
+  ZIP `/sdcard/alpha/Alpha-Fusion-v1-b15.zip` (5.6M); b14 utuh.
+  Tester 4/4 PASS statis. Worktree+cabang dihapus. BELUM tes HP. JANGAN merge master.
   Direktur: brief `~/work/tasks/b14-{bubble,restyle}.md`, 2 dev-apk paralel
   (worktree `~/work/wt/b14-{bubble,restyle}`, cabang `work/b14-*-dev`, trailer
   `Worker: dev-apk`), seleksi gabungan (konflik 1 blok di BSA diselesaikan
