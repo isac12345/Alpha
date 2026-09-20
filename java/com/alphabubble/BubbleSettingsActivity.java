@@ -69,15 +69,6 @@ public final class BubbleSettingsActivity extends Activity {
         setContentView(root);
 
         try {
-            android.widget.Button bBg = new android.widget.Button(this);
-            bBg.setText("Pilih latar bubble");
-            stylePillOutline(bBg);
-            bBg.setOnClickListener(v -> BubbleStyle.pickBackground(this, 8001));
-            root.addView(bBg);
-        } catch (Throwable t) {
-            Log.w(TAG, "onCreate: tombol latar gagal: " + t);
-        }
-        try {
             TextView lbSize = new TextView(this);
             lbSize.setText("Ukuran bubble");
             lbSize.setTypeface(Typeface.MONOSPACE);
@@ -89,13 +80,30 @@ public final class BubbleSettingsActivity extends Activity {
             tvSizeValue.setTextSize(14);
             root.addView(tvSizeValue);
             sbSize = new android.widget.SeekBar(this);
-            sbSize.setMax(80);
+            // Hitung batas skala dinamis: min 48dp sentuh, maks 50% lebar layar, default 100%
+            final float density = getResources().getDisplayMetrics().density;
+            final int screenWidthPx = getResources().getDisplayMetrics().widthPixels;
+            final float screenWidthDp = screenWidthPx / density;
+            // Asumsi bubble bawaan (skala 1.0) ~28% lebar layar (umum untuk bubble overlay)
+            final float defaultBubbleWidthDp = screenWidthDp * 0.28f;
+            final float minScale = Math.max(0.3f, Math.min(48f / defaultBubbleWidthDp, 0.8f));
+            final float maxScale = Math.max(1.2f, Math.min((screenWidthDp * 0.5f) / defaultBubbleWidthDp, 2.0f));
+            final int MAX_PROGRESS = 1000; // resolusi tinggi untuk presisi
+            sbSize.setMax(MAX_PROGRESS);
             sbSize.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
                 @Override public void onProgressChanged(android.widget.SeekBar s, int v, boolean f) {
                     try {
-                        float sc = 0.6f + v / 100.0f;
+                        float sc = minScale + (maxScale - minScale) * v / (float) MAX_PROGRESS;
                         prefs().edit().putFloat("bubble_scale", sc).apply();
                         tvSizeValue.setText(String.format("%.0f%%", sc * 100));
+                        // Terapkan segera bila service hidup (BubbleStyle.apply baca prefs tiap panggil)
+                        if (isServiceRunning(BubbleServiceName())) {
+                            try {
+                                Intent t = new Intent(BubbleSettingsActivity.this, Class.forName(BubbleServiceName()));
+                                t.setAction("com.alphabubble.BUBBLE_TOGGLE");
+                                startForegroundService(t);
+                            } catch (Throwable ignored) {}
+                        }
                     }
                     catch (Throwable t) { Log.w(TAG, "size gagal: " + t); }
                 }
@@ -103,18 +111,18 @@ public final class BubbleSettingsActivity extends Activity {
                 @Override public void onStopTrackingTouch(android.widget.SeekBar s) {
                     try {
                         Toast.makeText(BubbleSettingsActivity.this,
-                                "Berlaku saat bubble dibuka ulang", Toast.LENGTH_SHORT).show();
+                                "Tersimpan & berlaku segera", Toast.LENGTH_SHORT).show();
                     } catch (Throwable t) { Log.w(TAG, "size toast gagal: " + t); }
                 }
             });
             root.addView(sbSize);
-            refreshSlider();
+            refreshSlider(minScale, maxScale, MAX_PROGRESS);
             android.widget.Button bReset = new android.widget.Button(this);
             bReset.setText("Reset ke bawaan");
             stylePillOutline(bReset);
             bReset.setOnClickListener(v -> {
                 BubbleStyle.resetDefaults(this);
-                refreshSlider();
+                refreshSlider(minScale, maxScale, MAX_PROGRESS);
                 try {
                     Toast.makeText(this, "Kembali bawaan", Toast.LENGTH_SHORT).show();
                 } catch (Throwable t) { Log.w(TAG, "reset toast gagal: " + t); }
@@ -128,21 +136,6 @@ public final class BubbleSettingsActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
-        if (req != 8001 || res != RESULT_OK || data == null || data.getData() == null) return;
-        HelperGuard.run(this, "cropBg", () -> {
-            try {
-                android.graphics.Bitmap bmp = BubbleStyle.cropSquare(this, data.getData(), 256);
-                if (bmp == null) return;
-                String path = new java.io.File(getCacheDir(), "bubble_bg.png").getAbsolutePath();
-                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(path)) {
-                    bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos);
-                }
-                prefs().edit().putString("app_bg_uri", android.net.Uri.fromFile(new java.io.File(path)).toString()).apply();
-                Toast.makeText(this, "Latar bubble diganti", Toast.LENGTH_SHORT).show();
-            } catch (Throwable t) {
-                Log.w(TAG, "cropBg gagal: " + t);
-            }
-        });
     }
 
     @Override
@@ -191,16 +184,22 @@ public final class BubbleSettingsActivity extends Activity {
         }
     }
 
-    private void refreshSlider() {
+    private void refreshSlider(float minScale, float maxScale, int maxProgress) {
         if (sbSize == null) return;
         try {
             float sc = prefs().getFloat("bubble_scale", 1.0f);
-            if (sc < 0.6f || sc > 1.4f) sc = 1.0f;
-            sbSize.setProgress(Math.round((sc - 0.6f) * 100));
+            if (sc < minScale || sc > maxScale) sc = 1.0f;
+            int progress = Math.round((sc - minScale) * maxProgress / (maxScale - minScale));
+            sbSize.setProgress(progress);
             if (tvSizeValue != null) tvSizeValue.setText(String.format("%.0f%%", sc * 100));
         } catch (Throwable t) {
             Log.w(TAG, "refreshSlider gagal: " + t);
         }
+    }
+
+    private void refreshSlider() {
+        // Default fallback (should not be called after onCreate)
+        refreshSlider(0.6f, 1.4f, 1000);
     }
 
     /** Pill-outline button: transparent fill, dim stroke, monospace, theme colors. */
