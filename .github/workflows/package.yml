@@ -3,7 +3,7 @@ name: Package Alpha Fusion ZIP
 # Sampai ada di master, run lewat push ke fusion-v2.
 on:
   push:
-    branches: [ "fusion-v2" ]
+    branches: [ "fusion-v2", "work/*" ]
   workflow_dispatch:
 jobs:
   package:

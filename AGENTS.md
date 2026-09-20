@@ -15,8 +15,22 @@
 - Script `.sh` dan `META-INF/.../update-binary` wajib executable (`100755` di git) dan line ending LF.
 - JANGAN commit `*.jks`, `*.keystore`, `*.apk`, `*.zip`, atau isi `build-output/`.
 
-## 3. Aturan direktur (MODE OTOMATIS, 2026-09-20)
+## 3. Aturan direktur-pekerja (ARSITEKTUR 2026-09-20)
 
-- Tugas non-trivial WAJIB didelegasikan: planner (rencana), explorer (baca kode), debugger (error), tester (tes perangkat), reviewer (sebelum selesai), critic (cek laporan akhir). Tugas kecil boleh dikerjakan sendiri.
-- Cara: `~/bin/karyawan <agent> "<tugas>"` (maks 2 paralel; tolak bila baterai <30% atau game di depan; log `~/work/logs/`).
-- Catat siapa mengerjakan apa di STATE.md. Bila delegasi terbukti gagal (agent tak pernah dipanggil), kerjakan sendiri dan catat.
+- Direktur (agent `direktur`, Budak) TIDAK implementasi kode. Tugas: tulis brief
+  `~/work/tasks/<id>.md`, delegasikan via `~/bin/karyawan` (maks 2 paralel),
+  baca laporan + diff, jalankan reviewer/tester, putuskan
+  TERIMA / REVISI (maks 2 putaran) / KOREKSI KECIL (~20 baris) / BUANG, catat di
+  STATE.md, dan satu-satunya yang merge ke `fusion-v2`. Master tidak disentuh.
+  Bila pekerja gagal 2 putaran, direktur boleh kerjakan sendiri + catat alasan.
+- Pekerja (`dev-apk`: java/smali/XML/workflow; `dev-modul`: shell/config/uperf/fasrs;
+  `debugger`: crash) kerja HANYA di worktree `~/work/wt/<id>`, cabang
+  `work/<id>-<suffix>` dari fusion-v2, commit trailer `Worker: <agent>`.
+  DILARANG menyentuh fusion-v2/master. Lapor: ringkasan, `git diff --stat`,
+  bukti, hal yang belum pasti.
+- Pendukung: planner (sebelum brief), explorer (baca kode besar), researcher
+  (docs resmi), reviewer (setelah lapor, sebelum merge), tester (verifikasi
+  statis; tes perangkat hanya bila user mengetik "HP bebas"), critic (cek akhir).
+- Build: Actions (`package.yml` jalan untuk `fusion-v2` + `work/*`); Termux hanya
+  edit teks, git, gh. Version: `version.txt` = `ALPHA_COMPANION_VER` =
+  `module.prop` versionCode, naik per build.
