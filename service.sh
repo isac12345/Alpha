@@ -2,9 +2,10 @@
 # Alpha + Uperf Fusion - Late Start Service Entry Point
 MODDIR="${0%/*}"
 
-# Tunggu sampai boot completed sempurna (maksimal 60 detik)
+# M8: Tunggu boot completed, maksimal 120 detik (2x timeout).
+# Bila gagal → skip tuning + daemon + log (boot-guard).
 BOOT_WAIT=0
-BOOT_TIMEOUT=20
+BOOT_TIMEOUT=40
 until [ "$(getprop sys.boot_completed)" = "1" ] || [ "$BOOT_WAIT" -ge "$BOOT_TIMEOUT" ]; do
     sleep 3
     BOOT_WAIT=$((BOOT_WAIT + 1))
@@ -19,10 +20,39 @@ export ALPHA_CONF_DIR="$WORK_DIR"
 echo "=== Alpha + Uperf Fusion Starting Boot Service: $(date) ===" >> "$LOG_FILE"
 echo "[BOOT] boot service dimulai (MODDIR=$MODDIR WORK_DIR=$WORK_DIR)" >> "$LOG_FILE"
 
+BOOT_COMPLETED_OK=0
+# M8: counter boot gagal 2x berturut-turut (file .boot_fail_count).
+# Sukses (boot_completed=1) mereset counter ke 0.
+BOOT_FAIL_FILE="$WORK_DIR/.boot_fail_count"
+BOOT_FAIL_COUNT=$(cat "$BOOT_FAIL_FILE" 2>/dev/null | tr -cd '0-9')
+case "$BOOT_FAIL_COUNT" in ''|*[!0-9]*) BOOT_FAIL_COUNT=0 ;; esac
 if [ "$(getprop sys.boot_completed)" != "1" ]; then
-    echo "[WARN] sys.boot_completed tidak terdeteksi dalam 60 detik, melanjutkan eksekusi..." >> "$LOG_FILE"
+    BOOT_FAIL_COUNT=$((BOOT_FAIL_COUNT + 1))
+    printf '%s\n' "$BOOT_FAIL_COUNT" > "$BOOT_FAIL_FILE" 2>/dev/null
+    if [ "$BOOT_FAIL_COUNT" -ge 2 ]; then
+        echo "[M8] [WARN] boot gagal $BOOT_FAIL_COUNT x berturut-turut — BOOT-GUARD AKTIF" >> "$LOG_FILE"
+        echo "[M8] [WARN] tuning + daemon DILEWATI (boot-guard). Modul tidak melakukan apapun." >> "$LOG_FILE"
+    else
+        echo "[M8] [INFO] sys.boot_completed tidak terdeteksi dalam 120 detik (gagal $BOOT_FAIL_COUNT x) — boot-guard belum aktif (perlu 2x berturut-turut)" >> "$LOG_FILE"
+    fi
+    echo "[M8] [INFO] Coba reboot atau cek boot_completed secara manual. Restart service setelah boot_completed=1." >> "$LOG_FILE"
 else
+    rm -f "$BOOT_FAIL_FILE" 2>/dev/null
+    BOOT_COMPLETED_OK=1
     sleep 2
+fi
+
+# M8: DISABLE_TWEAKS kill-switch — bila file ini ada ATAU env=1,
+# skip SEMUA tuning + daemon. User bisa menonaktifkan modul tanpa uninstall.
+DISABLE_TWEAKS_FILE="$WORK_DIR/.disable_tweaks"
+if [ "${DISABLE_TWEAKS:-0}" = "1" ] || [ -f "$DISABLE_TWEAKS_FILE" ]; then
+    echo "[M8] [WARN] DISABLE_TWEAKS aktif — semua tuning + daemon DILEWATI" >> "$LOG_FILE"
+    BOOT_COMPLETED_OK=0
+fi
+
+if [ "$BOOT_COMPLETED_OK" = "0" ]; then
+    echo "=== Alpha boot-guard: skipped (boot_completed=$BOOT_COMPLETED_OK DISABLE_TWEAKS=${DISABLE_TWEAKS:-0}) ===" >> "$LOG_FILE"
+    exit 0
 fi
 
 # 1. Load Hardware Detection (atau baca cache)
@@ -41,6 +71,15 @@ if [ -f "$MODDIR/common/profiles.sh" ]; then
 else
     echo "[ERROR] profiles.sh tidak ditemukan!" >> "$LOG_FILE"
     exit 1
+fi
+
+# 2.1 Load Defaults (M3/M4) — catat hardware defaults bila pertama kali
+if [ -f "$MODDIR/common/defaults.sh" ]; then
+    . "$MODDIR/common/defaults.sh"
+    defaults_ensure
+    echo "[BOOT] tahap defaults.sh selesai" >> "$LOG_FILE"
+else
+    echo "[WARN] defaults.sh tidak ditemukan, M3/M4 defaults skipped" >> "$LOG_FILE"
 fi
 
 # 3. Load Execution Engine
@@ -75,6 +114,17 @@ tune_vm
 tune_thermal
 tune_network
 tune_gpu
+
+# M2: CPU Ownership — deteksi fas-rs vs Alpha fallback
+# Bila fas-rs hidup → powercfg.sh; bila mati → tune_cpu_freq fallback
+# dengan minimum 50% hardware_max, Performance = maksimum.
+if [ -f "$MODDIR/common/cpu_owner.sh" ]; then
+    . "$MODDIR/common/cpu_owner.sh"
+    cpu_detect_owner
+    echo "[M2] CPU_OWNER=$CPU_OWNER" >> "$LOG_FILE"
+else
+    echo "[M2] cpu_owner.sh tidak ditemukan, skip CPU ownership detect" >> "$LOG_FILE"
+fi
 
 # 5. Tulis Ringkasan Eksekusi
 echo "=== Alpha + Uperf Fusion Optimization Complete ===" >> "$LOG_FILE"
@@ -225,21 +275,34 @@ fi
 
 if [ -x "$MODDIR/fasrs/fas-rs" ] && [ "${FASRS_API:-0}" -gt 30 ] 2>/dev/null && [ "$FASRS_KERNEL_OK" = "1" ]; then
     sh "$MODDIR/fasrs/init_vtools.sh" "$(realpath "$MODDIR/module.prop")" 2>/dev/null
-    resetprop fas-rs-installed true 2>/dev/null
+    setprop fas-rs-installed true 2>/dev/null
 
+    # M6: until fas-rs ≤60 detik (bukan tak terbatas)
+    _fasrs_wait=0
+    _fasrs_ok=0
     until [ -d "$FASRS_DIR" ]; do
         sleep 1
+        _fasrs_wait=$((_fasrs_wait + 1))
+        if [ "$_fasrs_wait" -ge 60 ]; then
+            echo "[WARN] M6: fas-rs dir ($FASRS_DIR) tidak muncul dalam 60s, skip" >> "$LOG_FILE"
+            _fasrs_ok=1
+            break
+        fi
     done
 
-    if [ -f "$FASRS_MERGE_FLAG" ]; then
+    if [ "$_fasrs_ok" = "0" ] && [ -f "$FASRS_MERGE_FLAG" ]; then
         "$MODDIR/fasrs/fas-rs" merge "$MODDIR/fasrs/games.toml" > "$FASRS_DIR/.update_games.toml"
         rm -f "$FASRS_MERGE_FLAG"
         mv -f "$FASRS_DIR/.update_games.toml" "$FASRS_DIR/games.toml"
     fi
 
-    killall fas-rs 2>/dev/null
-    RUST_BACKTRACE=1 nohup "$MODDIR/fasrs/fas-rs" run "$MODDIR/fasrs/games.toml" >> "$FASRS_LOG" 2>&1 &
-    echo "[INFO] fas-rs scheduler started pid=$!" >> "$LOG_FILE"
+    if [ "$_fasrs_ok" = "0" ]; then
+        killall fas-rs 2>/dev/null
+        RUST_BACKTRACE=1 nohup "$MODDIR/fasrs/fas-rs" run "$MODDIR/fasrs/games.toml" >> "$FASRS_LOG" 2>&1 &
+        echo "[INFO] fas-rs scheduler started pid=$!" >> "$LOG_FILE"
+    else
+        echo "[WARN] fas-rs scheduler tidak dijalankan (FASRS_DIR timeout 60s)" >> "$LOG_FILE"
+    fi
 else
     echo "[WARN] fas-rs dilewati (binary tidak ada, atau syarat API/kernel tidak terpenuhi: API=$FASRS_API kernel=$FASRS_KREL)." >> "$LOG_FILE"
 fi
