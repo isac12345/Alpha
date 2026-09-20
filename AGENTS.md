@@ -15,8 +15,13 @@
 - Script `.sh` dan `META-INF/.../update-binary` wajib executable (`100755` di git) dan line ending LF.
 - JANGAN commit `*.jks`, `*.keystore`, `*.apk`, `*.zip`, atau isi `build-output/`.
 
-## 3. Aturan direktur-pekerja (ARSITEKTUR 2026-09-20)
+## 3. Aturan direktur-pekerja (ARSITEKTUR 2026-09-20, ROMBAK FASE 1 19:45)
 
+- Status kombo (terverifikasi 19:45): Alpha-fast OK, Budak OK;
+  Alpha-code + Alpha-review GAGAL (`Unexpected server error`, 3x tiap kombo,
+  dilaporkan, tidak diubah sendiri). Selama keduanya gagal: pekerja code
+  (dev-smali/java/res/modul) dan reviewer TIDAK bisa dipakai; qa (fast) BISA.
+  Eskalasi: direktur kerjakan sendiri bagian kecil + catat alasan di STATE.md.
 - Direktur (agent `direktur`, Budak) TIDAK implementasi kode. Tugas: tulis brief
   `/data/data/com.termux/files/home/work/tasks/<id>.md` (PATH ABSOLUT, daftar
   file eksklusif per pekerja), delegasikan via `~/bin/karyawan` (maks 2 paralel),
