@@ -28,8 +28,6 @@ public final class BubbleStyle {
     private static final String PREFS = "alpha_bubble";
 
     private static final String KEY_SCALE = "bubble_scale";
-    private static final String KEY_ALPHA = "bubble_alpha";
-    private static final String KEY_CORNER = "bubble_corner";
     private static final float SCALE_MIN = 0.6f;
     private static final float SCALE_MAX = 1.4f;
     private static final float SCALE_DEF = 1.0f;
@@ -41,8 +39,6 @@ public final class BubbleStyle {
             try {
                 c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                         .putFloat(KEY_SCALE, SCALE_DEF)
-                        .putInt(KEY_ALPHA, 255)
-                        .putInt(KEY_CORNER, 31)
                         .apply();
             } catch (Throwable t) {
                 Log.w(TAG, "resetDefaults gagal: " + t);

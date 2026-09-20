@@ -46,6 +46,7 @@
     <public type="color" name="androidx_core_secondary_text_default_material_light" id="0x7f03000c" />
     <public type="color" name="notification_action_color_filter" id="0x7f03000d" />
     <public type="color" name="notification_icon_bg_color" id="0x7f03000e" />
+    <public type="color" name="chip_text" id="0x7f03000f" />
     <public type="dimen" name="alpha_add_size" id="0x7f040000" />
     <public type="dimen" name="alpha_body_text" id="0x7f040001" />
     <public type="dimen" name="alpha_card_margin_bottom" id="0x7f040002" />
@@ -115,6 +116,7 @@
     <public type="drawable" name="pill_solid" id="0x7f050018" />
     <public type="drawable" name="seg_bg" id="0x7f050019" />
     <public type="drawable" name="ic_stat_alpha" id="0x7f05001a" />
+    <public type="drawable" name="chip_res" id="0x7f05001b" />
     <public type="id" name="accessibility_action_clickable_span" id="0x7f060000" />
     <public type="id" name="accessibility_custom_action_0" id="0x7f060001" />
     <public type="id" name="accessibility_custom_action_1" id="0x7f060002" />
