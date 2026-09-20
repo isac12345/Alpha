@@ -107,6 +107,16 @@ jobs:
           sed -f apk-patches/b9c-res-confirm.sed -i "$F"
           test "$(grep -c 'ToolsKit;->confirmKeep' "$F")" = "1" || { echo "hook confirmKeep gagal"; exit 1; }
           echo "hook confirmKeep OK"
+      - name: Apply Batch3 hooks (BubbleStyle + DynNotif)
+        run: |
+          set -e
+          F='work/decode/smali_classes4/com/alphabubble/BubbleService.smali'
+          sed -f apk-patches/b10a-bubblestyle.sed -i "$F"
+          test "$(grep -c 'BubbleStyle;->apply' "$F")" = "1" || { echo "hook style gagal"; exit 1; }
+          echo "hook style OK"
+          sed -f apk-patches/b10b-dynnotif.sed -i "$F"
+          test "$(grep -c 'DynNotif;->refresh' "$F")" = "1" || { echo "hook notif gagal"; exit 1; }
+          echo "hook notif OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
@@ -183,7 +193,11 @@ jobs:
             || { echo "HelperGuard tidak ada di classes5.dex"; exit 1; }
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/ToolsKit;" \
             || { echo "ToolsKit tidak ada di classes5.dex"; exit 1; }
-          echo "5 kelas di classes5.dex OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/BubbleStyle;" \
+            || { echo "BubbleStyle tidak ada di classes5.dex"; exit 1; }
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/DynNotif;" \
+            || { echo "DynNotif tidak ada di classes5.dex"; exit 1; }
+          echo "7 kelas di classes5.dex OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump xmltree work/AlphaBubble-signed.apk AndroidManifest.xml | grep -q "BubbleSettingsActivity" \
             || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
           echo "activity di manifest OK"

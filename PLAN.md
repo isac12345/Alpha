@@ -19,9 +19,10 @@
 - [ ] BLOCKED: konfirmasi render backend — `applyRender()` private tak bisa dipanggil balik dari Java tanpa reflection rapuh (`MainActivity.smali:860`, tombol lambda$5 `:1409` langsung invoke). Error: tidak ada jalur 1-baris aman. Dikeluarkan dari build 9.
 
 ## Batch 3 (build 10)
-- [ ] C1 kustomisasi bubble (ukuran, transparansi, bentuk, latar galeri).
-- [ ] Notifikasi dinamis: profil aktif + aksi cepat.
-- [ ] Editor crop background.
+- [ ] C1 kustomisasi bubble (slider ukuran tersimpan, alpha via bg_alpha bawaan, latar galeri via crop; bentuk penuh butuh rework view — parsial).
+- [ ] Notifikasi dinamis: judul profil aktif + aksi Show/Hide + Pengaturan.
+- [ ] Editor crop background (center-crop persegi 256px, simpan cache, tulis app_bg_uri).
+- [ ] BLOCKED: aksi profil per-item di notifikasi (PROFILE_* tanpa handler di onStartCommand `BubbleService.smali:2053-2105` — hanya BUBBLE_TOGGLE; butuh patch menengah). Dikeluarkan dari build 10.
 
 ## Backlog
 - [ ] B2 timeout perintah root.
