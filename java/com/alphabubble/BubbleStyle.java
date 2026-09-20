@@ -27,7 +27,28 @@ public final class BubbleStyle {
     private static final String TAG = "BubbleStyle";
     private static final String PREFS = "alpha_bubble";
 
+    private static final String KEY_SCALE = "bubble_scale";
+    private static final String KEY_ALPHA = "bubble_alpha";
+    private static final String KEY_CORNER = "bubble_corner";
+    private static final float SCALE_MIN = 0.6f;
+    private static final float SCALE_MAX = 1.4f;
+    private static final float SCALE_DEF = 1.0f;
+
     private BubbleStyle() {}
+
+    public static void resetDefaults(Context c) {
+        HelperGuard.run(c, "resetDef", () -> {
+            try {
+                c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                        .putFloat(KEY_SCALE, SCALE_DEF)
+                        .putInt(KEY_ALPHA, 255)
+                        .putInt(KEY_CORNER, 31)
+                        .apply();
+            } catch (Throwable t) {
+                Log.w(TAG, "resetDefaults gagal: " + t);
+            }
+        });
+    }
 
     // C1: terapkan gaya dari prefs. Dipanggil di akhir applyLook().
     // service = BubbleService (punya field bg/root/params/wm via reflection-free?
@@ -41,9 +62,10 @@ public final class BubbleStyle {
         Context c = (Context) svc;
         SharedPreferences sp = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         if (sp.getBoolean("helper_disabled", false)) return;
-        float scale = sp.getFloat("bubble_scale", 1.0f);
-        int alpha = sp.getInt("bubble_alpha", 255);
-        int corner = sp.getInt("bubble_corner", 31);
+        float scale = sp.getFloat(KEY_SCALE, SCALE_DEF);
+        if (scale < SCALE_MIN || scale > SCALE_MAX) scale = SCALE_DEF;
+        int alpha = sp.getInt(KEY_ALPHA, 255);
+        int corner = sp.getInt(KEY_CORNER, 31);
         try {
             java.lang.reflect.Field fRoot = svc.getClass().getDeclaredField("root");
             fRoot.setAccessible(true);
@@ -56,11 +78,14 @@ public final class BubbleStyle {
             WindowManager.LayoutParams params =
                     (WindowManager.LayoutParams) fParams.get(svc);
             if (root == null || bg == null || params == null) return;
-            float d = c.getResources().getDisplayMetrics().density;
-            int base = (int) (62 * d + 0.5f);
-            int size = Math.max(32, (int) (base * scale));
-            params.width = size;
-            params.height = size;
+            // JANGAN paksa width==height: LayoutParams asli WRAP_CONTENT.
+            // Skala proporsional via setScaleX/Y supaya isi ikut, tidak terpotong.
+            try {
+                root.setScaleX(scale);
+                root.setScaleY(scale);
+            } catch (Throwable t) {
+                Log.w(TAG, "apply: scale gagal: " + t);
+            }
             try {
                 java.lang.reflect.Field fWm = svc.getClass().getDeclaredField("wm");
                 fWm.setAccessible(true);

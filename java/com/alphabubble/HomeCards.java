@@ -232,7 +232,16 @@ public final class HomeCards {
         LinearLayout card = new LinearLayout(a);
         card.setId(CARD_ID);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundColor(Color.parseColor("#1e1e1e"));
+        try {
+            android.graphics.drawable.GradientDrawable gd =
+                    new android.graphics.drawable.GradientDrawable();
+            gd.setColor(Color.parseColor("#1e1e1e"));
+            gd.setCornerRadius(12 * d);
+            card.setBackground(gd);
+        } catch (Throwable t) {
+            Log.w(TAG, "card bg gagal: " + t);
+            card.setBackgroundColor(Color.parseColor("#1e1e1e"));
+        }
         card.setPadding(pad, pad, pad, pad);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -247,7 +256,7 @@ public final class HomeCards {
         card.addView(head);
 
         TextView desc = new TextView(a);
-        desc.setText("Gelembung akses cepat profil. Tahan 0,5 detik untuk menyembunyikan; tampilkan lagi dari sini.");
+        desc.setText("Akses cepat ganti profil.");
         desc.setTypeface(Typeface.MONOSPACE);
         desc.setTextColor(Color.parseColor("#87878a"));
         card.addView(desc);

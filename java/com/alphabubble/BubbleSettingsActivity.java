@@ -77,12 +77,13 @@ public final class BubbleSettingsActivity extends Activity {
             lbSize.setTextColor(Color.parseColor("#87878a"));
             root.addView(lbSize);
             android.widget.SeekBar sbSize = new android.widget.SeekBar(this);
-            sbSize.setMax(100);
+            sbSize.setMax(80);
             float sc = prefs().getFloat("bubble_scale", 1.0f);
-            sbSize.setProgress((int) (sc * 50));
+            if (sc < 0.6f || sc > 1.4f) sc = 1.0f;
+            sbSize.setProgress(Math.round((sc - 0.6f) * 100));
             sbSize.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
                 @Override public void onProgressChanged(android.widget.SeekBar s, int v, boolean f) {
-                    try { prefs().edit().putFloat("bubble_scale", v / 50.0f).apply(); }
+                    try { prefs().edit().putFloat("bubble_scale", 0.6f + v / 100.0f).apply(); }
                     catch (Throwable t) { Log.w(TAG, "size gagal: " + t); }
                 }
                 @Override public void onStartTrackingTouch(android.widget.SeekBar s) {}
@@ -94,6 +95,16 @@ public final class BubbleSettingsActivity extends Activity {
                 }
             });
             root.addView(sbSize);
+            android.widget.Button bReset = new android.widget.Button(this);
+            bReset.setText("Reset ke bawaan");
+            bReset.setTypeface(Typeface.MONOSPACE);
+            bReset.setOnClickListener(v -> {
+                BubbleStyle.resetDefaults(this);
+                try {
+                    Toast.makeText(this, "Kembali bawaan", Toast.LENGTH_SHORT).show();
+                } catch (Throwable t) { Log.w(TAG, "reset toast gagal: " + t); }
+            });
+            root.addView(bReset);
         } catch (Throwable t) {
             Log.w(TAG, "onCreate: slider gagal: " + t);
         }
