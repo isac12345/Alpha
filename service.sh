@@ -21,11 +21,24 @@ echo "=== Alpha + Uperf Fusion Starting Boot Service: $(date) ===" >> "$LOG_FILE
 echo "[BOOT] boot service dimulai (MODDIR=$MODDIR WORK_DIR=$WORK_DIR)" >> "$LOG_FILE"
 
 BOOT_COMPLETED_OK=0
+# M8: counter boot gagal 2x berturut-turut (file .boot_fail_count).
+# Sukses (boot_completed=1) mereset counter ke 0.
+BOOT_FAIL_FILE="$WORK_DIR/.boot_fail_count"
+BOOT_FAIL_COUNT=$(cat "$BOOT_FAIL_FILE" 2>/dev/null | tr -cd '0-9')
+case "$BOOT_FAIL_COUNT" in ''|*[!0-9]*) BOOT_FAIL_COUNT=0 ;; esac
 if [ "$(getprop sys.boot_completed)" != "1" ]; then
-    echo "[M8] [WARN] sys.boot_completed tidak terdeteksi dalam 120 detik — BOOT-GUARD AKTIF" >> "$LOG_FILE"
-    echo "[M8] [WARN] tuning + daemon DILEWATI (boot-guard). Modul tidak melakukan apapun." >> "$LOG_FILE"
+    BOOT_FAIL_COUNT=$((BOOT_FAIL_COUNT + 1))
+    printf '%s\n' "$BOOT_FAIL_COUNT" > "$BOOT_FAIL_FILE" 2>/dev/null
+    if [ "$BOOT_FAIL_COUNT" -ge 2 ]; then
+        echo "[M8] [WARN] boot gagal $BOOT_FAIL_COUNT x berturut-turut — BOOT-GUARD AKTIF" >> "$LOG_FILE"
+        echo "[M8] [WARN] tuning + daemon DILEWATI (boot-guard). Modul tidak melakukan apapun." >> "$LOG_FILE"
+    else
+        echo "[M8] [WARN] sys.boot_completed tidak terdeteksi dalam 120 detik (gagal $BOOT_FAIL_COUNT x) — BOOT-GUARD AKTIF" >> "$LOG_FILE"
+        echo "[M8] [WARN] tuning + daemon DILEWATI (boot-guard). Modul tidak melakukan apapun." >> "$LOG_FILE"
+    fi
     echo "[M8] [INFO] Coba reboot atau cek boot_completed secara manual. Restart service setelah boot_completed=1." >> "$LOG_FILE"
 else
+    rm -f "$BOOT_FAIL_FILE" 2>/dev/null
     BOOT_COMPLETED_OK=1
     sleep 2
 fi

@@ -523,6 +523,18 @@ tune_gpu_mali() {
     fi
     local mali_hw_max
     mali_hw_max=$(printf '%s\n' "$mali_table" | sort -nr | head -n 1)
+    # M3: bila defaults.conf mencatat GPU_MAX_FREQ valid dan <= tabel,
+    # pakai itu sebagai acuan 100% (bawaan perangkat, bukan tabel OPP).
+    if [ -n "${GPU_MAX_FREQ:-}" ]; then
+        case "$GPU_MAX_FREQ" in ''|*[!0-9]*) ;;
+            *)
+                if [ "$GPU_MAX_FREQ" -gt 0 ] 2>/dev/null && [ "$GPU_MAX_FREQ" -le "$mali_hw_max" ] 2>/dev/null; then
+                    log_msg "INFO" "$category" "M3: acuan GPU_MAX_FREQ=$GPU_MAX_FREQ (defaults.conf)"
+                    mali_hw_max="$GPU_MAX_FREQ"
+                fi
+                ;;
+        esac
+    fi
     local mali_percent="${GPU_FREQ_MAX_PERCENT:-100}"
     case "$mali_percent" in
         ''|*[!0-9]*) mali_percent=100 ;;
