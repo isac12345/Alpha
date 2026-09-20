@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -20,6 +21,10 @@ public final class BubbleSettingsActivity extends Activity {
     private static final String TAG = "BubbleSettings";
     private static final String PREFS = "alpha_bubble";
     private static final String KEY_HIDDEN = "hidden";
+    // Dashboard theme constants — consistent with activity_main.xml
+    private static final String CLR_INK = "#f4f2ee";
+    private static final String CLR_DIM = "#87878a";
+    private static final float PILL_RADIUS = 24f;
 
     private Switch swShow;
     private TextView tvPermStatus;
@@ -64,7 +69,7 @@ public final class BubbleSettingsActivity extends Activity {
         try {
             android.widget.Button bBg = new android.widget.Button(this);
             bBg.setText("Pilih latar bubble");
-            bBg.setTypeface(Typeface.MONOSPACE);
+            stylePillOutline(bBg);
             bBg.setOnClickListener(v -> BubbleStyle.pickBackground(this, 8001));
             root.addView(bBg);
         } catch (Throwable t) {
@@ -97,7 +102,7 @@ public final class BubbleSettingsActivity extends Activity {
             root.addView(sbSize);
             android.widget.Button bReset = new android.widget.Button(this);
             bReset.setText("Reset ke bawaan");
-            bReset.setTypeface(Typeface.MONOSPACE);
+            stylePillOutline(bReset);
             bReset.setOnClickListener(v -> {
                 BubbleStyle.resetDefaults(this);
                 try {
@@ -173,6 +178,27 @@ public final class BubbleSettingsActivity extends Activity {
             } catch (Throwable t) {
                 Log.w(TAG, "resyncSwitch: pasang listener gagal: " + t);
             }
+        }
+    }
+
+    /** Pill-outline button: transparent fill, dim stroke, monospace, theme colors. */
+    private static void stylePillOutline(android.widget.Button b) {
+        try {
+            float d = b.getResources().getDisplayMetrics().density;
+            GradientDrawable gd = new GradientDrawable();
+            gd.setCornerRadius(PILL_RADIUS * d);
+            gd.setColor(Color.TRANSPARENT);
+            gd.setStroke((int) (1 * d), Color.parseColor(CLR_DIM));
+            b.setBackground(gd);
+            b.setTextColor(Color.parseColor(CLR_INK));
+            b.setTypeface(Typeface.MONOSPACE);
+            b.setTextSize(11);
+            int ph = (int) (16 * d), pv = (int) (8 * d);
+            b.setPadding(ph, pv, ph, pv);
+            b.setElevation(0);
+            b.setStateListAnimator(null);
+        } catch (Throwable t) {
+            Log.w(TAG, "stylePillOutline: " + t);
         }
     }
 
