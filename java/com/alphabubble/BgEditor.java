@@ -7,7 +7,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -28,6 +30,11 @@ import java.io.InputStream;
 public final class BgEditor {
     private static final String TAG = "BgEditor";
     private static final String PREFS = "alpha_bubble";
+    // Dashboard theme constants — consistent with ToolsKit.styleDialog + activity_main.xml
+    private static final String CLR_INK = "#f4f2ee";
+    private static final String CLR_BG_DARK = "#1e1e1e";
+    private static final String CLR_DARK = "#232325";
+    private static final float PILL_RADIUS = 24f;
 
     private BgEditor() {}
 
@@ -81,11 +88,15 @@ public final class BgEditor {
 
         LinearLayout root = new LinearLayout(a);
         root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.parseColor(CLR_BG_DARK));
         int pad = (int) (12 * a.getResources().getDisplayMetrics().density);
         root.setPadding(pad, pad, pad, pad);
 
         TextView title = new TextView(a);
         title.setText("Atur latar (cubit untuk zoom, geser untuk posisi)");
+        title.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        title.setTextColor(Color.parseColor(CLR_INK));
+        title.setTextSize(14);
         root.addView(title);
 
         final ZoomView zv = new ZoomView(a, src, targetRatio);
@@ -97,9 +108,13 @@ public final class BgEditor {
         rg.setOrientation(RadioGroup.HORIZONTAL);
         final RadioButton rbFill = new RadioButton(a);
         rbFill.setText("Fill");
+        rbFill.setTypeface(Typeface.MONOSPACE);
+        rbFill.setTextColor(Color.parseColor(CLR_INK));
         rbFill.setChecked(true);
         final RadioButton rbFit = new RadioButton(a);
         rbFit.setText("Fit");
+        rbFit.setTypeface(Typeface.MONOSPACE);
+        rbFit.setTextColor(Color.parseColor(CLR_INK));
         rg.addView(rbFill);
         rg.addView(rbFit);
         root.addView(rg);
@@ -107,6 +122,18 @@ public final class BgEditor {
         final AlertDialog[] box = new AlertDialog[1];
         Button ok = new Button(a);
         ok.setText("SIMPAN");
+        // Pill-solid style: dark fill, light text, radius 24
+        float density = a.getResources().getDisplayMetrics().density;
+        android.graphics.drawable.GradientDrawable okBg =
+                new android.graphics.drawable.GradientDrawable();
+        okBg.setCornerRadius(PILL_RADIUS * density);
+        okBg.setColor(Color.parseColor(CLR_DARK));
+        ok.setBackground(okBg);
+        ok.setTextColor(Color.parseColor(CLR_INK));
+        ok.setTypeface(Typeface.MONOSPACE);
+        ok.setTextSize(11);
+        ok.setElevation(0);
+        ok.setStateListAnimator(null);
         ok.setOnClickListener(v -> HelperGuard.run(a, "bgSave", () -> {
             try {
                 boolean fill = rg.getCheckedRadioButtonId() == rbFill.getId();
@@ -140,7 +167,22 @@ public final class BgEditor {
                 .setCancelable(true)
                 .show();
         box[0] = d;
+        styleDialog(d);
         return true;
+    }
+
+    /** Apply dashboard dialog style: bg #1e1e1e, radius 24 — matches ToolsKit.styleDialog. */
+    private static void styleDialog(AlertDialog d) {
+        try {
+            if (d == null || d.getWindow() == null) return;
+            android.graphics.drawable.GradientDrawable gd =
+                    new android.graphics.drawable.GradientDrawable();
+            gd.setColor(Color.parseColor(CLR_BG_DARK));
+            gd.setCornerRadius(PILL_RADIUS);
+            d.getWindow().setBackgroundDrawable(gd);
+        } catch (Throwable t) {
+            Log.w(TAG, "styleDialog: " + t);
+        }
     }
 
     // Terapkan crop tersimpan ke view latar (dipanggil setelah applyAppBackground).
