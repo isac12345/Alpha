@@ -110,6 +110,15 @@ public final class HomeCards {
         tvNt.setText(nt ? "Notifikasi: aktif" : "Notifikasi: belum");
         bOv.setVisibility(ov ? View.GONE : View.VISIBLE);
         bNt.setVisibility(nt ? View.GONE : View.VISIBLE);
+        guardBatteryLab(a);
+    }
+
+    private static void guardBatteryLab(Activity a) throws Throwable {
+        int id = a.getResources().getIdentifier("btnBatteryLab", "id", a.getPackageName());
+        if (id == 0) return;
+        View v = a.findViewById(id);
+        if (v == null) return;
+        guardBatteryLab(v);
     }
 
     private static void onboardInner(Activity a) throws Throwable {

@@ -271,6 +271,7 @@
     <public type="id" name="btnAppBackground" id="0x7f060099" />
     <public type="id" name="btnAppBackgroundDefault" id="0x7f06009a" />
     <public type="id" name="seekAppBackgroundAlpha" id="0x7f06009b" />
+    <public type="id" name="btnBatteryLab" id="0x7f06009c" />
     <public type="integer" name="status_bar_notification_info_maxnum" id="0x7f070000" />
     <public type="layout" name="activity_main" id="0x7f080000" />
     <public type="layout" name="custom_dialog" id="0x7f080001" />
