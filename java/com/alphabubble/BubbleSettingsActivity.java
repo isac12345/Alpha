@@ -60,6 +60,63 @@ public final class BubbleSettingsActivity extends Activity {
 
         swShow.setOnCheckedChangeListener((buttonView, show) -> applyShow(show));
         setContentView(root);
+
+        try {
+            android.widget.Button bBg = new android.widget.Button(this);
+            bBg.setText("Pilih latar bubble");
+            bBg.setTypeface(Typeface.MONOSPACE);
+            bBg.setOnClickListener(v -> BubbleStyle.pickBackground(this, 8001));
+            root.addView(bBg);
+        } catch (Throwable t) {
+            Log.w(TAG, "onCreate: tombol latar gagal: " + t);
+        }
+        try {
+            TextView lbSize = new TextView(this);
+            lbSize.setText("Ukuran bubble");
+            lbSize.setTypeface(Typeface.MONOSPACE);
+            lbSize.setTextColor(Color.parseColor("#87878a"));
+            root.addView(lbSize);
+            android.widget.SeekBar sbSize = new android.widget.SeekBar(this);
+            sbSize.setMax(100);
+            float sc = prefs().getFloat("bubble_scale", 1.0f);
+            sbSize.setProgress((int) (sc * 50));
+            sbSize.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(android.widget.SeekBar s, int v, boolean f) {
+                    try { prefs().edit().putFloat("bubble_scale", v / 50.0f).apply(); }
+                    catch (Throwable t) { Log.w(TAG, "size gagal: " + t); }
+                }
+                @Override public void onStartTrackingTouch(android.widget.SeekBar s) {}
+                @Override public void onStopTrackingTouch(android.widget.SeekBar s) {
+                    try {
+                        Toast.makeText(BubbleSettingsActivity.this,
+                                "Berlaku saat bubble dibuka ulang", Toast.LENGTH_SHORT).show();
+                    } catch (Throwable t) { Log.w(TAG, "size toast gagal: " + t); }
+                }
+            });
+            root.addView(sbSize);
+        } catch (Throwable t) {
+            Log.w(TAG, "onCreate: slider gagal: " + t);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != 8001 || res != RESULT_OK || data == null || data.getData() == null) return;
+        HelperGuard.run(this, "cropBg", () -> {
+            try {
+                android.graphics.Bitmap bmp = BubbleStyle.cropSquare(this, data.getData(), 256);
+                if (bmp == null) return;
+                String path = new java.io.File(getCacheDir(), "bubble_bg.png").getAbsolutePath();
+                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(path)) {
+                    bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos);
+                }
+                prefs().edit().putString("app_bg_uri", android.net.Uri.fromFile(new java.io.File(path)).toString()).apply();
+                Toast.makeText(this, "Latar bubble diganti", Toast.LENGTH_SHORT).show();
+            } catch (Throwable t) {
+                Log.w(TAG, "cropBg gagal: " + t);
+            }
+        });
     }
 
     @Override
