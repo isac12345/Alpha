@@ -1,5 +1,36 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Arsitektur direktur-pekerja + pilot build 14 (2026-09-20)
+
+- Direktur (`direktur`, 9router/Budak): brief, delegasi, seleksi, merge. Pekerja:
+  `dev-apk` + `dev-modul` (9router/Alpha-think). Pendukung: planner/explorer/
+  researcher/tester/reviewer/critic. Backup config: `~/.config/opencode.bak-20260920-arsitek`.
+- `~/bin/karyawan` terima `--branch` + `--worktree` (validasi cabang worktree),
+  log `~/work/logs/`, maks 2 paralel, cek baterai/game seperti sebelumnya.
+- `package.yml` trigger `fusion-v2` + `work/*`. Total run tugas ini: 4
+  (1 aturan + 2 cabang kerja + 1 build 14) dari batas 8.
+- Pilot b14: bubble (refreshSlider + label % + refresh pasca-reset, 27+/5-)
+  + restyle (pill-outline, dialog BgEditor monospace/radius 24, 70+/2-).
+  Merge f2a6cdb (konflik 1 blok, resolve manual ~15 baris) + bump 14 (2311e09).
+  Run `35496819225` SUCCESS; APK `/sdcard/alpha/AlphaBubble-b14.apk` (`3e0fd5e4...`).
+
+| Agent | Mode | Model | Uji |
+|---|---|---|---|
+| direktur | primary | 9router/Budak | OK (`run --agent direktur`) |
+| dev-apk | all | 9router/Alpha-think | OK (b14 x2, header log `dev-apk · Alpha-think`) |
+| dev-modul | all | 9router/Alpha-think | OK (`run --agent dev-modul`) |
+| reviewer | all | 9router/Alpha-think | GAGAL: baca `~/...` (path tak resolve) + coba `bash` (deny) |
+| tester | all | 9router/Alpha-fast | OK header, verifikasi lewat (`git show`/read); tanpa compile |
+| explorer | all | 9router/Alpha-fast | OK (uji sebelumnya) |
+
+- Gagal + error persis: reviewer `Read ~/work/tasks/b14-bubble.md failed —
+  File not found: .../AlphaRebuild/~/work/tasks/b14-bubble.md` dan
+  `Invalid Tool ... Model tried to call unavailable tool 'bash'`.
+  Perbaikan: beri path absolut di tugas reviewer/tester; ingatkan pendukung
+  read-only agar tidak memanggil bash/git.
+- Revisi per item: b14-bubble 0, b14-restyle 0. Direktur turun tangan: 1x
+  (resolve konflik). Master tidak disentuh. BELUM tes HP.
+
 ## Keputusan
 
 1. Repo `isac12345/Alpha` branch `fusion-v2` = source modul Magisk (bukan app source; app source tersimpan di tag `backup-source-rebuild`).

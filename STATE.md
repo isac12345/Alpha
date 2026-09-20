@@ -1,5 +1,30 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- ARSITEKTUR DIREKTUR-PEKERJA + PILOT BUILD 14 (2026-09-20, TERIMA gabungan):
+  Direktur: brief `~/work/tasks/b14-{bubble,restyle}.md`, 2 dev-apk paralel
+  (worktree `~/work/wt/b14-{bubble,restyle}`, cabang `work/b14-*-dev`, trailer
+  `Worker: dev-apk`), seleksi gabungan (konflik 1 blok di BSA diselesaikan
+  manual, kedua sisi dipertahankan), merge f2a6cdb + bump 14 (2311e09).
+  Build 14 SUCCESS run `35496819225`; APK `/sdcard/alpha/AlphaBubble-b14.apk`
+  (`3e0fd5e4...`, 2.3M). Revisi: 0 putaran (keduanya TERIMA langsung).
+  Turun tangan direktur: 1x (resolve konflik merge, ~15 baris).
+  Bukti model (header log): dev-apk x2 = Alpha-think, reviewer = Alpha-think
+  (gagal path), tester = Alpha-fast (PASS statis). Reviewer/tester gagal
+  sebagian (path `~` + bash-deny) — direktur verifikasi sendiri (brace 65/65,
+  48/48; pola OK; ver 13 sinkron sebelum bump). Worktree + cabang kerja
+  dihapus. BELUM tes HP. JANGAN merge master.
+  (Token konteks footer: tidak tersedia di CLI ini — tidak dicatat.)
+
+- PERBAIKAN TIM KARYAWAN (2026-09-20, non-kode, sudah diverifikasi jalan):
+  Model bawaan `9router/oc/mimo-v2.5-free`; agent plan=primary/Alpha-think;
+  7 agent `~/.config/opencode/agent/*.md` mode all (think: planner/debugger/reviewer/critic,
+  fast: explorer/tester/researcher); izin `external_directory ~/work/**`=allow.
+  Uji: run bawaan OK, plan OK, debugger OK (Alpha-think), explorer via skrip OK
+  (Alpha-fast, ISI=13), explorer ringkas 5 baris OK, reviewer temukan 2 bug ringkasan OK.
+  Task-tool dalam sesi lama gagal (cache config sesi, mimo-auto) — sesi baru OK.
+  Backup: `~/.config/opencode.bak-20260920-fix`. Detail tabel di NOTES.md.
+  Perubahan STATE/NOTES ini BELUM di-commit (menunggu instruksi user).
+
 - MODE DIREKTUR 2026-09-20: TAHAP 0 lolos (Alpha-think/fast + Budak ada).
   TAHAP 1 selesai (model agent, karyawan, aturan, tabel uji NOTES).
   DELEGASI GAGAL: `opencode run --agent <subagent>` → "agent is a subagent,
