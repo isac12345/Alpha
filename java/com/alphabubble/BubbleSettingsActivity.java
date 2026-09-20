@@ -73,16 +73,16 @@ public final class BubbleSettingsActivity extends Activity {
         boolean granted;
         try {
             granted = Settings.canDrawOverlays(this);
-        } catch (Exception e) {
-            Log.w(TAG, "refreshPermStatus: canDrawOverlays gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "refreshPermStatus: canDrawOverlays gagal: " + t);
             granted = false;
         }
         try {
             tvPermStatus.setText(granted
                     ? "Izin overlay: aktif"
                     : "Izin overlay: belum diberikan");
-        } catch (Exception e) {
-            Log.w(TAG, "refreshPermStatus: set teks gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "refreshPermStatus: set teks gagal: " + t);
         }
     }
 
@@ -90,20 +90,20 @@ public final class BubbleSettingsActivity extends Activity {
         boolean hidden;
         try {
             hidden = prefs().getBoolean(KEY_HIDDEN, false);
-        } catch (Exception e) {
-            Log.w(TAG, "resyncSwitch: baca prefs gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "resyncSwitch: baca prefs gagal: " + t);
             return;
         }
         try {
             swShow.setOnCheckedChangeListener(null);
             swShow.setChecked(!hidden);
-        } catch (Exception e) {
-            Log.w(TAG, "resyncSwitch: set switch gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "resyncSwitch: set switch gagal: " + t);
         } finally {
             try {
                 swShow.setOnCheckedChangeListener((buttonView, show) -> applyShow(show));
-            } catch (Exception e) {
-                Log.w(TAG, "resyncSwitch: pasang listener gagal: " + e);
+            } catch (Throwable t) {
+                Log.w(TAG, "resyncSwitch: pasang listener gagal: " + t);
             }
         }
     }
@@ -118,8 +118,8 @@ public final class BubbleSettingsActivity extends Activity {
         boolean curHidden;
         try {
             curHidden = sp.getBoolean(KEY_HIDDEN, false);
-        } catch (Exception e) {
-            Log.w(TAG, "applyShow: baca prefs gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "applyShow: baca prefs gagal: " + t);
             return;
         }
         if (curHidden == wantHidden) {
@@ -129,8 +129,8 @@ public final class BubbleSettingsActivity extends Activity {
             boolean granted;
             try {
                 granted = Settings.canDrawOverlays(this);
-            } catch (Exception e) {
-                Log.w(TAG, "applyShow: canDrawOverlays gagal: " + e);
+            } catch (Throwable t) {
+                Log.w(TAG, "applyShow: canDrawOverlays gagal: " + t);
                 granted = false;
             }
             if (!granted) {
@@ -139,8 +139,8 @@ public final class BubbleSettingsActivity extends Activity {
                     Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                             Uri.parse("package:" + getPackageName()));
                     startActivity(i);
-                } catch (Exception e) {
-                    Log.w(TAG, "applyShow: buka overlay permission gagal: " + e);
+                } catch (Throwable t) {
+                    Log.w(TAG, "applyShow: buka overlay permission gagal: " + t);
                 }
                 refreshPermStatus();
                 resyncSwitch();
@@ -161,15 +161,15 @@ public final class BubbleSettingsActivity extends Activity {
             } else {
                 try {
                     sp.edit().putBoolean(KEY_HIDDEN, wantHidden).apply();
-                } catch (Exception e) {
-                    Log.w(TAG, "applyShow: tulis prefs gagal: " + e);
+                } catch (Throwable t) {
+                    Log.w(TAG, "applyShow: tulis prefs gagal: " + t);
                     return;
                 }
                 Intent s = new Intent(this, Class.forName(BubbleServiceName()));
                 startForegroundService(s);
             }
-        } catch (Exception e) {
-            Log.w(TAG, "applyShow: kirim ke service gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "applyShow: kirim ke service gagal: " + t);
         }
     }
 
@@ -186,8 +186,8 @@ public final class BubbleSettingsActivity extends Activity {
                     return true;
                 }
             }
-        } catch (Exception e) {
-            Log.w(TAG, "isServiceRunning gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "isServiceRunning gagal: " + t);
         }
         return false;
     }

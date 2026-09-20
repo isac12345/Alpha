@@ -13,6 +13,11 @@ public final class HideFeedback {
     private HideFeedback() {}
 
     public static void buzz(Context c) {
+        final Context ctx = c;
+        HelperGuard.run(ctx, "buzz", () -> buzzInner(ctx));
+    }
+
+    private static void buzzInner(Context c) {
         if (c == null) {
             Log.w(TAG, "buzz: context null, dilewati");
             return;
@@ -28,13 +33,13 @@ public final class HideFeedback {
             } else {
                 Log.w(TAG, "buzz: vibrator tidak tersedia");
             }
-        } catch (Exception e) {
-            Log.w(TAG, "buzz: vibrate gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "buzz: vibrate gagal: " + t);
         }
         try {
             Toast.makeText(c, "Bubble disembunyikan", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Log.w(TAG, "buzz: toast gagal: " + e);
+        } catch (Throwable t) {
+            Log.w(TAG, "buzz: toast gagal: " + t);
         }
     }
 }
