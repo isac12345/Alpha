@@ -81,6 +81,17 @@ jobs:
           test "$(grep -c '0x108009b' "$F")" = "0" || { echo "ikon lama masih ada"; exit 1; }
           grep -n '0x7f05001a' "$F"
           echo "patch B2 OK"
+      - name: Apply Batch1 HomeCards hooks (onCreate + onResume)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          echo "sebelum: $(grep -c 'HomeCards' "$F" || true) hook"
+          sed -f apk-patches/b8-homecards-hook.sed -i "$F"
+          test "$(grep -c 'HomeCards;->attach' "$F")" = "1" || { echo "hook attach gagal"; exit 1; }
+          test "$(grep -c 'HomeCards;->refresh' "$F")" = "1" || { echo "hook refresh gagal"; exit 1; }
+          test "$(grep -c 'HomeCards;->maybeOnboard' "$F")" = "1" || { echo "hook onboard gagal"; exit 1; }
+          grep -n 'HomeCards' "$F"
+          echo "hook Batch1 OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
@@ -151,7 +162,11 @@ jobs:
             || { echo "HideFeedback tidak ada di classes5.dex"; exit 1; }
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/BubbleSettingsActivity;" \
             || { echo "BubbleSettingsActivity tidak ada di classes5.dex"; exit 1; }
-          echo "2 kelas di classes5.dex OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/HomeCards;" \
+            || { echo "HomeCards tidak ada di classes5.dex"; exit 1; }
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/HelperGuard;" \
+            || { echo "HelperGuard tidak ada di classes5.dex"; exit 1; }
+          echo "4 kelas di classes5.dex OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump xmltree work/AlphaBubble-signed.apk AndroidManifest.xml | grep -q "BubbleSettingsActivity" \
             || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
           echo "activity di manifest OK"
