@@ -18,11 +18,16 @@
 ## 3. Aturan direktur-pekerja (ARSITEKTUR 2026-09-20)
 
 - Direktur (agent `direktur`, Budak) TIDAK implementasi kode. Tugas: tulis brief
-  `~/work/tasks/<id>.md`, delegasikan via `~/bin/karyawan` (maks 2 paralel),
-  baca laporan + diff, jalankan reviewer/tester, putuskan
+  `/data/data/com.termux/files/home/work/tasks/<id>.md` (PATH ABSOLUT, daftar
+  file eksklusif per pekerja), delegasikan via `~/bin/karyawan` (maks 2 paralel),
+  baca laporan + diff, jalankan reviewer (git-only) + tester, putuskan
   TERIMA / REVISI (maks 2 putaran) / KOREKSI KECIL (~20 baris) / BUANG, catat di
   STATE.md, dan satu-satunya yang merge ke `fusion-v2`. Master tidak disentuh.
   Bila pekerja gagal 2 putaran, direktur boleh kerjakan sendiri + catat alasan.
+- Review yang GAGAL dijalankan = "review GAGAL", DIULANG, jangan diganti
+  pemeriksaan lain. Tiap item wajib punya review terbaca SEBELUM diterima.
+- Pekerja paralel DILARANG mengedit file yang sama; bila tumpang tindih,
+  kerjakan berurutan.
 - Pekerja (`dev-apk`: java/smali/XML/workflow; `dev-modul`: shell/config/uperf/fasrs;
   `debugger`: crash) kerja HANYA di worktree `~/work/wt/<id>`, cabang
   `work/<id>-<suffix>` dari fusion-v2, commit trailer `Worker: <agent>`.

@@ -175,10 +175,13 @@ public final class BgEditor {
     private static void styleDialog(AlertDialog d) {
         try {
             if (d == null || d.getWindow() == null) return;
+            float dens = 1f;
+            try { dens = d.getContext().getResources().getDisplayMetrics().density; }
+            catch (Throwable t) { Log.w(TAG, "styleDialog: density gagal: " + t); }
             android.graphics.drawable.GradientDrawable gd =
                     new android.graphics.drawable.GradientDrawable();
             gd.setColor(Color.parseColor(CLR_BG_DARK));
-            gd.setCornerRadius(PILL_RADIUS);
+            gd.setCornerRadius(PILL_RADIUS * dens);
             d.getWindow().setBackgroundDrawable(gd);
         } catch (Throwable t) {
             Log.w(TAG, "styleDialog: " + t);
