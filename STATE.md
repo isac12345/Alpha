@@ -1,5 +1,16 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- GANTI RENCANA TANPA KOMBO (2026-09-21, DIJEDA atas permintaan user):
+  Pekerjaan APK/modul DIJEDA. Tanpa sentuh perangkat (tanpa pm/su/input/screenshot/tulis /sys|/proc/reboot/flash).
+  Versi v1, tanpa force push, master tidak disentuh, tanpa cetak/commit secret (API key dibaca dari config, tidak dicetak).
+  Backup ~/.config/opencode SEBELUM ubah. FASE0: NOL pekerja (pgrep/locks kosong), worktree bersih
+  (final-apk 0944574, final-modul c0917d9, m9-verify ce57a28), HEAD fusion-v2 5723662.
+  `M AGENTS.md` BELUM diverifikasi (klaim kombo OK via curl vs GAGAL via opencode run + log 20:46 Cannot connect) — TIDAK di-commit.
+  prov-riset GAGAL (researcher Alpha-fast: "Cannot connect to API: Unable to connect") +
+  prov-backup GAGAL (ci Alpha-fast: sama) — putaran 1 terdokumentasi. Rencana: FASE1 daftar TANPA KOMBO,
+  FASE2 uji T1/T2 via 9router (90/20/30/12 + rate 20/40 per menit), FASE3 pasang langsung ke karyawan,
+  FASE4 uji tim. DIJEDA atas permintaan user.
+
 - CHECKPOINT DIJEDA (2026-09-20 20:20, rincian ~/work/CHECKPOINT.md):
   Pekerja NOL. HEAD=8edb53a. final-apk=0944574 (A1+A3 SELESAI, A2 SEPARUH,
   review TERIMA, BELUM merge). final-modul=c0917d9 (M1,M2,M4-M7 SELESAI;
