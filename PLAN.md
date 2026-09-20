@@ -18,10 +18,12 @@
 - [x] Restyle Tools (overlay).
 - [ ] BLOCKED: konfirmasi render backend (alasan di atas).
 
-## Batch 3 (build 10) — PIPELINE SUCCESS, tag batch3-built, tes UI ditunda
-- [x] C1 kustomisasi bubble (slider ukuran, crop latar galeri; bentuk penuh parsial).
-- [x] Notifikasi dinamis: judul profil aktif + aksi Show/Hide + Pengaturan.
-- [x] Editor crop background (center-crop 256px, cache, app_bg_uri).
+## Batch 3 (build 10) + perbaikan tes HP (build 13, run `35493343726`)
+- [x] C1 kustomisasi bubble: proporsional setScale (tanpa paksa persegi), clamp 60-140%, slider baca tersimpan/default 100%, RESET KE BAWAAN.
+- [x] Notifikasi dinamis: judul profil aktif + aksi Show/Hide + Pengaturan (aksi berfungsi? PERLU tekan manual).
+- [x] Editor crop background: hook handlePick + gravity CENTER + inSampleSize; picker TERBUKTI terbuka (screenshot). Crop+simpan: PERLU TES MANUAL.
+- [x] Dexopt FC diperbaiki (Context signatures) + status jujur; TERVERIFIKASI HP (Canta 89.788 dtk, tanpa crash).
+- [x] Kartu Home 1 kalimat + membulat; pill APPLY/RESET/DEXOPT (dump + screenshot).
 - [ ] BLOCKED: aksi profil per-item (alasan di atas).
 
 ## Backlog

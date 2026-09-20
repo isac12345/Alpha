@@ -133,6 +133,17 @@ opsinya (c2) tulis ulang source menyamai perilaku (usaha besar, perlu persetujua
 - Tes perangkat build 10: STATIS SAJA (Chrome di depan saat build selesai; tes UI + install ditunda). alpha-test penuh dijadwalkan serah-terima bila layar aman.
 - Cert SAMA semua build (timpa tanpa uninstall).
 
+## v1 build 13 perbaikan tes HP (2026-09-20)
+
+- Run `35493343726` SUCCESS: 8 kelas dex, versionCode 13, cert SAMA. APK `/sdcard/alpha/AlphaBubble-b13.apk` (`41bec86e...`).
+- Fix1 dexopt FC: VerifyError v1 Context vs Activity (`MainActivity$openDexopt$3$1$1$1$1`, log 09-20 PID 22101) → signature Context + cast + main looper. TERVERIFIKASI HP: Canta 89.788 dtk, dialog "Hasil dexopt", tanpa crash. Status get-compile-mode = Unknown command → fallback jujur (mode sukses / "?").
+- Fix2 bubble proporsional (setScaleX/Y, tanpa paksa persegi) + clamp 60-140% + RESET KE BAWAAN (dump BSA + screenshot b13-bsa.png).
+- Fix4 kartu: "Akses cepat ganti profil." + GradientDrawable membulat (dump home5 + b13-homecard.png).
+- Fix5 crop: hook handlePick + gravity CENTER; picker terbuka (screenshot b13-picker.png) → STOP, PERLU TES MANUAL lanjut (pilih gambar + crop + simpan).
+- Fix6 pill: APPLY RES/RESET NATIVE/DEXOPT gaya pill_outline + monospace (dump b13tools + b13-tools.png).
+- Fix3 aksi Pengaturan: sudah ada dari build 10, belum ditekan (butuh buka notifikasi shade manual).
+- BELUM lolos user. JANGAN merge master.
+
 ## Uji model Budak (2026-09-20, TAHAP 1)
 
 | Model | Agent uji | Tugas | Hasil |
