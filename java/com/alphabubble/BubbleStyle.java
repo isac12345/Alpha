@@ -97,12 +97,7 @@ public final class BubbleStyle {
             } catch (Throwable t) {
                 Log.w(TAG, "apply: wm gagal: " + t);
             }
-            bg.setImageAlpha(alpha);
-            try {
-                bg.setClipToOutline(corner >= 31);
-            } catch (Throwable t) {
-                Log.w(TAG, "apply: clip gagal: " + t);
-            }
+            // alpha + corner diabaikan (bawaan sistem). Hanya skala yang diterapkan.
         } catch (Throwable t) {
             Log.w(TAG, "apply gagal: " + t);
         }
