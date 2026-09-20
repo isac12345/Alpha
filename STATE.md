@@ -84,3 +84,17 @@
   - Jalur nyata: (a) overlay `res/`+`AndroidManifest.xml`, (b) patch smali kecil (perlu baca smali dulu), (c2) source Kotlin untuk fitur besar.
   - Pipeline terintegrasi `package.yml` berfungsi: zip v3 5.4M (`~/work/v3/Alpha-Fusion-v2.zip`), APK cert baru `a0698c50…`, package `com.alphabubble` versionCode 3 = version.txt = sh.
   - B1 DONE (Override-first), manifest overlay DONE. B3 dilewati, B2/F2 ditunda. Belum merge ke master. Flash + tes HP: OK menurut laporan user (belum ada angka label terverifikasi independen).
+
+- TAHAP 3 MODUL (2026-09-20, branch `work/final-modul`, commit `de9d984`):
+  M1-M9 SELESAI (Worker: dev-modul).
+  - M1: customize.sh disable uperf cpu.enable (Alpha/fas-rs owns CPU governor/freq).
+  - M2: cpu_owner.sh (baru) — fas-rs via /dev/fas_rs/mode + powercfg.sh; alpha fallback tune_cpu_freq min 50% hardware_max, perf=100%.
+  - M3: defaults.sh (baru) — catat GPU max_freq + VM stock bawaan saat pertama; verifikasi baca-ulang + log bila berubah; MTK GED/gpufreq hanya bila write-readback OK.
+  - M4: profiles.sh battery dirty_ratio=20, vfs=100; engine.sh tune_vm raise swap>=stock bila zRAM aktif (prefix-aware /sys/block/zram0).
+  - M5: tune_network respek NET_TCP_PREFERENCE dari available list, fallback bbr→cubic.
+  - M6: service.sh fas-rs dir wait ≤60s; customize.sh .alpha_installed marker; uninstall.sh hapus config hanya bila marker ada.
+  - M7: tune_render pakai setprop (bukan resetprop); default→log "perlu reboot + restart aplikasi".
+  - M8: service.sh boot-guard (120s timeout 2x), DISABLE_TWEAKS env+file kill-switch, semua runtime di alpha.log.
+  - M9: sandbox sysfs palsu via SYSFS_*_PREFIX di ~/work/sandbox-final-modul (bukan /tmp). Skrip uji: ~/work/sandbox-test-m9.sh. Result: 10/10 PASS.
+  - sh -n: clean 7/7 file. shellcheck -S error: 0 error (SC2129/SC3043/SC2034 pre-existing style). json.tool: 0 JSON modified.
+  - Push ke work/final-modul OK.
