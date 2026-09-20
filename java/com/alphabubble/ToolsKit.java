@@ -43,11 +43,10 @@ public final class ToolsKit {
         }
     }
 
-    // C3a: dexopt mulai (hook tombol Dexopt). Progres + catat waktu + status awal.
+    // C3a: dexopt mulai (hook tombol Dexopt). Progres + catat waktu.
     public static void dexoptStart(Activity a) {
         HelperGuard.run(a, "dexoptStart", () -> {
             t0 = System.currentTimeMillis();
-            String before = compileStatus();
             try {
                 if (prog != null) {
                     try { prog.dismiss(); } catch (Throwable t) {
@@ -56,7 +55,7 @@ public final class ToolsKit {
                 }
                 prog = new ProgressDialog(a);
                 prog.setTitle("Dexopt");
-                prog.setMessage("Mengompilasi...\nStatus awal: " + before);
+                prog.setMessage("Mengompilasi...");
                 prog.setCancelable(false);
                 prog.show();
             } catch (Throwable t) {
@@ -81,7 +80,9 @@ public final class ToolsKit {
                 Log.w(TAG, "dexoptDone: prog gagal: " + t);
             }
             final Activity a = asActivity(c);
-            final String after = compileStatus();
+            final boolean ok = res.startsWith("Compile selesai:");
+            final String mode = ok ? res.replaceFirst(".*:\\s*", "") : "?";
+            final String after = compileStatus(ok, mode);
             main(() -> {
                 try {
                     AlertDialog d = new AlertDialog.Builder(a)
@@ -177,18 +178,14 @@ public final class ToolsKit {
     }
 
 
+    // Android 14 tak punya query status compile bawaan (get-compile-mode =
+    // "Unknown command"). Kembalikan mode yang diminta bila sukses, "?" bila gagal.
+    private static String compileStatus(boolean ok, String mode) {
+        return ok ? mode : "?";
+    }
+
     private static String compileStatus() {
-        try {
-            Process p = Runtime.getRuntime().exec(
-                    new String[]{"su", "-c", "cmd package get-compile-mode com.alphabubble"});
-            java.util.Scanner s = new java.util.Scanner(p.getInputStream()).useDelimiter("\\A");
-            String out = s.hasNext() ? s.next().trim() : "?";
-            p.waitFor();
-            return out.isEmpty() ? "?" : out;
-        } catch (Throwable t) {
-            Log.w(TAG, "compileStatus gagal: " + t);
-            return "?";
-        }
+        return "?";
     }
 
     public static void toast(Context c, String msg) {
