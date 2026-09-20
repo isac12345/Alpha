@@ -15,7 +15,8 @@
 ## Batch 2 (build 9)
 - [ ] C3 dexopt progres + hasil (cek speed-profile, debuggable=false).
 - [ ] C2 revert resolusi otomatis (root penjaga).
-- [ ] Konfirmasi render backend + restyle Tools.
+- [ ] Restyle Tools (overlay).
+- [ ] BLOCKED: konfirmasi render backend — `applyRender()` private tak bisa dipanggil balik dari Java tanpa reflection rapuh (`MainActivity.smali:860`, tombol lambda$5 `:1409` langsung invoke). Error: tidak ada jalur 1-baris aman. Dikeluarkan dari build 9.
 
 ## Batch 3 (build 10)
 - [ ] C1 kustomisasi bubble (ukuran, transparansi, bentuk, latar galeri).

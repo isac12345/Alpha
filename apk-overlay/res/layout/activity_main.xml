@@ -27,7 +27,7 @@
             </LinearLayout>
         </LinearLayout>
         <LinearLayout android:orientation="vertical" android:background="@drawable/card_bg" android:padding="@dimen/alpha_card_padding" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/alpha_card_margin_bottom">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="RENDER BACKEND" style="@style/AlphaSectionLabel" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="RENDER" style="@style/AlphaSectionLabel" />
             <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10.0dp">
                 <Spinner android:id="@id/spRender" android:background="@drawable/field_bg" android:padding="12.0dp" android:layout_width="0.0dp" android:layout_height="wrap_content" android:layout_weight="1.0" android:fontFamily="monospace" />
                 <Button android:textSize="11.0sp" android:textColor="@color/alpha_dark" android:id="@id/btnRenderApply" android:background="@drawable/pill_solid" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="APPLY" android:fontFamily="monospace" android:layout_marginStart="8.0dp" android:stateListAnimator="@null" />
@@ -55,7 +55,7 @@
             <Button android:textSize="11.0sp" android:textColor="@color/alpha_ink" android:id="@id/btnRedetect" android:background="@drawable/pill_outline" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10.0dp" android:text="DETEKSI ULANG" android:fontFamily="monospace" android:stateListAnimator="@null" />
         </LinearLayout>
         <LinearLayout android:orientation="vertical" android:id="@id/cardTools" android:background="@drawable/card_bg" android:padding="@dimen/alpha_card_padding" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/alpha_card_margin_bottom">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="TOOLS" style="@style/AlphaSectionLabel" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="PERALATAN" style="@style/AlphaSectionLabel" />
             <TextView android:textSize="10.0sp" android:textColor="@color/alpha_ink_dim" android:paddingTop="8.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="BACKGROUND APLIKASI" android:fontFamily="monospace" />
             <Button android:textSize="10.0sp" android:id="@id/btnAppBackground" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="PILIH GAMBAR GALERI" android:onClick="chooseAppBackground" />
             <Button android:textSize="10.0sp" android:id="@id/btnAppBackgroundDefault" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="PAKAI BANNER DEFAULT" android:onClick="clearAppBackground" />
@@ -73,7 +73,7 @@
                 <Button android:textSize="10.0sp" android:id="@id/btnApplyResolution" android:layout_width="0.0dp" android:layout_height="wrap_content" android:text="APPLY RES" android:layout_weight="1.0" />
                 <Button android:textSize="10.0sp" android:id="@id/btnResetResolution" android:layout_width="0.0dp" android:layout_height="wrap_content" android:text="RESET NATIVE" android:layout_weight="1.0" />
             </LinearLayout>
-            <Button android:textSize="10.0sp" android:id="@id/btnDexopt" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="DEXOPT APP" />
+            <Button android:textSize="10.0sp" android:id="@id/btnDexopt" android:paddingTop="8.0dp" android:paddingBottom="8.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6.0dp" android:text="DEXOPT APP" />
         </LinearLayout>
         <LinearLayout android:orientation="vertical" android:background="@drawable/card_bg" android:padding="@dimen/alpha_card_padding" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/alpha_card_margin_bottom">
             <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content">
