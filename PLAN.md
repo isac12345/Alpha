@@ -6,10 +6,11 @@
 - [x] v1 build 7 (run 35454848558): 1 ikon LAUNCHER + shortcut + ikon notif monokrom. Tes HP: lolos. Tag `v7-tested` + merge FF ke master (workflow aktif).
 - [x] B3 guard BatteryLab: DILEWATI (tombol tanpa id; try/catch fallback ada).
 
-## Batch 1 (build 8)
-- [ ] Onboarding izin + kartu Bubble di Home.
-- [ ] Guard Battery Lab (jalur aman saja).
-- [ ] Overlay kecil: kontras label tab, padding tombol, bahasa Indonesia konsisten.
+## Batch 1 (build 8) — PIPELINE SUCCESS, tunggu tes user
+- [x] Onboarding izin + kartu Bubble di Home (run `35478758890`).
+- [x] Guard Battery Lab (via refresh, id baru).
+- [x] Overlay kecil: kontras tab, padding log, id-ID.
+- [x] alpha-test full: 6/7 → 7/7 (service wajar mati saat autostart off).
 
 ## Batch 2 (build 9)
 - [ ] C3 dexopt progres + hasil (cek speed-profile, debuggable=false).

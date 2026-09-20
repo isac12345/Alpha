@@ -118,3 +118,10 @@ opsinya (c2) tulis ulang source menyamai perilaku (usaha besar, perlu persetujua
 - Isi: B1 hapus LAUNCHER BubbleSettingsActivity (exported=false) + shortcut "Pengaturan Bubble" via `res/xml/shortcuts.xml` + `@string/bubble_settings_shortcut` (aapt2 menolak literal); B2 vector monokrom `ic_stat_alpha` id `0x7f05001a`, patch 1 konstanta `setSmallIcon`.
 - Insiden: badging tak list non-launcher activity → verify activity via xmltree.
 - Status: pipeline SUCCESS (run `35454848558`), zip `~/work/v7/Alpha-Fusion-v1.zip`, BELUM tes HP, JANGAN merge.
+
+## v1 build 8 Batch 1 (kartu BUBBLE + onboarding + guard BL, 2026-09-20)
+
+- Isi: HomeCards.java (kartu + onboarding + guard BL via HelperGuard) + hook onCreate/onResume (tanpa .locals) + overlay (tab GAMES kontras, btnLogAll padding, btnBatteryLab id 0x7f06009c) + hardening (Throwable + kill-switch).
+- Insiden alpha-test: cp langsung ke /data/local/tmp gagal (Permission denied) → via /sdcard + su cp; BubbleService tidak terdaftar saat autostart off (wajar) → start manual → retry 7/7.
+- Bukti: hook Batch1 OK, 4 kelas dex OK, versionCode 8, cert SAMA. Kartu BUBBLE tampil di dump UI. Zip `~/work/v8/Alpha-Fusion-v1.zip`, APK `88961b26...`.
+- BELUM tes user. JANGAN merge master.
