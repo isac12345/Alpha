@@ -154,6 +154,7 @@ jobs:
           javac -source 8 -target 8 -cp "$AJAR" -d work/hf-classes $(find java -name '*.java') 2>&1 | grep -v "bootstrap\|deprecat\|obsolete" || true
           test -f work/hf-classes/com/alphabubble/HideFeedback.class || { echo "javac HideFeedback gagal"; exit 1; }
           test -f work/hf-classes/com/alphabubble/BubbleSettingsActivity.class || { echo "javac BubbleSettingsActivity gagal"; exit 1; }
+          test -f work/hf-classes/com/alphabubble/BgEditor.class || { echo "javac BgEditor gagal"; exit 1; }
           ls work/hf-classes/com/alphabubble/*.class
           mkdir -p work/hf-dex
           "$ANDROID_SDK_ROOT/build-tools/$BT/d8" --min-api 26 --output work/hf-dex/ $(find work/hf-classes -name '*.class')
