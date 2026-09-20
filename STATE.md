@@ -1,5 +1,17 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- SERAH-TERIMA FINAL (2026-09-21): build run 35542625045 SUCCESS
+  (apk-edit 35542624998 + package, 24/24 steps). Tag batch4-built
+  (built, bukan tested). Artefak: ~/work/final/apk/AlphaBubble-signed.apk
+  (4b25c685, 2.3M) + ~/work/final/zip/Alpha-Fusion-v1.zip (a7b779cd,
+  5.6M; module.prop + META-INF + companion APK terverifikasi).
+  Disalin ke /sdcard/alpha/ sebagai *-b15-final.* (b15 lama utuh).
+  CEK_TES.md di ~/work/ + /sdcard/alpha/. Run terpakai: 1/10
+  (+2 susulan untuk push STATE ini bila memicu). Revisi: APK 0,
+  modul 1 (M3-Adreno). BLOCKED-smali: A2a live, A2h drag-tepi,
+  A3b setSelected. Risiko: versionCode tetap 15 (APK b15 lama tak
+  auto-update); unhandled-intent refresh menunggu hook smali.
+
 - PEKERJAAN FINAL (2026-09-21): dev-apk work/b16-apk (c2951ab) TERIMA
   (A1 pref lama dibuang; A2 HelperGuard+intent refresh aman; A3 chip
   res60-100 + galeri pill + BgEditor tunggal; BLOCKED-smali: A2a live,
