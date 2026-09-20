@@ -1,5 +1,11 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## TIM v1 — penyederhanaan (2026-09-21)
+
+- Tim: 1 leader + dev-apk + dev-modul (rujukan: AGENTS.md).
+- Total 12 skill; versi v1.
+- Tanpa sentuh perangkat (hanya edit teks, git, gh).
+
 ## Build 15 — audit b14 + D/E (2026-09-20)
 
 Audit statis b14 (langsung, direktur):
