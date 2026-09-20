@@ -1,11 +1,35 @@
-# PLAN.md — Alpha Fusion v2 (branch fusion-v2)
+# PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
-## Selesai (terverifikasi, run 35429540702)
-- [x] Tree modul dari `Alpha-fusion-v2-final.zip` + `.gitignore` + `AGENTS.md` di `fusion-v2`.
-- [x] Workflow `package.yml`: zip META-INF di root, exclude docs/`.opencode`/`build-output`.
-- [x] Zip 5.4M terverifikasi: `module.prop` root ✓, `update-binary` ✓, sha256 APK = asli ✓, tanpa folder pembungkus.
-- [x] Pipeline `apk-edit.yml`: rebuild + sign kunci baru (cert `a0698c50…` ≠ lama), smoke test SUCCESS.
-- [x] Pipeline terintegrasi: `version.txt`=2 sumber tunggal, enforce vs `ALPHA_COMPANION_VER`, patch versionCode bare int (apktool 3), apktool di `work/tools/`, `.gitignore` di-exclude.
+## Selesai dan lolos tes HP
+- [x] v1 build 3 (run 35445291496, tag `v3-tested`): B1 Override-first + manifest POST_NOTIFICATIONS/debuggable=false. Tes: label resolusi benar.
+- [x] v1 build 6 (run 35453438021, tag `v6-tested`): F2 HideFeedback + BubbleSettingsActivity + VIBRATE. Tes: saklar bubble bekerja.
+- [x] v1 build 7 (run 35454848558): 1 ikon LAUNCHER + shortcut + ikon notif monokrom. Tes HP: lolos. Tag `v7-tested` + merge FF ke master (workflow aktif).
+- [x] B3 guard BatteryLab: DILEWATI (tombol tanpa id; try/catch fallback ada).
+
+## Batch 1 (build 8)
+- [ ] Onboarding izin + kartu Bubble di Home.
+- [ ] Guard Battery Lab (jalur aman saja).
+- [ ] Overlay kecil: kontras label tab, padding tombol, bahasa Indonesia konsisten.
+
+## Batch 2 (build 9)
+- [ ] C3 dexopt progres + hasil (cek speed-profile, debuggable=false).
+- [ ] C2 revert resolusi otomatis (root penjaga).
+- [ ] Konfirmasi render backend + restyle Tools.
+
+## Batch 3 (build 10)
+- [ ] C1 kustomisasi bubble (ukuran, transparansi, bentuk, latar galeri).
+- [ ] Notifikasi dinamis: profil aktif + aksi cepat.
+- [ ] Editor crop background.
+
+## Backlog
+- [ ] B2 timeout perintah root.
+- [ ] Perbaikan log (waktu --:--, teks penuh, salin).
+- [ ] Daftar game nama + ikon.
+- [ ] Keystore final.
+
+## Aturan build
+- Nama versi tetap v1. Internal versionCode = version.txt = ALPHA_COMPANION_VER, naik per build.
+- Tiap batch = satu build; alpha-test dulu (maks 3x per masalah); merge hanya bila user OK.
 ## Revisi 2026-09-19 (setelah verifikasi smali HP live) — KOREKSI B1
 
 Bug resolusi yang beneran: `activeDisplayInfo()` (`RootShell.smali:812`) pakai `(?:Override|Physical)` + `find()` → regex engine cari dari kiri → `Physical size:` (baris pertama output `wm size`) SELALU menang, walau Override aktif. Dampak: label "Resolusi aktif saat ini" nunjukin nilai FISIK (720x1600) padahal override aktif 432x960.
