@@ -1,5 +1,23 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- PEKERJAAN FINAL (2026-09-21): dev-apk work/b16-apk (c2951ab) TERIMA
+  (A1 pref lama dibuang; A2 HelperGuard+intent refresh aman; A3 chip
+  res60-100 + galeri pill + BgEditor tunggal; BLOCKED-smali: A2a live,
+  A2h drag-tepi, A3b setSelected); dev-modul work/final-modul-2
+  (ee82297) + REVISI-1 M3-Adreno GPU_MAX_FREQ (03fdf50, sandbox PASS)
+  TERIMA, M1-M9 SELESAI. Merge leader 0398254 + d1eb55d tanpa konflik.
+  Verifikasi: sh -n 7/7, XML 4/4, resetprop aktif NOL, secret 0,
+  alpha-diag 13/13. Model: dev-apk nemotron-3-ultra-free, dev-modul
+  mimo-v2.5-free, NOL 429. INSIDEN: edit leader tak-commit
+  (AGENTS p6, STATE/NOTES uji-tim) terhapus reset pekerja di working
+  tree bersama → diterapkan ulang + AGENTS p7 (larang checkout/reset).
+  Rincian: NOTES.md § PEKERJAAN FINAL. Berikutnya: push build (1/10).
+
+- ATURAN 429 (2026-09-21): dev kena 429/model tumbang → JANGAN ganti
+  model (baru berlaku setelah restart). Hentikan item, commit WIP di
+  work/<id>, tulis agent + error persis di STATE.md, lanjut item lain,
+  lalu lapor; user yg ganti model + restart (AGENTS.md poin 6).
+
 - TIM v1 SELESAI (2026-09-21): 1 leader + dev-apk + dev-modul; 12 skill di
   ~/.config/opencode/skills/ (6 superpowers + 4 proyek + 2 lama); 3 agent di
   ~/.config/opencode/agent/. Backup: ~/work/backup-opencode-20260921-0502.

@@ -214,3 +214,36 @@ opsinya (c2) tulis ulang source menyamai perilaku (usaha besar, perlu persetujua
 | 9router/Alpha-think | planner | baca version.txt | OK, tanpa tool mentah bocor |
 
 Server: `http://127.0.0.1:20128/v1/models` ada `Alpha-think`, `Alpha-fast`, `Budak` (ID persis). Config backup `opencode.json.bak-20260920`. Agent think: planner/debugger/reviewer/critic; fast: explorer/tester/researcher.
+
+## PEKERJAAN FINAL (2026-09-21, leader; OPSI GANTI-MODEL dari instruksi tugas)
+
+- Otorisasi khusus tugas ini: "leader boleh ganti field model agent ke
+  cadangan bila 429/tumbang + catat di NOTES" — pengecualian tugas ini;
+  AGENTS.md poin 6 tetap berlaku umum. Hasil: NOL 429 → tanpa ganti
+  model. dev-apk opencode/nemotron-3-ultra-free; dev-modul
+  opencode/mimo-v2.5-free.
+- Status awal (CHECKPOINT 5723662): final-apk SUDAH merge ke fusion-v2
+  (A1-A3 checkpoint + build15); final-modul (de9d984+c0917d9) BELUM merge.
+- dev-apk work/b16-apk (c2951ab) TERIMA: A1 pref lama dibuang
+  (BubbleStyle -4 baris, apply abaikan alpha/corner); A2 slider
+  HelperGuard + intent BUBBLE_STYLE_REFRESH aman (guarded + try/catch,
+  unhandled-action diabaikan service); A3 chip res60-100 (chip_res/
+  chip_text + public.xml 0x7f03000f/0x7f05001b) + galeri pill
+  terverifikasi + BgEditor RadioGroup sudah tunggal. BLOCKED-smali
+  (terdokumentasi): A2a refresh live, A2h audit drag tepi, A3b logika
+  setSelected. Bukti: 4 XML parse OK; hitung hook = baseline
+  (BUBBLE_TOGGLE BSA 3→2 = hapus komentar, tanpa duplikat hook).
+- dev-modul work/final-modul-2 (ee82297) + REVISI-1 (03fdf50, +12 baris:
+  Adreno cap pakai GPU_MAX_FREQ pola Mali; sandbox PASS + edge 0
+  fallback) TERIMA. M1-M9 SELESAI. Bukti: sh -n 7/7 OK; shellcheck
+  hanya SC3043 (baseline 106 vs baru 112, gaya pre-existing);
+  resetprop aktif NOL (2 hit komentar); secret 0; boot counter 2x +
+  DISABLE_TWEAKS + CPU_OWNER log + MTK tulis-baca-kembalikan OK;
+  PowerVR/Xclipse SKIPPED jujur; alpha-diag 13/13 item OK (read-only).
+  Slip: modul-2 branched dari b16-apk (bukan fusion-v2) — isi APK
+  identik (diff kosong), merge aman; milik modul hanya 7 file.
+- Merge leader ke fusion-v2: 0398254 (APK) + d1eb55d (modul), tanpa konflik.
+- INSIDEN 2026-09-21: edit leader yang belum commit (AGENTS p6,
+  STATE/NOTES uji-tim) terhapus oleh checkout/reset pekerja di working
+  tree bersama → diterapkan ulang; aturan baru AGENTS.md p7 melarang
+  checkout/reset cabang di repo utama oleh pekerja Task.

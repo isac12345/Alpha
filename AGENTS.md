@@ -18,3 +18,13 @@
    (maks 2) / KOREKSI ≤20 baris. Gagal 2x → catat di NOTES.md.
 5. DILARANG mencetak/commit secret (dari config/Actions saja).
    Tanpa force push. Update STATE.md tiap tugas selesai.
+6. Gagal model dev (429/tumbang): JANGAN ganti model (baru
+   berlaku setelah restart). Hentikan item itu, commit WIP
+   di work/<id>, tulis agent + error persis di STATE.md,
+   lanjut item lain yg tak bergantung, lalu lapor; user
+   yg ganti model + restart. (Pengecualian hanya bila
+   instruksi tugas eksplisit mengizinkan + dicatat di NOTES.md.)
+7. Pekerja Task berbagi working tree: DILARANG checkout/reset
+   cabang di repo utama (28 Sep 2026: reset pekerja menghapus
+   edit leader yang belum commit). Gunakan `git worktree` atau
+   kerja di cabang tanpa pindah HEAD utama.
