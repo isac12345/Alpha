@@ -1,9 +1,5 @@
 # Alpha + Uperf + fas-rs Fusion - Rendering properties
-# debug.sf.latch_unsignaled disatukan jadi satu baris (Alpha pakai "1",
-# fas-rs pakai "true" - sama-sama truthy, dipilih salah satu biar tidak
-# ada key duplikat lintas system.prop).
 
-debug.sf.latch_unsignaled=true
 debug.renderengine.skia_use_perfetto_track_events=false
 vendor.perf.framepacing.enable=false
 persist.sys.framepredict.enable=false

@@ -55,6 +55,18 @@ if [ "$BOOT_COMPLETED_OK" = "0" ]; then
     exit 0
 fi
 
+# 0.5 SF_LATCH_UNSIGNALED opt-in (default: OFF).
+#     Hanya aktif bila file $WORK_DIR/SF_LATCH_UNSIGNALED ADA.
+#     Sengaja dipindah dari system.prop supaya tidak default aktif.
+SF_LATCH_FILE="$WORK_DIR/SF_LATCH_UNSIGNALED"
+if [ -f "$SF_LATCH_FILE" ]; then
+    setprop debug.sf.latch_unsignaled 1 2>/dev/null
+    echo "[BOOT] SF_LATCH_UNSIGNALED: ON (file present)" >> "$LOG_FILE"
+else
+    setprop debug.sf.latch_unsignaled 0 2>/dev/null
+    echo "[BOOT] SF_LATCH_UNSIGNALED: OFF (default)" >> "$LOG_FILE"
+fi
+
 # 1. Load Hardware Detection (atau baca cache)
 if [ -f "$MODDIR/common/detect.sh" ]; then
     . "$MODDIR/common/detect.sh"
@@ -89,6 +101,18 @@ if [ -f "$MODDIR/common/engine.sh" ]; then
 else
     echo "[ERROR] engine.sh tidak ditemukan!" >> "$LOG_FILE"
     exit 1
+fi
+
+# 3.1 Load GameBoost Engine (sumber gameboost.sh)
+if [ -f "$MODDIR/common/gameboost.sh" ]; then
+    . "$MODDIR/common/gameboost.sh"
+    echo "[BOOT] tahap gameboost.sh selesai" >> "$LOG_FILE"
+    # Re-read native_boost.conf jika sudah ada (backup asli)
+    if [ -f "$WORK_DIR/native_boost.conf" ]; then
+        echo "[BOOT] native_boost.conf ditemukan, backup asli siap" >> "$LOG_FILE"
+    fi
+else
+    echo "[WARN] gameboost.sh tidak ditemukan, gameboost disabled" >> "$LOG_FILE"
 fi
 
 echo "[INIT] SoC Vendor terdeteksi: $SOC_VENDOR" >> "$LOG_FILE"
