@@ -225,6 +225,10 @@ _gb_backup_native() {
             _mx=$(cat "$_df/max_freq" 2>/dev/null | tr -d '[:space:]')
             [ -n "$_mx" ] && echo "gpu_${_gname}_max_freq=$_mx" >> "$NATIVE_CONF.tmp"
         }
+        [ -f "$_df/min_freq" ] && {
+            _mn=$(cat "$_df/min_freq" 2>/dev/null | tr -d '[:space:]')
+            [ -n "$_mn" ] && echo "gpu_${_gname}_min_freq=$_mn" >> "$NATIVE_CONF.tmp"
+        }
     done
     # GPU_MAX_FREQ dari defaults.conf
     if [ -f "$CONF_DIR/defaults.conf" ]; then
@@ -239,6 +243,11 @@ _gb_backup_native() {
         case "$_v" in ''|*[!0-9]*) continue ;; esac
         echo "$_canon=$_v" >> "$NATIVE_CONF.tmp"
     done
+    # sched_child_runs_first
+    if [ -f "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" ]; then
+        _v=$(cat "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" 2>/dev/null | tr -d '[:space:]')
+        [ -n "$_v" ] && echo "sched_child_runs_first=$_v" >> "$NATIVE_CONF.tmp"
+    fi
     # CPuset asli
     local _grp
     for _grp in top-app foreground background system-background; do
@@ -297,8 +306,8 @@ _gb_apply_cpu() {
         fi
         if [ -f "$_avail_file" ]; then
             _avail_govs=$(cat "$_avail_file" 2>/dev/null)
-            case "$_avail_govs" in
-                *" $_target_gov "*|"$_target_gov "*|"$_target_gov")
+            case " $_avail_govs " in
+                *" $_target_gov "*)
                     _gb_write "$_gov_node" "$_target_gov" "CPU_GOV"
                     ;;
                 *)
@@ -442,8 +451,8 @@ _gb_apply_gpu() {
             local _govs
             _govs=$(cat "$_df/available_governors" 2>/dev/null)
             local _want="performance"
-            case "$_govs" in
-                *" $_want "*|"$_want "*|"$_want")
+            case " $_govs " in
+                *" $_want "*)
                     _gb_write "$_df/governor" "$_want" "GPU_GOV"
                     ;;
                 *)
@@ -732,6 +741,9 @@ gb_restore() {
             _p=$(_gb_sched_resolve "$_canon") || continue
             _gb_write "$_p" "$_v" "SCHED_RESTORE"
         done
+        # sched_child_runs_first
+        _v=$(_gb_read_native "sched_child_runs_first" "")
+        [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" "$_v" "SCHED_RESTORE"
     fi
 
     # GPU
@@ -742,13 +754,13 @@ gb_restore() {
         case "$_gname" in *gpu*|*mali*|*kgsl*|*adreno*) ;; *) continue ;; esac
         _old_gov=$(_gb_read_native "gpu_${_gname}_governor" "")
         _old_mx=$(_gb_read_native "gpu_${_gname}_max_freq" "")
+        local _old_mn
+        _old_mn=$(_gb_read_native "gpu_${_gname}_min_freq" "$_old_mx")
         # Tulis min dulu bila max < current min
         if [ -n "$_old_mx" ] && [ -w "$_df/min_freq" ]; then
             local _cur_min
             _cur_min=$(cat "$_df/min_freq" 2>/dev/null | tr -d '[:space:]')
             if [ -n "$_cur_min" ] && [ "$_old_mx" -lt "$_cur_min" ] 2>/dev/null; then
-                local _old_mn
-                _old_mn=$(_gb_read_native "gpu_${_gname}_min_freq" "$_old_mx")
                 _gb_write "$_df/min_freq" "$_old_mn" "GPU_RESTORE"
                 _gb_write "$_df/max_freq" "$_old_mx" "GPU_RESTORE"
             else
