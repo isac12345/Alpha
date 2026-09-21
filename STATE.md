@@ -1,5 +1,20 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- RILIS v1-b16-final (2026-09-21): GitHub SUDAH sinkron sebelum rilis
+  (fusion-v2 = origin/fusion-v2 = 81c7955, 0 ahead/behind; release
+  sebelumnya NOL). Tag `v1-b16-final` di 81c7955 + Release GitHub
+  (Latest) berisi 3 aset /sdcard/alpha: zip `4a720089` + apk
+  `22f033cf` (v16, cert SAMA a0698c50) + CEK_TES-b16.md — dari run
+  35562535686 SUCCESS. Hapus remote tak terpakai:
+  origin/work/b14-restyle-dev (merged ✓) + origin/work/final-modul
+  (diganti final-modul-2; isi M1-M9 lestari di fusion-v2 via d1eb55d;
+  ref lokal dipertahankan). Hapus 9 cabang lokal merged; sisa lokal:
+  master + work/final-modul + work/m9-verify-qa (unmerged, arsip).
+  Tanpa force push, master tak disentuh, histori tak ditulis ulang.
+  Commit ini juga menyimpan AGENTS.md "Khusus Alpha" (9 baris docs,
+  sebelumnya uncommitted — pelajaran: commit cepat agar tak hilang
+  oleh reset pekerja).
+
 - BUILD 16 (2026-09-21): run `35561861525` SUCCESS (gagal dulu `35561280307`:
   b9a `{p4}`→v24 invalid di fresh decode → fix `{v8}`, rebuild OK). APK
   `/sdcard/alpha/AlphaBubble-b16.apk` (`19ac2519`, 2.3M, versionCode 16 =
