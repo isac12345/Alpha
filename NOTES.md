@@ -1,5 +1,48 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Build 18 — 3 perbaikan bug + koreksi leader (2026-09-22, leader + dev-modul 2 tugas + dev-apk 1 tugas)
+
+Akar penyebab masing-masing (bukan cuma "sudah diperbaiki"):
+
+1. game_add hanya efektif setelah reboot — merge `fas-rs merge ... >
+   .update_games.toml` HANYA ada di service.sh (tahap boot 9), sedangkan
+   game_add.sh cuma `touch .need_merge` lalu selesai. Jadi games.toml di
+   /sdcard tidak berubah sampai boot berikut. Fix: helper `do_live_merge()`
+   di game_add.sh menjalankan perintah merge yang SAMA persis, dipanggil
+   dari do_add + do_remove; gagal = warning, operasi utama tetap sukses.
+   Koreksi leader susulan: `grep -v ... && mv` di do_remove GAGAL menghapus
+   entri TERAKHIR (grep exit 1 bila output kosong → mv tak jalan; map masih
+   berisi paket yang sudah di-remove → monitor tetap anggap performance).
+   Pola sama di hapus-toml repo. Fix: mv tanpa && (seperti do_add).
+   Bukti: sandbox stub fas-rs — add→target ADA+flag habis, remove→target
+   HILANG+map kosong, binary hilang→warn+tambah tetap OK. sh -n OK,
+   shellcheck 0.
+2. gb_apply tak pernah jalan di monitor — service.sh me-source gameboost.sh
+   di PROSES service, tapi monitor.sh jalan sebagai PROSES TERPISAH
+   (`nohup sh monitor.sh`) yang tak pernah source gameboost.sh, sehingga
+   `command -v gb_apply` selalu gagal diam-diam (tanpa else/log).
+   Fix: source `$MODDIR/gameboost.sh` di awal monitor.sh (aman: top-level
+   hanya assignment + def fungsi, tanpa efek samping; LOG_FILE di-save/
+   restore) + `else monitor_log WARN` di semua 7 guard. Bukti: emulasi
+   blok source — gb_apply/gb_restore ter-resolve, LOG_FILE utuh, kasus
+   file-hilang melog WARN; shellcheck delta hanya +1 SC1091 info.
+3. cropSquare paksa 1:1 — `side=min(w,h)` + scale ke sizePx², sedangkan
+   alur background nyata (BgEditor) sudah rasio-layar. Fix: `cropRatio()`
+   baru (baca displayMetrics widthPixels/heightPixels; FILL=crop tengah
+   +scale penuh; FIT=scale min+letterbox hitam) + cropSquare jadi wrapper
+   deprecated; version.txt+module.prop 17→18. Koreksi leader: pekerja
+   LEWATKAN `ALPHA_COMPANION_VER=17` di companion_install.sh (lokasi versi
+   ke-3; CI package.yml GAGAL bila ≠ version.txt) → disamakan ke 18.
+   Bukti: grep pola persegi NOL, metrics ADA, 18 di 3 file.
+- PELAJARAN: bump versi = 3 file (version.txt + module.prop +
+  ALPHA_COMPANION_VER di companion_install.sh) — jadikan checklist di
+  setiap brief bump. Polusi uji pekerja (com.test.newgame di
+  fasrs/games.toml worktree gamemerge) — enforce `git status` bersih dari
+  file di luar tugas sebelum merge.
+- Status: 3 merge --no-ff ke fusion-v2, push → CI package.yml (b18).
+  Verifikasi live (fas-rs pegang/lepas game, GAMEBOOST APPLIED +
+  node berubah, crop Fill/Fit) = tugas user di HP ikut CEK_TES-b18.md.
+
 ## Porting Extreme HSIN b17 (2026-09-21, leader + dev-modul P1/P2/P3, dev-apk 2x cancel)
 
 - Sumber: HSIN-v4.2.6-fixed.zip. JUJUR: core/extreme.sh v4.2.6 JUGA
