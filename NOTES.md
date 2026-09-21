@@ -1,5 +1,39 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Build 16 — 4 perbaikan APK (2026-09-21, leader + dev-apk work/b16-fix)
+
+Hasil: run `35561861525` SUCCESS. APK `/sdcard/alpha/AlphaBubble-b16.apk`
+(`19ac2519`, 2.3M, versionCode 16, cert SAMA `a0698c50`, CardAlpha =
+kelas ke-9). Gagal dulu `35561280307` (b9a `{p4}` = v24 invalid di fresh
+decode → ganti `{v8}`, rebuild OK). Bukti akar per perbaikan (decode
+`~/work/decode`, diverifikasi ulang pasca-fix via simulasi sed):
+1. Kartu: `card_bg.xml` solid `@color/alpha_dark` (#0a0a0a, colors.xml:6) +
+   kartu HomeCards #1e1e1e (HomeCards.java:238); slider lama (`onCreate$23`)
+   DEAD code (tak diinstansiasi) + `app_bg_alpha` hanya dibaca
+   `applyAppBackground` → slider dialihfungsikan aman. Alpha via
+   `GradientDrawable.setAlpha` (drawable saja, teks utuh), key baru
+   `card_alpha_pct`, hook onCreate-setTab (b16a) + refreshAll 2x (b16b).
+2. Bubble: `onStartCommand` (BubbleService.smali:2053-2110) hanya tangani
+   TOGGLE; REFRESH jatuh ke `:cond_0` (inilah "cache": bukan field static —
+   grep static scale/size NOL — melainkan intent tak ditangani + toggle
+   hanya visibility; force-stop segar via attach→applyLook→prefs).
+   Fix b16c: cek REFRESH di titik p1=action String (v0 mati), →applyLook.
+3. Dexopt: kedua tombol listener null (MainActivity.smali:1946-1952);
+   hanya COMPILE(-0x1) dipasangi listener (:2064-2123)→lambda$31; hook lama
+   di pemanggil openDexopt bikin progres muncul saat dialog dibuka (= yang
+   terlihat "BATAL menjalankan compile"). Fix b9a: dexoptStart pindah ke
+   lambda$31 (.line 217, register v8).
+4. Dialog: `ToolsKit.styleDexoptDialog` (bg #1e1e1e radius 12*d +
+   pill 24*d monospace, tombol dipost pasca-show) via b16d (show()V unik 1x);
+   `styleDialog` kini pakai density; OK "Hasil dexopt" di-pill pasca-show.
+Pelajaran sed (2 bug fatal pola pekerja, keduanya lolos "verifikasi" pekerja):
+(a) `\n` di POLA tak pernah match (pattern space 1 baris) — wajib anchor
+1 baris (b16b: refreshAll 2x, keduanya valid); (b) `\(` di BRE = grup,
+bukan kurung literal — pakai `()` polos (lih. f2/b10a).
+Insiden: 4x dispatch dev-apk "Task cancelled" (jaringan) tapi task tetap
+jalan di background (worktree+cabang sudah dibuat attempt pertama, 5 commit
+mendarat). Model dev-apk tak teridentifikasi (tanpa header log).
+
 ## TIM v1 — penyederhanaan (2026-09-21)
 
 - Tim: 1 leader + dev-apk + dev-modul (rujukan: AGENTS.md).

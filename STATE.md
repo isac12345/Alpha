@@ -1,5 +1,21 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- BUILD 16 (2026-09-21): run `35561861525` SUCCESS (gagal dulu `35561280307`:
+  b9a `{p4}`→v24 invalid di fresh decode → fix `{v8}`, rebuild OK). APK
+  `/sdcard/alpha/AlphaBubble-b16.apk` (`19ac2519`, 2.3M, versionCode 16 =
+  version.txt, cert SAMA `a0698c50`, 9 kelas dex incl CardAlpha, 1 LAUNCHER).
+  CEK_TES-b16.md 5 poin (~/work + /sdcard/alpha). BELUM tes HP. Isi:
+  (1) slider "Transparansi kartu" 30–100% default 100%, live, teks terbaca;
+  (2) REFRESH intent ditangani (akar: onStartCommand hanya TOGGLE; NOL field
+  static scale); (3) BATAL dismiss saja, COMPILE satu-satunya pemicu (akar:
+  hook lama di pemanggil openDexopt); (4) dialog dexopt gelap membulat + pill.
+  Review leader: TERIMA + koreksi REV2 (sed 1-baris, ColorStateList + 2 warna
+  kartu, b16c anti-VerifyError, OK pill pasca-show, step workflow b16).
+  Dispatch dev-apk 4x "Task cancelled" (jaringan) tapi pekerja tetap jalan di
+  background (work/b16-fix, 5 commit). Model: dev-apk tak teridentifikasi
+  (Task tanpa header model); leader muse-spark-1.3-contributor-free.
+  Rincian: NOTES.md § Build 16.
+
 - FALLBACK MODEL (2026-09-21): plugin `opencode-runtime-fallback@0.2.4`
   ter-pin (exact + lock) di ~/.config/opencode; 2 kandidat ditolak
   (peva3: tanpa rantai/agent + Ralph-loop; zaplakhov: tanpa rantai +
