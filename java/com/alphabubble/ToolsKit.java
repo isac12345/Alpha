@@ -88,7 +88,13 @@ public final class ToolsKit {
                     AlertDialog d = new AlertDialog.Builder(a)
                             .setTitle("Hasil dexopt")
                             .setMessage(res + "\nDurasi: " + (ms / 1000.0) + " dtk\nStatus: " + after)
-                            .setPositiveButton("OK", null)
+                            .setPositiveButton("OK", (di, w) -> {
+                                try {
+                                    // Find OK button in dialog
+                                    android.widget.Button btn = (android.widget.Button) d.getButton(AlertDialog.BUTTON_POSITIVE);
+                                    stylePillOutline(btn);
+                                } catch (Throwable t) { Log.w(TAG, "style pill gagal: " + t); }
+                            })
                             .show();
                     styleDialog(d);
                 } catch (Throwable t) {
@@ -101,13 +107,34 @@ public final class ToolsKit {
     private static void styleDialog(AlertDialog d) {
         try {
             if (d == null || d.getWindow() == null) return;
+            float denc = d.getContext().getResources().getDisplayMetrics().density;
             android.graphics.drawable.GradientDrawable gd =
                     new android.graphics.drawable.GradientDrawable();
             gd.setColor(android.graphics.Color.parseColor("#1e1e1e"));
-            gd.setCornerRadius(24);
+            gd.setCornerRadius(12 * denc);
             d.getWindow().setBackgroundDrawable(gd);
         } catch (Throwable t) {
             Log.w(TAG, "styleDialog gagal: " + t);
+        }
+    }
+
+    public static void stylePillOutline(android.widget.Button b) {
+        try {
+            float d = b.getResources().getDisplayMetrics().density;
+            android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+            gd.setCornerRadius(24 * d);
+            gd.setColor(android.graphics.Color.TRANSPARENT);
+            gd.setStroke((int) (1 * d), android.graphics.Color.parseColor("#87878a"));
+            b.setBackground(gd);
+            b.setTextColor(android.graphics.Color.parseColor("#f4f2ee"));
+            b.setTypeface(android.graphics.Typeface.MONOSPACE);
+            b.setTextSize(11);
+            int ph = (int) (16 * d), pv = (int) (8 * d);
+            b.setPadding(ph, pv, ph, pv);
+            b.setElevation(0);
+            b.setStateListAnimator(null);
+        } catch (Throwable t) {
+            Log.w(TAG, "stylePillOutline: " + t);
         }
     }
 
