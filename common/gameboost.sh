@@ -73,6 +73,34 @@ _gb_level() {
 }
 
 # ============================================================
+# OPP Cap Picker (dari engine.sh)
+# ============================================================
+_alpha_opp_cap_pick() {
+    local target="$1"
+    local avail="$2"
+    case "$target" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    local best="" lowest=""
+    for f in $avail; do
+        case "$f" in ''|*[!0-9]*) continue ;; esac
+        if [ -z "$lowest" ] || [ "$f" -lt "$lowest" ]; then
+            lowest="$f"
+        fi
+        if [ "$f" -le "$target" ]; then
+            if [ -z "$best" ] || [ "$f" -gt "$best" ]; then
+                best="$f"
+            fi
+        fi
+    done
+    if [ -n "$best" ]; then
+        printf '%s\n' "$best"
+    else
+        printf '%s\n' "$lowest"
+    fi
+}
+
+# ============================================================
 # Cluster Topology (hsin_cpu_topo_detect)
 # ============================================================
 _gb_topo_detect() {
@@ -109,7 +137,7 @@ _gb_topo_detect() {
 }
 
 # ============================================================
-# Scheduler Latency (capture native + apply via persentase)
+# Scheduler Latency (backup/restore bila node resolve)
 # ============================================================
 _GB_SCHED_NODES="sched_latency_ns sched_min_granularity_ns sched_wakeup_granularity_ns sched_migration_cost_ns"
 _GB_SCHED_FLOOR=500000
@@ -184,7 +212,7 @@ _gb_backup_native() {
     [ -f "$NATIVE_CONF" ] && return 0
     mkdir -p "$CONF_DIR" 2>/dev/null
     : > "$NATIVE_CONF.tmp" 2>/dev/null || return 1
-    local _pol _gov _mn _mx _avail _mx_val
+    local _pol _gov _mn _mx _avail _mx_val _v
     for _pol in $CPU_POLICIES; do
         [ -d "$SYSFS_CPU_PREFIX/cpufreq/$_pol" ] || continue
         [ -f "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_governor" ] && {
@@ -239,8 +267,8 @@ _gb_backup_native() {
         . "$CONF_DIR/defaults.conf" 2>/dev/null
         [ -n "${GPU_MAX_FREQ:-}" ] && echo "defaults_GPU_MAX_FREQ=$GPU_MAX_FREQ" >> "$NATIVE_CONF.tmp"
     fi
-    # Sched latency
-    local _canon _p _v
+    # Sched latency (hanya bila node resolve)
+    local _canon _p
     for _canon in $_GB_SCHED_NODES; do
         _p=$(_gb_sched_resolve "$_canon") || continue
         _v=$(cat "$_p" 2>/dev/null | tr -d '[:space:]')
@@ -274,6 +302,25 @@ _gb_backup_native() {
         _v=$(cat "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" 2>/dev/null | tr -d '[:space:]')
         [ -n "$_v" ] && echo "stune_boost=$_v" >> "$NATIVE_CONF.tmp"
     fi
+    # VM asli (backup swappiness, vfs, dirty_ratio, dirty_background_ratio, page-cluster)
+    local _proc="$PROC_SYS_PREFIX"
+    for _vmkey in vm/swappiness vm/vfs_cache_pressure vm/dirty_ratio vm/dirty_background_ratio vm/page-cluster; do
+        [ -f "$_proc/$_vmkey" ] || continue
+        _v=$(cat "$_proc/$_vmkey" 2>/dev/null | tr -d '[:space:]')
+        case "$_v" in ''|*[!0-9]*) continue ;; esac
+        echo "$_vmkey=$_v" >> "$NATIVE_CONF.tmp"
+    done
+    # Network asli (backup congestion_control, fastopen, backlog, ecn)
+    local _netbase="$PROC_SYS_PREFIX/net/ipv4"
+    for _nk in tcp_congestion_control tcp_fastopen tcp_ecn; do
+        [ -f "$_netbase/$_nk" ] || continue
+        _v=$(cat "$_netbase/$_nk" 2>/dev/null | tr -d '[:space:]')
+        [ -n "$_v" ] && echo "$_nk=$_v" >> "$NATIVE_CONF.tmp"
+    done
+    [ -f "$PROC_SYS_PREFIX/net/core/netdev_max_backlog" ] && {
+        _v=$(cat "$PROC_SYS_PREFIX/net/core/netdev_max_backlog" 2>/dev/null | tr -d '[:space:]')
+        [ -n "$_v" ] && echo "netdev_max_backlog=$_v" >> "$NATIVE_CONF.tmp"
+    }
     mv "$NATIVE_CONF.tmp" "$NATIVE_CONF" 2>/dev/null
     chmod 0644 "$NATIVE_CONF" 2>/dev/null
     [ -f "$NATIVE_CONF" ] || { _gb_log "FAILED" "backup write failed"; return 1; }
@@ -289,56 +336,18 @@ _gb_read_native() {
 }
 
 # ============================================================
-# CPU Apply (hanya bila CPU_OWNER != fas-rs)
+# CPU Apply — Lantai 65% + uclamp + cpuset (TANPA governor)
+# CPU_OWNER dicatat di log, lantai TETAP JALAN walau fas-rs aktif.
 # ============================================================
 _gb_apply_cpu() {
     local _level="$1"
-    local _pol _pol_dir _avail_file _gov_node _avail_govs _target_gov
-    local _hw_max _avail_list _opp_list _target_freq
+    local _pol _pol_dir _avail_list _opp_list _hw_max _floor65 _target_min
 
+    # --- Frequency Floor (65% OPP tertinggi) ---
     for _pol in $CPU_POLICIES; do
         _pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$_pol"
         [ -d "$_pol_dir" ] || continue
 
-        # --- Governor ---
-        _avail_file="$_pol_dir/scaling_available_governors"
-        _gov_node="$_pol_dir/scaling_governor"
-        if [ "$_level" = "extreme" ]; then
-            _target_gov="performance"
-        else
-            _target_gov="schedutil"
-        fi
-        if [ -f "$_avail_file" ]; then
-            _avail_govs=$(cat "$_avail_file" 2>/dev/null)
-            case " $_avail_govs " in
-                *" $_target_gov "*)
-                    _gb_write "$_gov_node" "$_target_gov" "CPU_GOV"
-                    ;;
-                *)
-                    # Cadangan
-                    local _fallback=""
-                    case "$_level" in
-                        extreme)
-                            for _fb in schedutil walt interactive; do
-                                case "$_avail_govs" in
-                                    *" $_fb "*) _fallback="$_fb"; break ;;
-                                esac
-                            done
-                            ;;
-                        performance)
-                            for _fb in performance schedutil walt; do
-                                case "$_avail_govs" in
-                                    *" $_fb "*) _fallback="$_fb"; break ;;
-                                esac
-                            done
-                            ;;
-                    esac
-                    [ -n "$_fallback" ] && _gb_write "$_gov_node" "$_fallback" "CPU_GOV"
-                    ;;
-            esac
-        fi
-
-        # --- Frequency ---
         _avail_list=""
         _opp_list=""
         _hw_max=""
@@ -352,38 +361,20 @@ _gb_apply_cpu() {
         fi
         [ -z "$_hw_max" ] && continue
 
-        if [ "$_level" = "extreme" ]; then
-            # min=max=maksimum bawaan
-            if [ -n "$_opp_list" ]; then
-                _target_freq=$(echo "$_opp_list" | tail -n 1)
-            else
-                _target_freq="$_hw_max"
-            fi
+        if [ "$_level" = "performance" ]; then
+            # Performance: lantai 35%
+            _floor65=$((_hw_max * 35 / 100))
         else
-            # performance: min 35% max, max 100%
-            if [ -n "$_opp_list" ]; then
-                _target_freq=$(echo "$_opp_list" | tail -n 1)
-            else
-                _target_freq="$_hw_max"
-            fi
-            local _min_target=$((_target_freq * 35 / 100))
-            if [ -n "$_opp_list" ]; then
-                local _best=""
-                for _f in $_opp_list; do
-                    case "$_f" in ''|*[!0-9]*) continue ;; esac
-                    if [ "$_f" -le "$_min_target" ]; then
-                        [ -z "$_best" ] || [ "$_f" -gt "$_best" ] && _best="$_f"
-                    fi
-                done
-                [ -n "$_best" ] && _gb_write "$_pol_dir/scaling_min_freq" "$_best" "CPU_FREQ"
-            fi
+            # Extreme: lantai 65%
+            _floor65=$((_hw_max * 65 / 100))
         fi
 
-        # extreme: min=max (lock); performance: max only
-        _gb_write "$_pol_dir/scaling_max_freq" "$_target_freq" "CPU_FREQ"
-        if [ "$_level" = "extreme" ]; then
-            _gb_write "$_pol_dir/scaling_min_freq" "$_target_freq" "CPU_FREQ"
+        if [ -n "$_opp_list" ]; then
+            _target_min=$(_alpha_opp_cap_pick "$_floor65" "$_opp_list")
+        else
+            _target_min="$_floor65"
         fi
+        [ -n "$_target_min" ] && _gb_write "$_pol_dir/scaling_min_freq" "$_target_min" "CPU_FREQ"
     done
 
     # --- Cpuset (skip bila sakelar NO_CPUSET) ---
@@ -427,7 +418,7 @@ _gb_apply_cpu() {
     # --- sched_child_runs_first ---
     _gb_write "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" "1" "SCHED"
 
-    # --- Scheduler latency ---
+    # --- Scheduler latency (hanya bila node resolve — tidak dipaksa di device tanpa node) ---
     case "$_level" in
         extreme)     _gb_sched_apply_level 40 40 30 1000 ;;
         performance) _gb_sched_apply_level 70 70 60 400 ;;
@@ -472,6 +463,7 @@ _gb_apply_gpu() {
 
         # Max freq = GPU_MAX_FREQ bawaan (cap ke OPP tabel)
         _opp_list=""
+        _hw_max=""
         if [ -f "$_df/available_frequencies" ]; then
             _opp_list=$(cat "$_df/available_frequencies" 2>/dev/null \
                         | tr ' ' '\n' | grep -E '^[0-9]+$' | sort -n)
@@ -503,8 +495,8 @@ _gb_apply_gpu() {
         fi
 
         _gb_write "$_df/max_freq" "$_target" "GPU"
-        # extreme: min=max (lock GPU)
-        if [ "$_level" = "extreme" ] && [ -w "$_df/min_freq" ]; then
+        # GPU min=max (kunci GPU saja)
+        if [ -w "$_df/min_freq" ]; then
             _gb_write "$_df/min_freq" "$_target" "GPU"
         fi
     done
@@ -573,13 +565,28 @@ _gb_apply_gpu() {
 }
 
 # ============================================================
-# VM Apply
+# VM Apply — Nilai HSIN aktual (bukan dead config)
 # ============================================================
 _gb_apply_vm() {
     local _level="$1"
+    local _proc="$PROC_SYS_PREFIX"
     case "$_level" in
-        extreme)     _gb_write "$PROC_SYS_PREFIX/vm/swappiness" "10" "VM" ;;
-        performance) _gb_write "$PROC_SYS_PREFIX/vm/swappiness" "60" "VM" ;;
+        extreme)
+            # HSIN VM: swappiness=40, vfs=200, dirty=10, dirty_bg=1, page-cluster=0
+            _gb_write "$_proc/vm/swappiness" "40" "VM"
+            _gb_write "$_proc/vm/vfs_cache_pressure" "200" "VM"
+            _gb_write "$_proc/vm/dirty_ratio" "10" "VM"
+            _gb_write "$_proc/vm/dirty_background_ratio" "1" "VM"
+            _gb_write "$_proc/vm/page-cluster" "0" "VM"
+            ;;
+        performance)
+            # Performance: swappiness=60, vfs=50, dirty=15, dirty_bg=5, page-cluster=0
+            _gb_write "$_proc/vm/swappiness" "60" "VM"
+            _gb_write "$_proc/vm/vfs_cache_pressure" "50" "VM"
+            _gb_write "$_proc/vm/dirty_ratio" "15" "VM"
+            _gb_write "$_proc/vm/dirty_background_ratio" "5" "VM"
+            _gb_write "$_proc/vm/page-cluster" "0" "VM"
+            ;;
     esac
     # zRAM tetap aktif, jangan sentuh zram/disksize
 }
@@ -617,26 +624,34 @@ _gb_apply_io() {
 }
 
 # ============================================================
-# Network Apply
+# Network Apply — best-effort bbr, backlog=16384, ecn=1
 # ============================================================
 _gb_apply_net() {
     local _level="$1"
     local _tcp_node="$PROC_SYS_PREFIX/net/ipv4/tcp_congestion_control"
     local _avail_node="$PROC_SYS_PREFIX/net/ipv4/tcp_available_congestion_control"
     local _tfo_node="$PROC_SYS_PREFIX/net/ipv4/tcp_fastopen"
+    local _backlog_node="$PROC_SYS_PREFIX/net/core/netdev_max_backlog"
+    local _ecn_node="$PROC_SYS_PREFIX/net/ipv4/tcp_ecn"
 
-    # tcp_congestion_control = bbr (jika ada di available)
+    # tcp_congestion_control = bbr (jika ada di available), else biarkan
     if [ -f "$_avail_node" ]; then
         local _avail
         _avail=$(cat "$_avail_node" 2>/dev/null)
         case " $_avail " in
             *" bbr "*) _gb_write "$_tcp_node" "bbr" "NET" ;;
-            *)         _gb_write "$_tcp_node" "cubic" "NET" ;;
+            *)         _gb_log "INFO" "NET bbr unavailable, keeping current" ;;
         esac
     fi
 
     # tcp_fastopen = 3
     _gb_write "$_tfo_node" "3" "NET"
+
+    # netdev_max_backlog = 16384
+    _gb_write "$_backlog_node" "16384" "NET"
+
+    # tcp_ecn = 1
+    _gb_write "$_ecn_node" "1" "NET"
 }
 
 # ============================================================
@@ -663,12 +678,10 @@ gb_apply() {
     _level=$(_gb_level)
     _gb_log "INFO" "level=$_level"
 
-    # 4. CPU (skip bila fas-rs)
-    if [ "${CPU_OWNER:-alpha}" != "fas-rs" ]; then
-        _gb_apply_cpu "$_level"
-    else
-        _gb_log "SKIPPED" "CPU_OWNER=fas-rs, skip semua CPU tuning"
-    fi
+    # 4. CPU — lantai tetap jalan walau fas-rs aktif (lantai ≠ mematikan fas-rs)
+    local _cpu_owner="${CPU_OWNER:-alpha}"
+    _gb_log "INFO" "CPU_OWNER=$_cpu_owner (lantai tetap dijalankan)"
+    _gb_apply_cpu "$_level"
 
     # 5. GPU (SEMUA CPU_OWNER)
     _gb_apply_gpu "$_level"
@@ -698,68 +711,65 @@ gb_restore() {
     _gb_log "INFO" "restore mulai"
 
     # CPU
-    if [ "${CPU_OWNER:-alpha}" != "fas-rs" ]; then
-        local _pol _gov _mn _mx
-        for _pol in $CPU_POLICIES; do
-            [ -d "$SYSFS_CPU_PREFIX/cpufreq/$_pol" ] || continue
-            _gov=$(_gb_read_native "${_pol}_scaling_governor" "")
-            _mn=$(_gb_read_native "${_pol}_scaling_min_freq" "")
-            _mx=$(_gb_read_native "${_pol}_scaling_max_freq" "")
-            # Tulis min dulu bila max < current min (pola HSIN restore)
-            if [ -n "$_mx" ] && [ -n "$_mn" ]; then
-                local _cur_min
-                _cur_min=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_min_freq" 2>/dev/null \
-                           | tr -d '[:space:]')
-                if [ -n "$_cur_min" ] && [ "$_mx" -lt "$_cur_min" ] 2>/dev/null; then
-                    _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_min_freq" "$_mn" "CPU_RESTORE"
-                    _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_max_freq" "$_mx" "CPU_RESTORE"
-                else
-                    _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_max_freq" "$_mx" "CPU_RESTORE"
-                    _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_min_freq" "$_mn" "CPU_RESTORE"
-                fi
+    local _pol _gov _mn _mx
+    for _pol in $CPU_POLICIES; do
+        [ -d "$SYSFS_CPU_PREFIX/cpufreq/$_pol" ] || continue
+        _gov=$(_gb_read_native "${_pol}_scaling_governor" "")
+        _mn=$(_gb_read_native "${_pol}_scaling_min_freq" "")
+        _mx=$(_gb_read_native "${_pol}_scaling_max_freq" "")
+        # Tulis min dulu bila max < current min (pola HSIN restore)
+        if [ -n "$_mx" ] && [ -n "$_mn" ]; then
+            local _cur_min
+            _cur_min=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_min_freq" 2>/dev/null \
+                       | tr -d '[:space:]')
+            if [ -n "$_cur_min" ] && [ "$_mx" -lt "$_cur_min" ] 2>/dev/null; then
+                _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_min_freq" "$_mn" "CPU_RESTORE"
+                _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_max_freq" "$_mx" "CPU_RESTORE"
+            else
+                _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_max_freq" "$_mx" "CPU_RESTORE"
+                _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_min_freq" "$_mn" "CPU_RESTORE"
             fi
-            [ -n "$_gov" ] && _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_governor" "$_gov" "CPU_RESTORE"
-        done
+        fi
+        [ -n "$_gov" ] && _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_governor" "$_gov" "CPU_RESTORE"
+    done
 
-        # Cpuset
-        local _grp _val
-        for _grp in top-app foreground background system-background; do
-            _val=$(_gb_read_native "cpuset_${_grp}" "")
-            [ -n "$_val" ] && _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" "$_val" "CPUSET_RESTORE"
-        done
+    # Cpuset
+    local _grp _val
+    for _grp in top-app foreground background system-background; do
+        _val=$(_gb_read_native "cpuset_${_grp}" "")
+        [ -n "$_val" ] && _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" "$_val" "CPUSET_RESTORE"
+    done
 
-        # uclamp
-        _val=$(_gb_read_native "uclamp_min" "")
-        [ -n "$_val" ] && _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "$_val" "UCLAMP_RESTORE"
-        _val=$(_gb_read_native "uclamp_max" "")
-        [ -n "$_val" ] && _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "$_val" "UCLAMP_RESTORE"
+    # uclamp
+    _val=$(_gb_read_native "uclamp_min" "")
+    [ -n "$_val" ] && _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "$_val" "UCLAMP_RESTORE"
+    _val=$(_gb_read_native "uclamp_max" "")
+    [ -n "$_val" ] && _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "$_val" "UCLAMP_RESTORE"
 
-        # stune
-        _val=$(_gb_read_native "stune_boost" "")
-        [ -n "$_val" ] && _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "$_val" "STUNE_RESTORE"
+    # stune
+    _val=$(_gb_read_native "stune_boost" "")
+    [ -n "$_val" ] && _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "$_val" "STUNE_RESTORE"
 
-        # Sched latency
-        local _canon _p _v
-        for _canon in $_GB_SCHED_NODES; do
-            _v=$(_gb_read_native "$_canon" "")
-            [ -z "$_v" ] && continue
-            _p=$(_gb_sched_resolve "$_canon") || continue
-            _gb_write "$_p" "$_v" "SCHED_RESTORE"
-        done
-        # sched_child_runs_first
-        _v=$(_gb_read_native "sched_child_runs_first" "")
-        [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" "$_v" "SCHED_RESTORE"
-    fi
+    # Sched latency (hanya bila resolve berhasil)
+    local _canon _p _v
+    for _canon in $_GB_SCHED_NODES; do
+        _v=$(_gb_read_native "$_canon" "")
+        [ -z "$_v" ] && continue
+        _p=$(_gb_sched_resolve "$_canon") || continue
+        _gb_write "$_p" "$_v" "SCHED_RESTORE"
+    done
+    # sched_child_runs_first
+    _v=$(_gb_read_native "sched_child_runs_first" "")
+    [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" "$_v" "SCHED_RESTORE"
 
     # GPU
-    local _df _gname _old_gov _old_mx
+    local _df _gname _old_gov _old_mx _old_mn
     for _df in "$SYSFS_DEVFREQ_PREFIX"/*; do
         [ -d "$_df" ] || continue
         _gname=$(basename "$_df")
         case "$_gname" in *gpu*|*mali*|*kgsl*|*adreno*) ;; *) continue ;; esac
         _old_gov=$(_gb_read_native "gpu_${_gname}_governor" "")
         _old_mx=$(_gb_read_native "gpu_${_gname}_max_freq" "")
-        local _old_mn
         _old_mn=$(_gb_read_native "gpu_${_gname}_min_freq" "$_old_mx")
         # Tulis min dulu bila max < current min
         if [ -n "$_old_mx" ] && [ -w "$_df/min_freq" ]; then
@@ -775,6 +785,26 @@ gb_restore() {
         fi
         [ -n "$_old_gov" ] && _gb_write "$_df/governor" "$_old_gov" "GPU_RESTORE"
     done
+
+    # VM
+    local _proc="$PROC_SYS_PREFIX"
+    local _vmkey _v
+    for _vmkey in vm/swappiness vm/vfs_cache_pressure vm/dirty_ratio vm/dirty_background_ratio vm/page-cluster; do
+        _v=$(_gb_read_native "$_vmkey" "")
+        [ -z "$_v" ] && continue
+        _gb_write "$_proc/$_vmkey" "$_v" "VM_RESTORE"
+    done
+
+    # Network
+    local _netbase="$PROC_SYS_PREFIX/net/ipv4"
+    _v=$(_gb_read_native "tcp_congestion_control" "")
+    [ -n "$_v" ] && _gb_write "$_netbase/tcp_congestion_control" "$_v" "NET_RESTORE"
+    _v=$(_gb_read_native "tcp_fastopen" "")
+    [ -n "$_v" ] && _gb_write "$_netbase/tcp_fastopen" "$_v" "NET_RESTORE"
+    _v=$(_gb_read_native "tcp_ecn" "")
+    [ -n "$_v" ] && _gb_write "$_netbase/tcp_ecn" "$_v" "NET_RESTORE"
+    _v=$(_gb_read_native "netdev_max_backlog" "")
+    [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/net/core/netdev_max_backlog" "$_v" "NET_RESTORE"
 
     _gb_log "INFO" "gb_restore complete"
     rm -f "$CONF_DIR/boost_level" 2>/dev/null
