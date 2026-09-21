@@ -1,0 +1,3 @@
+# Batch3 hook C3: apply card alpha from prefs in onResume. Anchor: .line 131 + invoke-direct refreshAll (unik 1x di onResume).
+# p0 = MainActivity. Tanpa .locals baru.
+s#    \.line 131\n    invoke-direct {p0}, Lcom/alphabubble/MainActivity;->refreshAll\(\)V#    .line 131\n    invoke-direct {p0}, Lcom/alphabubble/MainActivity;->refreshAll()V\n    invoke-static {p0}, Lcom/alphabubble/CardAlpha;->applyFromPrefs(Landroid/app/Activity;)V#
