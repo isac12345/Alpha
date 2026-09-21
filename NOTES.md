@@ -16,6 +16,10 @@
 - Sandbox T4: 26 PASS klaim pekerja; leader verifikasi independen (a)
   roundtrip apply→restore identik + (c) fas-rs CPU untouched. Fix leader-
   terima 18+/6-: pola governor `case " $_govs "` + backup min_freq/child_runs_first.
+- Koreksi leader susulan (57b7e32, terverifikasi sandbox): PREFIX untuk
+  cpuset/cpuctl/stune/debugfs/ged/battery (sebelumnya hardcode, tak bisa
+  diuji sandbox) + tulis/hapus $CONF_DIR/boost_level agar kolom boost
+  pgr-log terisi (sebelumnya tidak ada yang menulisnya).
 - PELAJARAN: pekerja T3 tulis test/ + unit-tests.yml + edit PLAN/STATE
   langsung di repo utama (langgar AGENTS p7 + luar tugas) — dikembalikan
   (revert + hapus untracked), tidak di-merge. Laporan T3 juga salah isi
