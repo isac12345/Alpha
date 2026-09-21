@@ -246,8 +246,8 @@ gb_safety_check() {
 check_battery_status() {
     local capacity=0
     local status=""
-    local capacity_file="/sys/class/power_supply/battery/capacity"
-    local status_file="/sys/class/power_supply/battery/status"
+    local capacity_file="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}/battery/capacity"
+    local status_file="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}/battery/status"
     
     # Check if files exist
     if [ ! -r "$capacity_file" ] || [ ! -r "$status_file" ]; then

@@ -14,6 +14,10 @@ SYSFS_DEVFREQ_PREFIX="${SYSFS_DEVFREQ_PREFIX:-/sys/class/devfreq}"
 GPU_SYSFS_PREFIX="${GPU_SYSFS_PREFIX:-/sys}"
 SYSFS_MODULE_PREFIX="${SYSFS_MODULE_PREFIX:-/sys/module}"
 PROC_SYS_PREFIX="${PROC_SYS_PREFIX:-/proc/sys}"
+DEV_CPUSET_PREFIX="${DEV_CPUSET_PREFIX:-${DEV_CPUSET_PREFIX:-/dev/cpuset}}"
+DEV_CPUCTL_PREFIX="${DEV_CPUCTL_PREFIX:-${DEV_CPUCTL_PREFIX:-/dev/cpuctl}}"
+DEV_STUNE_PREFIX="${DEV_STUNE_PREFIX:-${DEV_STUNE_PREFIX:-/dev/stune}}"
+SYSFS_DEBUG_PREFIX="${SYSFS_DEBUG_PREFIX:-${SYSFS_DEBUG_PREFIX:-/sys/kernel/debug/sched}}"
 
 # Defaults (di-override bila defaults.conf ada)
 GPU_MAX_FREQ="${GPU_MAX_FREQ:-0}"
@@ -116,8 +120,8 @@ _gb_sched_resolve() {
         echo "$PROC_SYS_PREFIX/kernel/$_canon"; return 0
     fi
     local _short="${_canon#sched_}"
-    if [ -d "/sys/kernel/debug/sched" ] && [ -w "/sys/kernel/debug/sched/$_short" ]; then
-        echo "/sys/kernel/debug/sched/$_short"; return 0
+    if [ -d "${SYSFS_DEBUG_PREFIX:-/sys/kernel/debug/sched}" ] && [ -w "${SYSFS_DEBUG_PREFIX:-/sys/kernel/debug/sched}/$_short" ]; then
+        echo "${SYSFS_DEBUG_PREFIX:-/sys/kernel/debug/sched}/$_short"; return 0
     fi
     return 1
 }
@@ -251,23 +255,23 @@ _gb_backup_native() {
     # CPuset asli
     local _grp
     for _grp in top-app foreground background system-background; do
-        if [ -f "/dev/cpuset/$_grp/cpus" ]; then
-            _v=$(cat "/dev/cpuset/$_grp/cpus" 2>/dev/null | tr -d '[:space:]')
+        if [ -f "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" ]; then
+            _v=$(cat "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" 2>/dev/null | tr -d '[:space:]')
             [ -n "$_v" ] && echo "cpuset_${_grp}=$_v" >> "$NATIVE_CONF.tmp"
         fi
     done
     # uclamp asli
-    if [ -f "/dev/cpuctl/foreground/cpu.uclamp.min" ]; then
-        _v=$(cat "/dev/cpuctl/foreground/cpu.uclamp.min" 2>/dev/null | tr -d '[:space:]')
+    if [ -f "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" ]; then
+        _v=$(cat "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" 2>/dev/null | tr -d '[:space:]')
         [ -n "$_v" ] && echo "uclamp_min=$_v" >> "$NATIVE_CONF.tmp"
     fi
-    if [ -f "/dev/cpuctl/foreground/cpu.uclamp.max" ]; then
-        _v=$(cat "/dev/cpuctl/foreground/cpu.uclamp.max" 2>/dev/null | tr -d '[:space:]')
+    if [ -f "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" ]; then
+        _v=$(cat "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" 2>/dev/null | tr -d '[:space:]')
         [ -n "$_v" ] && echo "uclamp_max=$_v" >> "$NATIVE_CONF.tmp"
     fi
     # stune asli
-    if [ -f "/dev/stune/top-app/schedtune.boost" ]; then
-        _v=$(cat "/dev/stune/top-app/schedtune.boost" 2>/dev/null | tr -d '[:space:]')
+    if [ -f "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" ]; then
+        _v=$(cat "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" 2>/dev/null | tr -d '[:space:]')
         [ -n "$_v" ] && echo "stune_boost=$_v" >> "$NATIVE_CONF.tmp"
     fi
     mv "$NATIVE_CONF.tmp" "$NATIVE_CONF" 2>/dev/null
@@ -384,17 +388,17 @@ _gb_apply_cpu() {
 
     # --- Cpuset (skip bila sakelar NO_CPUSET) ---
     if [ ! -f "$CONF_DIR/NO_CPUSET" ]; then
-        if [ -d "/dev/cpuset" ]; then
+        if [ -d "${DEV_CPUSET_PREFIX:-/dev/cpuset}" ]; then
             _gb_topo_detect
             if [ -n "$GB_CPU_BIG" ] && [ -n "$GB_CPU_LITTLE" ]; then
                 local _grp
                 for _grp in top-app foreground; do
-                    [ -w "/dev/cpuset/$_grp/cpus" ] && \
-                        _gb_write "/dev/cpuset/$_grp/cpus" "$GB_CPU_BIG" "CPUSET"
+                    [ -w "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" ] && \
+                        _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" "$GB_CPU_BIG" "CPUSET"
                 done
                 for _grp in background system-background; do
-                    [ -w "/dev/cpuset/$_grp/cpus" ] && \
-                        _gb_write "/dev/cpuset/$_grp/cpus" "$GB_CPU_LITTLE" "CPUSET"
+                    [ -w "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" ] && \
+                        _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" "$GB_CPU_LITTLE" "CPUSET"
                 done
             fi
         fi
@@ -403,20 +407,20 @@ _gb_apply_cpu() {
     fi
 
     # --- uclamp ---
-    if [ -d "/dev/cpuctl" ]; then
+    if [ -d "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}" ]; then
         case "$_level" in
-            extreme)     _gb_write "/dev/cpuctl/foreground/cpu.uclamp.min" "60" "UCLAMP"
-                         _gb_write "/dev/cpuctl/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
-            performance) _gb_write "/dev/cpuctl/foreground/cpu.uclamp.min" "15" "UCLAMP"
-                         _gb_write "/dev/cpuctl/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
+            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "60" "UCLAMP"
+                         _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
+            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "15" "UCLAMP"
+                         _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
         esac
     fi
 
     # --- stune ---
-    if [ -d "/dev/stune" ]; then
+    if [ -d "${DEV_STUNE_PREFIX:-/dev/stune}" ]; then
         case "$_level" in
-            extreme)     _gb_write "/dev/stune/top-app/schedtune.boost" "100" "STUNE" ;;
-            performance) _gb_write "/dev/stune/top-app/schedtune.boost" "40" "STUNE" ;;
+            extreme)     _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "100" "STUNE" ;;
+            performance) _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "40" "STUNE" ;;
         esac
     fi
 
@@ -550,7 +554,7 @@ _gb_apply_gpu() {
 
     # --- MTK ged_dvfs_boost ---
     if [ "${SOC_VENDOR:-}" = "mtk" ]; then
-        local _ged="/sys/module/ged/parameters/ged_dvfs_boost"
+        local _ged="${SYSFS_MODULE_PREFIX:-/sys/module}/ged/parameters/ged_dvfs_boost"
         if [ -w "$_ged" ]; then
             local _old_val
             _old_val=$(cat "$_ged" 2>/dev/null | tr -d '[:space:]')
@@ -683,6 +687,7 @@ gb_apply() {
     _gb_apply_net "$_level"
 
     _gb_log "INFO" "gb_apply complete level=$_level"
+    printf '%s\n' "$_level" > "$CONF_DIR/boost_level" 2>/dev/null
 }
 
 # ============================================================
@@ -720,18 +725,18 @@ gb_restore() {
         local _grp _val
         for _grp in top-app foreground background system-background; do
             _val=$(_gb_read_native "cpuset_${_grp}" "")
-            [ -n "$_val" ] && _gb_write "/dev/cpuset/$_grp/cpus" "$_val" "CPUSET_RESTORE"
+            [ -n "$_val" ] && _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" "$_val" "CPUSET_RESTORE"
         done
 
         # uclamp
         _val=$(_gb_read_native "uclamp_min" "")
-        [ -n "$_val" ] && _gb_write "/dev/cpuctl/foreground/cpu.uclamp.min" "$_val" "UCLAMP_RESTORE"
+        [ -n "$_val" ] && _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "$_val" "UCLAMP_RESTORE"
         _val=$(_gb_read_native "uclamp_max" "")
-        [ -n "$_val" ] && _gb_write "/dev/cpuctl/foreground/cpu.uclamp.max" "$_val" "UCLAMP_RESTORE"
+        [ -n "$_val" ] && _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "$_val" "UCLAMP_RESTORE"
 
         # stune
         _val=$(_gb_read_native "stune_boost" "")
-        [ -n "$_val" ] && _gb_write "/dev/stune/top-app/schedtune.boost" "$_val" "STUNE_RESTORE"
+        [ -n "$_val" ] && _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "$_val" "STUNE_RESTORE"
 
         # Sched latency
         local _canon _p _v
@@ -772,6 +777,7 @@ gb_restore() {
     done
 
     _gb_log "INFO" "gb_restore complete"
+    rm -f "$CONF_DIR/boost_level" 2>/dev/null
 }
 
 return 0 2>/dev/null || true
