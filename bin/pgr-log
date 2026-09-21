@@ -1,0 +1,152 @@
+#!/system/bin/sh
+# Alpha PGR-Log — Performance/Game-Resource logger (POSIX sh, no model deps)
+# Usage: pgr-log start | stop
+# Writes one CSV line/second to /sdcard/alpha/game-log.csv for up to 30 minutes.
+
+WORK_DIR="${ALPHA_WORK_DIR:-/data/adb/alpha}"
+PID_FILE="$WORK_DIR/pgr-log.pid"
+CSV_FILE="/sdcard/alpha/game-log.csv"
+MAX_ITERATIONS=1800
+
+pgr_log_stop() {
+    if [ -f "$PID_FILE" ]; then
+        pid=$(tr -d '[:space:]' < "$PID_FILE" 2>/dev/null)
+        if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" 2>/dev/null
+            echo "[pgr-log] stopped pid=$pid"
+        fi
+        rm -f "$PID_FILE"
+    else
+        echo "[pgr-log] not running (no pid file)"
+    fi
+}
+
+pgr_log_start() {
+    # Guard: already running?
+    if [ -f "$PID_FILE" ]; then
+        old_pid=$(tr -d '[:space:]' < "$PID_FILE" 2>/dev/null)
+        if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+            echo "[pgr-log] already running pid=$old_pid"
+            return 1
+        fi
+        rm -f "$PID_FILE"
+    fi
+
+    mkdir -p "$WORK_DIR" 2>/dev/null
+    mkdir -p "$(dirname "$CSV_FILE")" 2>/dev/null
+
+    # Daemonize
+    _pgr_log_daemon &
+    daemon_pid=$!
+    printf '%s\n' "$daemon_pid" > "$PID_FILE"
+    echo "[pgr-log] started pid=$daemon_pid csv=$CSV_FILE"
+}
+
+_pgr_log_daemon() {
+    # Write CSV header
+    if [ ! -f "$CSV_FILE" ] || [ ! -s "$CSV_FILE" ]; then
+        printf '%s\n' "time,foreground_pkg,active_profile,boost_level,cpu_policies,gpu_info,max_temp_mC,uperf_alive,fasrs_alive,asoulopt_alive" > "$CSV_FILE"
+    fi
+
+    # Detect CPU policies (cached)
+    _pgr_cpu_policies=""
+    for p in /sys/devices/system/cpu/cpufreq/policy*; do
+        [ -d "$p" ] || continue
+        _pgr_cpu_policies="${_pgr_cpu_policies}$(basename "$p") "
+    done
+    _pgr_cpu_policies=$(printf '%s' "$_pgr_cpu_policies" | sed 's/[ \t]*$//')
+
+    _iter=0
+    while [ "$_iter" -lt "$MAX_ITERATIONS" ]; do
+        _iter=$((_iter + 1))
+        _ts=$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date 2>/dev/null)
+
+        # Foreground package (timeout 5)
+        _fg=$(timeout 5 dumpsys activity window 2>/dev/null | grep -m1 'mCurrentFocus' | sed 's/.*{[^ ]* [^ ]* \([^}]*\)}.*/\1/' | cut -d'/' -f1)
+        [ -z "$_fg" ] && _fg="unknown"
+
+        # Active profile
+        _profile=""
+        [ -f "$WORK_DIR/active_profile" ] && _profile=$(tr -d '[:space:]' < "$WORK_DIR/active_profile" 2>/dev/null)
+        [ -z "$_profile" ] && _profile="unknown"
+
+        # Boost level
+        _boost=""
+        [ -f "$WORK_DIR/boost_level" ] && _boost=$(tr -d '[:space:]' < "$WORK_DIR/boost_level" 2>/dev/null)
+        [ -z "$_boost" ] && _boost="0"
+
+        # CPU info per policy: policy:gov:cur:min:max
+        _cpu_info=""
+        for pol in $_pgr_cpu_policies; do
+            _base="/sys/devices/system/cpu/cpufreq/$pol"
+            _gov=""
+            _cur=""
+            _min=""
+            _max=""
+            [ -f "$_base/scaling_governor" ] && _gov=$(cat "$_base/scaling_governor" 2>/dev/null | tr -d '\0')
+            [ -f "$_base/scaling_cur_freq" ] && _cur=$(cat "$_base/scaling_cur_freq" 2>/dev/null | tr -d '[:space:]')
+            [ -f "$_base/scaling_min_freq" ] && _min=$(cat "$_base/scaling_min_freq" 2>/dev/null | tr -d '[:space:]')
+            [ -f "$_base/scaling_max_freq" ] && _max=$(cat "$_base/scaling_max_freq" 2>/dev/null | tr -d '[:space:]')
+            [ -n "$_cpu_info" ] && _cpu_info="${_cpu_info};"
+            _cpu_info="${_cpu_info}${pol}:${_gov}:${_cur}:${_min}:${_max}"
+        done
+
+        # GPU info: gov:cur:max
+        _gpu_info=""
+        _gpu_base=""
+        for _gpu_node in /sys/class/devfreq/*gpu* /sys/class/devfreq/*g3d* /sys/class/devfreq/*mali*; do
+            [ -d "$_gpu_node" ] || continue
+            _gpu_base="$_gpu_node"
+            break
+        done
+        if [ -n "$_gpu_base" ]; then
+            _ggov=""
+            _gcur=""
+            _gmax=""
+            [ -f "$_gpu_base/governor" ] && _ggov=$(cat "$_gpu_base/governor" 2>/dev/null | tr -d '\0')
+            [ -f "$_gpu_base/cur_freq" ] && _gcur=$(cat "$_gpu_base/cur_freq" 2>/dev/null | tr -d '[:space:]')
+            [ -f "$_gpu_base/max_freq" ] && _gmax=$(cat "$_gpu_base/max_freq" 2>/dev/null | tr -d '[:space:]')
+            _gpu_info="${_ggov}:${_gcur}:${_gmax}"
+        fi
+
+        # Max thermal temp (millidegrees C)
+        _max_temp=""
+        for _tz in /sys/class/thermal/thermal_zone*/temp; do
+            [ -r "$_tz" ] || continue
+            _t=$(tr -d '[:space:]' < "$_tz" 2>/dev/null)
+            case "$_t" in ''|*[!0-9-]*) continue ;; esac
+            if [ -z "$_max_temp" ] || [ "$_t" -gt "$_max_temp" ] 2>/dev/null; then
+                _max_temp="$_t"
+            fi
+        done
+        [ -z "$_max_temp" ] && _max_temp=""
+
+        # Daemon alive checks (1/0)
+        _uperf_alive=0; _fasrs_alive=0; _asoulopt_alive=0
+        pidof uperf >/dev/null 2>&1 && _uperf_alive=1
+        pidof fas-rs >/dev/null 2>&1 && _fasrs_alive=1
+        pidof asoulopt >/dev/null 2>&1 && _asoulopt_alive=1
+
+        printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+            "$_ts" "$_fg" "$_profile" "$_boost" \
+            "$_cpu_info" "$_gpu_info" "$_max_temp" \
+            "$_uperf_alive" "$_fasrs_alive" "$_asoulopt_alive" \
+            >> "$CSV_FILE"
+
+        sleep 1
+    done
+
+    # Auto-stop: cleanup pid file
+    rm -f "$PID_FILE" 2>/dev/null
+    echo "[pgr-log] auto-stopped after $MAX_ITERATIONS iterations"
+}
+
+# --- Main ---
+case "${1:-}" in
+    start) pgr_log_start ;;
+    stop)  pgr_log_stop ;;
+    *)
+        echo "Usage: pgr-log {start|stop}"
+        exit 1
+        ;;
+esac

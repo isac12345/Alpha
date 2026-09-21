@@ -55,6 +55,18 @@ if [ "$BOOT_COMPLETED_OK" = "0" ]; then
     exit 0
 fi
 
+# 0.5 SF_LATCH_UNSIGNALED opt-in (default: OFF).
+#     Hanya aktif bila file $WORK_DIR/SF_LATCH_UNSIGNALED ADA.
+#     Sengaja dipindah dari system.prop supaya tidak default aktif.
+SF_LATCH_FILE="$WORK_DIR/SF_LATCH_UNSIGNALED"
+if [ -f "$SF_LATCH_FILE" ]; then
+    setprop debug.sf.latch_unsignaled 1 2>/dev/null
+    echo "[BOOT] SF_LATCH_UNSIGNALED: ON (file present)" >> "$LOG_FILE"
+else
+    setprop debug.sf.latch_unsignaled 0 2>/dev/null
+    echo "[BOOT] SF_LATCH_UNSIGNALED: OFF (default)" >> "$LOG_FILE"
+fi
+
 # 1. Load Hardware Detection (atau baca cache)
 if [ -f "$MODDIR/common/detect.sh" ]; then
     . "$MODDIR/common/detect.sh"
