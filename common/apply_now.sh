@@ -213,6 +213,20 @@ tune_thermal
 tune_network
 tune_gpu
 
+# Engine mapping: set fas-rs mode per profil (powersave/balance/performance/fast).
+# Tidak kill apa pun — hanya echo mode via powercfg.sh.
+if [ -f "$MODDIR/cpu_owner.sh" ]; then
+    . "$MODDIR/cpu_owner.sh" 2>/dev/null
+    if [ "$?" -eq 0 ]; then
+        cpu_detect_owner 2>/dev/null
+        apply_log "INFO" "CPU_OWNER=${CPU_OWNER:-unknown}"
+    else
+        apply_log "WARNING" "failed to source cpu_owner.sh"
+    fi
+else
+    apply_log "WARNING" "cpu_owner.sh missing, fas-rs mode unchanged"
+fi
+
 state_tmp="$CURRENT_STATE_FILE.tmp.$$"
 if printf '%s\n' "$ACTIVE_PROFILE" > "$state_tmp" && mv -f "$state_tmp" "$CURRENT_STATE_FILE" 2>/dev/null; then
     # User-facing log: label battery as "Daily" (internal state stays "battery")

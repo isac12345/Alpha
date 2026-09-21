@@ -38,6 +38,66 @@ _gb_log() {
 # ============================================================
 # Write-Read-Verify (dua putaran)
 # ============================================================
+# Kernel sering menormalkan tulisan (cpuset "6 7"→"6-7", uclamp
+# "60"→"60.00", scheduler "[mq-deadline] ...", uclamp.max "100"→"max").
+# Samakan arti sebelum vonis gagal.
+_gb_equiv() {
+    local _want="$1" _got="$2"
+    [ "$_got" = "$_want" ] && return 0
+    # uclamp.max: 100 ≡ max (tanpa cap)
+    if [ "$_want" = "100" ] && [ "$_got" = "max" ]; then
+        return 0
+    fi
+    # scheduler: "[mq-deadline] kyber ..." ≡ mq-deadline bila dibracket
+    case "$_got" in
+        *"[$_want]"*) return 0 ;;
+    esac
+    # angka desimal kernel: "60.00"/"60.0" ≡ "60"
+    local _gwant="$_want" _ggot="$_got"
+    case "$_ggot" in
+        *.00) _ggot="${_ggot%.00}" ;;
+        *.0) _ggot="${_ggot%.0}" ;;
+    esac
+    [ "$_ggot" = "$_gwant" ] && return 0
+    # list cpu: "6 7" ≡ "6-7" ≡ "6,7" (bandingkan sebagai himpunan)
+    if _gb_cpuset_eq "$_want" "$_got"; then
+        return 0
+    fi
+    return 1
+}
+
+# Normalkan daftar cpu ("0-2,4-7", "0 1 2", "0-5") jadi "0,1,2,4,5,6,7,"
+_gb_cpuset_norm() {
+    local _in="$1" _tok _a _b _n _out=""
+    _in=$(printf '%s' "$_in" | tr ',' ' ')
+    for _tok in $_in; do
+        case "$_tok" in
+            *-*)
+                _a="${_tok%%-*}"
+                _b="${_tok##*-}"
+                case "$_a$_b" in ''|*[!0-9]*) continue ;; esac
+                _n="$_a"
+                while [ "$_n" -le "$_b" ] 2>/dev/null; do
+                    _out="$_out$_n,"
+                    _n=$((_n + 1))
+                done
+                ;;
+            *)
+                case "$_tok" in ''|*[!0-9]*) continue ;; esac
+                _out="$_out$_tok,"
+                ;;
+        esac
+    done
+    printf '%s' "$_out" | tr ',' '\n' | grep -E '^[0-9]+$' | sort -n | tr '\n' ','
+}
+
+_gb_cpuset_eq() {
+    local _nw _ng
+    _nw=$(_gb_cpuset_norm "$1")
+    _ng=$(_gb_cpuset_norm "$2")
+    [ -n "$_nw" ] && [ "$_nw" = "$_ng" ]
+}
+
 _gb_write() {
     local _node="$1" _val="$2" _cat="$3"
     [ -e "$_node" ] || { _gb_log "SKIPPED" "$_cat node=$_node (not found)"; return 0; }
@@ -51,6 +111,10 @@ _gb_write() {
         _rb=$(cat "$_node" 2>/dev/null | tr -d '[:space:]')
         if [ "$_rb" = "$_val" ]; then
             _gb_log "APPLIED" "$_cat node=$_node value=$_val"
+            return 0
+        fi
+        if _gb_equiv "$_val" "$_rb"; then
+            _gb_log "APPLIED" "$_cat node=$_node value=$_val (kernel: $_rb)"
             return 0
         fi
         _pass=$((_pass + 1))
@@ -321,6 +385,33 @@ _gb_backup_native() {
         _v=$(cat "$PROC_SYS_PREFIX/net/core/netdev_max_backlog" 2>/dev/null | tr -d '[:space:]')
         [ -n "$_v" ] && echo "netdev_max_backlog=$_v" >> "$NATIVE_CONF.tmp"
     }
+    # kbase asli (Mali)
+    local _kbp="${SYSFS_MODULE_PREFIX:-/sys/module}/mali_kbase/parameters"
+    if [ -d "$_kbp" ]; then
+        for _kb in gpu_boost_level2 gpu_pollingtime gpu_upthreshold; do
+            [ -f "$_kbp/$_kb" ] || continue
+            _v=$(cat "$_kbp/$_kb" 2>/dev/null | tr -d '[:space:]')
+            [ -n "$_v" ] && echo "kbase_$_kb=$_v" >> "$NATIVE_CONF.tmp"
+        done
+    fi
+    # IO asli (scheduler + read_ahead per device utama)
+    local _bdev _bname _sq
+    for _bdev in "$SYSFS_BLOCK_PREFIX"/sd* "$SYSFS_BLOCK_PREFIX"/mmcblk*; do
+        [ -d "$_bdev/queue" ] || continue
+        _bname=$(basename "$_bdev")
+        case "$_bname" in
+            *p[0-9]*|*[0-9]rpmb|*[0-9]boot*) continue ;;
+        esac
+        [ -f "$_bdev/queue/read_ahead_kb" ] && {
+            _v=$(cat "$_bdev/queue/read_ahead_kb" 2>/dev/null | tr -d '[:space:]')
+            [ -n "$_v" ] && echo "io_${_bname}_read_ahead_kb=$_v" >> "$NATIVE_CONF.tmp"
+        }
+        [ -f "$_bdev/queue/scheduler" ] && {
+            _sq=$(cat "$_bdev/queue/scheduler" 2>/dev/null \
+                | tr ' ' '\n' | grep -E '^\[.*\]$' | tr -d '[]')
+            [ -n "$_sq" ] && echo "io_${_bname}_scheduler=$_sq" >> "$NATIVE_CONF.tmp"
+        }
+    done
     mv "$NATIVE_CONF.tmp" "$NATIVE_CONF" 2>/dev/null
     chmod 0644 "$NATIVE_CONF" 2>/dev/null
     [ -f "$NATIVE_CONF" ] || { _gb_log "FAILED" "backup write failed"; return 1; }
@@ -701,6 +792,31 @@ gb_apply() {
 
     _gb_log "INFO" "gb_apply complete level=$_level"
     printf '%s\n' "$_level" > "$CONF_DIR/boost_level" 2>/dev/null
+    _gb_set_fasrs_mode "$_level"
+}
+
+# Mode fas-rs mengikuti boost (tidak kill apa pun):
+# extreme → fast, performance → performance.
+_gb_set_fasrs_mode() {
+    local _want=""
+    case "$1" in
+        extreme) _want="fast" ;;
+        performance) _want="performance" ;;
+        *) return 0 ;;
+    esac
+    [ -r "/dev/fas_rs/mode" ] || return 0
+    local _pcfg=""
+    local _cand
+    for _cand in /data/powercfg.sh \
+        "${MODDIR:-/data/adb/modules/alpha_uperf_fasrs_fusion}/fasrs/powercfg.sh"; do
+        if [ -f "$_cand" ] 2>/dev/null; then
+            _pcfg="$_cand"
+            break
+        fi
+    done
+    [ -n "$_pcfg" ] || return 0
+    sh "$_pcfg" "$_want" 2>/dev/null
+    _gb_log "INFO" "fas-rs mode=$_want (boost)"
 }
 
 # ============================================================
@@ -806,8 +922,60 @@ gb_restore() {
     _v=$(_gb_read_native "netdev_max_backlog" "")
     [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/net/core/netdev_max_backlog" "$_v" "NET_RESTORE"
 
+    # kbase (Mali)
+    local _kbp="${SYSFS_MODULE_PREFIX:-/sys/module}/mali_kbase/parameters"
+    if [ -d "$_kbp" ]; then
+        for _kb in gpu_boost_level2 gpu_pollingtime gpu_upthreshold; do
+            _v=$(_gb_read_native "kbase_$_kb" "")
+            [ -n "$_v" ] && _gb_write "$_kbp/$_kb" "$_v" "KBASE_RESTORE"
+        done
+    fi
+
+    # IO (scheduler + read_ahead per device utama)
+    local _bdev _bname
+    for _bdev in "$SYSFS_BLOCK_PREFIX"/sd* "$SYSFS_BLOCK_PREFIX"/mmcblk*; do
+        [ -d "$_bdev/queue" ] || continue
+        _bname=$(basename "$_bdev")
+        case "$_bname" in
+            *p[0-9]*|*[0-9]rpmb|*[0-9]boot*) continue ;;
+        esac
+        _v=$(_gb_read_native "io_${_bname}_read_ahead_kb" "")
+        [ -n "$_v" ] && _gb_write "$_bdev/queue/read_ahead_kb" "$_v" "IO_RESTORE"
+        _v=$(_gb_read_native "io_${_bname}_scheduler" "")
+        [ -n "$_v" ] && _gb_write "$_bdev/queue/scheduler" "$_v" "IO_RESTORE"
+    done
+
     _gb_log "INFO" "gb_restore complete"
     rm -f "$CONF_DIR/boost_level" 2>/dev/null
+    _gb_restore_fasrs_mode
+}
+
+# Kembalikan mode fas-rs sesuai current_state (battery→powersave,
+# balanced→balance, performance→performance). Best-effort.
+_gb_restore_fasrs_mode() {
+    [ -r "/dev/fas_rs/mode" ] || return 0
+    local _st=""
+    [ -f "$CONF_DIR/current_state" ] && \
+        _st=$(tr -d '[:space:]' < "$CONF_DIR/current_state" 2>/dev/null)
+    local _want=""
+    case "$_st" in
+        battery) _want="powersave" ;;
+        balanced) _want="balance" ;;
+        performance) _want="performance" ;;
+        *) return 0 ;;
+    esac
+    local _pcfg=""
+    local _cand
+    for _cand in /data/powercfg.sh \
+        "${MODDIR:-/data/adb/modules/alpha_uperf_fasrs_fusion}/fasrs/powercfg.sh"; do
+        if [ -f "$_cand" ] 2>/dev/null; then
+            _pcfg="$_cand"
+            break
+        fi
+    done
+    [ -n "$_pcfg" ] || return 0
+    sh "$_pcfg" "$_want" 2>/dev/null
+    _gb_log "INFO" "fas-rs mode=$_want (restore, state=$_st)"
 }
 
 return 0 2>/dev/null || true

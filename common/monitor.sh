@@ -369,7 +369,9 @@ handle_foreground_event() {
     [ -f "$GB_ACTIVE_FILE" ] && gb_active=$(cat "$GB_ACTIVE_FILE" 2>/dev/null)
 
     local game_promote=0
-    if [ -n "$(get_game_profile "$handle_pkg")" ] && [ "$handle_current" = "battery" ]; then
+    local _mapped_prof=""
+    _mapped_prof=$(get_game_profile "$handle_pkg")
+    if [ -n "$_mapped_prof" ] && [ "$_mapped_prof" != "performance" ] && [ "$handle_current" = "battery" ]; then
         game_promote=1
         handle_target="balanced"
         monitor_log "GAMEBOOST" "DAILY GAME PROMOTE: $handle_pkg detected in Daily mode, promoting to balanced"
@@ -422,7 +424,11 @@ handle_foreground_event() {
                             orig_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null)
                             printf '%s\n' "$GB_FORCED_LEVEL" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
                             gb_apply
-                            printf '%s\n' "${orig_level:-performance}" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                            if [ -n "$orig_level" ]; then
+                                printf '%s\n' "$orig_level" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                            else
+                                rm -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                            fi
                         else
                             gb_apply
                         fi
@@ -570,6 +576,34 @@ check_daily_loadavg_guard() {
     return 0
 }
 
+# Forced-level bookkeeping (safety step-down): simpan level user,
+# tulis performance sementara, kembalikan saat cooldown/restore.
+_gb_force_level() {
+    [ -f "$STATE_DIR/.gb_level_orig" ] || {
+        if [ -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" ]; then
+            cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" \
+                > "$STATE_DIR/.gb_level_orig" 2>/dev/null
+        else
+            printf '%s\n' "__ABSENT__" > "$STATE_DIR/.gb_level_orig" 2>/dev/null
+        fi
+    }
+    printf '%s\n' "performance" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+}
+
+_gb_unforce_level() {
+    GB_FORCED_LEVEL=""
+    if [ -f "$STATE_DIR/.gb_level_orig" ]; then
+        local _o
+        _o=$(cat "$STATE_DIR/.gb_level_orig" 2>/dev/null)
+        if [ "$_o" = "__ABSENT__" ]; then
+            rm -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+        elif [ -n "$_o" ]; then
+            printf '%s\n' "$_o" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+        fi
+        rm -f "$STATE_DIR/.gb_level_orig" 2>/dev/null
+    fi
+}
+
 # Check GameBoost grace period and safety
 check_gb_grace_period() {
     local now
@@ -587,12 +621,19 @@ check_gb_grace_period() {
             local manual_prof
             manual_prof=$(get_manual_profile)
             if [ "$manual_prof" = "battery" ]; then
-                # DAILY restore: apply_now battery to go back to Daily
+                # DAILY restore: kembalikan boost dulu (bila aktif), lalu ke Daily
+                if [ -f "$GB_ACTIVE_FILE" ] && [ "$(cat "$GB_ACTIVE_FILE" 2>/dev/null)" = "1" ] \
+                    && command -v gb_restore >/dev/null 2>&1; then
+                    gb_restore
+                    printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
+                fi
+                _gb_unforce_level
                 sh "$MODDIR/apply_now.sh" battery monitor >> "$LOG_FILE" 2>&1
                 monitor_log "GAMEBOOST" "DAILY RESTORED after ${GB_GRACE}s grace, returning to Daily"
             elif command -v gb_restore >/dev/null 2>&1; then
                 gb_restore
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
+                _gb_unforce_level
                 monitor_log "GAMEBOOST" "RESTORED after ${GB_GRACE}s grace"
             fi
             rm -f "$GB_PENDING_FILE"
@@ -616,6 +657,7 @@ check_gb_grace_period() {
                 if command -v gb_restore >/dev/null 2>&1; then
                     gb_restore
                 fi
+                _gb_unforce_level
                 sh "$MODDIR/apply_now.sh" battery monitor >> "$LOG_FILE" 2>&1
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
                 rm -f "$GB_PENDING_FILE"
@@ -625,28 +667,41 @@ check_gb_grace_period() {
                 if command -v gb_restore >/dev/null 2>&1; then
                     gb_restore
                 fi
+                _gb_unforce_level
                 sh "$MODDIR/apply_now.sh" balanced monitor >> "$LOG_FILE" 2>&1
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
                 rm -f "$GB_PENDING_FILE"
                 monitor_log "GAMEBOOST" "HIGH TEMP: ${current_temp}mC >= 85000, forced balanced"
             elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
-                # Warm: force performance level temporarily
+                # Warm: step down ke resep performance SEKARANG (bukan cuma var)
                 if [ -z "$GB_FORCED_LEVEL" ]; then
                     GB_FORCED_LEVEL="performance"
-                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 75000, forcing performance"
+                    _gb_force_level
+                    if command -v gb_apply >/dev/null 2>&1; then
+                        gb_apply
+                    fi
+                    rm -f "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
+                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 75000, stepped down to performance"
                 fi
             elif [ "$current_temp" -lt 70000 ] 2>/dev/null; then
                 # Cool down: check if we were forced
                 if [ -n "$GB_FORCED_LEVEL" ]; then
-                    # Check cooldown period
+                    # Check cooldown period (60 dtk = 60/15 = 4 tick)
                     local cooldown_count=0
+                    local cooldown_need=4
+                    [ -n "$GB_SAFETY_INTERVAL" ] && [ "$GB_SAFETY_INTERVAL" -gt 0 ] 2>/dev/null && \
+                        cooldown_need=$(( (GB_COOLDOWN_SECS + GB_SAFETY_INTERVAL - 1) / GB_SAFETY_INTERVAL ))
+                    [ "$cooldown_need" -lt 1 ] 2>/dev/null && cooldown_need=1
                     [ -f "$GB_COOLDOWN_COUNT_FILE" ] && cooldown_count=$(cat "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null)
                     case "$cooldown_count" in ''|*[!0-9]*) cooldown_count=0 ;; esac
-                    
-                    if [ "$cooldown_count" -ge "$GB_COOLDOWN_SECS" ] 2>/dev/null; then
-                        GB_FORCED_LEVEL=""
+
+                    if [ "$cooldown_count" -ge "$cooldown_need" ] 2>/dev/null; then
+                        _gb_unforce_level
                         rm -f "$GB_COOLDOWN_COUNT_FILE"
-                        monitor_log "GAMEBOOST" "COOLDOWN COMPLETE: returning to normal"
+                        if command -v gb_apply >/dev/null 2>&1; then
+                            gb_apply
+                        fi
+                        monitor_log "GAMEBOOST" "COOLDOWN COMPLETE: temp<70C 60s, returning to user level"
                     else
                         cooldown_count=$((cooldown_count + 1))
                         printf '%s\n' "$cooldown_count" > "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
