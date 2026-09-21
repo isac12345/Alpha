@@ -97,29 +97,98 @@ public final class BubbleStyle {
         }
     }
 
-    // Crop: center-crop bitmap dari galeri ke persegi + simpan preferensi URI.
-    public static Bitmap cropSquare(Context c, Uri uri, int sizePx) {
+    // Mode crop: Fill = isi penuh (crop tengah sesuai rasio layar), Fit = tampil utuh tanpa terpotong (letterbox bila perlu).
+    public enum CropMode { FILL, FIT }
+
+    /** Crop bitmap dari URI mengikuti rasio layar device (bukan paksa 1:1).
+     *  @param mode FILL = crop tengah mengisi penuh, FIT = tampil utuh (letterbox).
+     *  @param outWidth lebar output target (biasanya widthPixels layar).
+     *  @param outHeight tinggi output target (biasanya heightPixels layar). */
+    public static Bitmap cropRatio(Context c, Uri uri, CropMode mode, int outWidth, int outHeight) {
         final Bitmap[] out = {null};
-        HelperGuard.run(c, "crop", () -> {
+        HelperGuard.run(c, "cropRatio", () -> {
             try {
                 Bitmap src = BitmapFactory.decodeStream(
                         c.getContentResolver().openInputStream(uri));
                 if (src == null) {
-                    Log.w(TAG, "crop: decode null");
+                    Log.w(TAG, "cropRatio: decode null");
                     return;
                 }
-                int w = src.getWidth(), h = src.getHeight();
-                int side = Math.min(w, h);
-                int x = (w - side) / 2, y = (h - side) / 2;
-                Bitmap sq = Bitmap.createBitmap(src, x, y, side, side);
-                out[0] = Bitmap.createScaledBitmap(sq, sizePx, sizePx, true);
-                if (sq != src) { try { src.recycle(); } catch (Throwable t) {
-                    Log.w(TAG, "crop: recycle gagal: " + t); } }
+                int sw = src.getWidth(), sh = src.getHeight();
+                if (sw <= 0 || sh <= 0) {
+                    Log.w(TAG, "cropRatio: src size invalid " + sw + "x" + sh);
+                    return;
+                }
+                // Rasio layar device
+                android.util.DisplayMetrics dm = c.getResources().getDisplayMetrics();
+                int dw = dm.widthPixels, dh = dm.heightPixels;
+                if (dw <= 0 || dh <= 0) {
+                    // fallback: gunakan output size yang diberikan
+                    dw = outWidth > 0 ? outWidth : sw;
+                    dh = outHeight > 0 ? outHeight : sh;
+                    Log.w(TAG, "cropRatio: metrics 0, fallback " + dw + "x" + dh);
+                }
+                float targetRatio = (float) dw / dh;
+                float srcRatio = (float) sw / sh;
+
+                int cropW, cropH, cropX, cropY;
+                if (mode == CropMode.FILL) {
+                    // FILL: crop sumber agar rasio = targetRatio, lalu scale ke output penuh
+                    if (srcRatio > targetRatio) {
+                        // sumber lebih lebar -> crop lebar
+                        cropH = sh;
+                        cropW = Math.round(sh * targetRatio);
+                    } else {
+                        // sumber lebih tinggi -> crop tinggi
+                        cropW = sw;
+                        cropH = Math.round(sw / targetRatio);
+                    }
+                } else { // FIT
+                    // FIT: gunakan seluruh sumber, nanti di-scale dengan letterbox
+                    cropW = sw;
+                    cropH = sh;
+                }
+                cropX = (sw - cropW) / 2;
+                cropY = (sh - cropH) / 2;
+
+                Bitmap cropped = Bitmap.createBitmap(src, cropX, cropY, cropW, cropH);
+                // Scale ke output size (Fill = penuh, Fit = mempertahankan rasio dengan letterbox)
+                Bitmap result;
+                if (mode == CropMode.FILL) {
+                    result = Bitmap.createScaledBitmap(cropped, outWidth > 0 ? outWidth : dw, outHeight > 0 ? outHeight : dh, true);
+                } else {
+                    // FIT: scale dengan mempertahankan rasio, letakkan di tengah canvas output
+                    float scale = Math.min(
+                            (float) (outWidth > 0 ? outWidth : dw) / cropW,
+                            (float) (outHeight > 0 ? outHeight : dh) / cropH);
+                    int dstW = Math.round(cropW * scale);
+                    int dstH = Math.round(cropH * scale);
+                    Bitmap scaled = Bitmap.createScaledBitmap(cropped, dstW, dstH, true);
+                    result = Bitmap.createBitmap(outWidth > 0 ? outWidth : dw, outHeight > 0 ? outHeight : dh, Bitmap.Config.ARGB_8888);
+                    android.graphics.Canvas cv = new android.graphics.Canvas(result);
+                    cv.drawColor(0xFF000000); // hitam untuk letterbox
+                    int dx = ((outWidth > 0 ? outWidth : dw) - dstW) / 2;
+                    int dy = ((outHeight > 0 ? outHeight : dh) - dstH) / 2;
+                    cv.drawBitmap(scaled, dx, dy, null);
+                    if (scaled != cropped) { try { scaled.recycle(); } catch (Throwable t) {
+                        Log.w(TAG, "cropRatio: recycle scaled gagal: " + t); } }
+                }
+                if (cropped != src) { try { src.recycle(); } catch (Throwable t) {
+                    Log.w(TAG, "cropRatio: recycle src gagal: " + t); } }
+                out[0] = result;
             } catch (Throwable t) {
-                Log.w(TAG, "crop gagal: " + t);
+                Log.w(TAG, "cropRatio gagal: " + t);
             }
         });
         return out[0];
+    }
+
+    /** Wrapper kompatibilitas: crop lama (dijalankan sebagai FILL dengan ukuran sama).
+     *  @deprecated gunakan cropRatio dengan CropMode.FILL/FIT dan ukuran layar asli. */
+    @Deprecated
+    public static Bitmap cropSquare(Context c, Uri uri, int sizePx) {
+        int w = sizePx, h = sizePx;
+        return cropRatio(c, uri, CropMode.FILL, w, h);
     }
 
     // Simpan URI latar pilihan + minta service refresh.
