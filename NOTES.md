@@ -1,6 +1,32 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
-## Game Boost paritas Extreme HSIN (2026-09-21, leader + dev-modul work/gb-t1, merge 0532eca)
+## Porting Extreme HSIN b17 (2026-09-21, leader + dev-modul P1/P2/P3, dev-apk 2x cancel)
+
+- Sumber: HSIN-v4.2.6-fixed.zip. JUJUR: core/extreme.sh v4.2.6 JUGA
+  terkontaminasi 9router-sync (bukan cuma v4.2.5) — inventaris dari
+  engine.sh (7299 baris) + game/protect/monitor + extreme.sh v4.2.7
+  (bersih) + profiles/*.conf. Temuan: conf swappiness=10 DEAD (engine
+  pakai tabel HSIN_VM_SAFE: 40/200/10/1/0) — Alpha ikut engine (40).
+- HP live (T615 ums9230, BUKAN T7250): policy0 0-5 (614400-1612000),
+  policy6 6-7 (768000-1820000), gov uscfreq (tak disentuh); GPU Mali
+  23100000.gpu 384-850M + kbase; sched_latency_* TAK ADA (proc/debugfs);
+  stune TAK ADA; power_policy/dvfs/js TAK ADA; net TANPA bbr (reno cubic);
+  IO sda/sdb/sdc (tanpa mmcblk0); fas-rs+uperf+asoulopt hidup.
+- Desain: CPU = LANTAI 65% (tak ada lock/governor, fas-rs/uperf hidup);
+  EXTREME→fas-rs fast, BALANCED→balance, DAILY→powersave; DAILY=max 75
+  (internal battery, label DAILY di APK overlay); game→balanced promote
+  + grace 12 dtk; guard 75/85/95 + baterai 30/15 + loadavg + cooldown 60s.
+- AsoulOpt: binary hardcoded 270 paket (WuWa global ADA, PGR EN TIDAK);
+  tak bisa ditambah — wrapper game_add.sh ke games.toml+uperf+map saja.
+  games.toml bawaan tak ada PGR EN/WuWa global.
+- Verifikasi live per-tweak (su): apply→nilai berubah, restore→persis.
+  NOL FAILED setelah fix equiv kernel (6-7/60.00/[mq]/max) + backup
+  kbase+IO + mode fast/restore + unforce + cooldown 4 tick + grace daily.
+  Skenario thermal/grace harness 5/5 PASS. Freq range utuh (min≠max).
+- PEKERJA: dev-apk 2x cancel (jaringan) → label DAILY 1 baris oleh leader.
+  P3 arg order vs APK (add pkg profile fps) → kompatibel dua arah + remove.
+  P2 promote menelan performance-game + cooldown 900s + grace tanpa
+  restore → dibetulkan leader + diverifikasi ulang via harness.
 
 - Berlaku SEMUA game + SEMUA device (generic, node tak ada di-skip).
 - Isi: common/gameboost.sh (gb_apply/gb_restore, native_boost.conf sekali,
