@@ -695,6 +695,8 @@ check_gb_grace_period() {
                     [ -f "$GB_COOLDOWN_COUNT_FILE" ] && cooldown_count=$(cat "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null)
                     case "$cooldown_count" in ''|*[!0-9]*) cooldown_count=0 ;; esac
 
+                    cooldown_count=$((cooldown_count + 1))
+                    printf '%s\n' "$cooldown_count" > "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
                     if [ "$cooldown_count" -ge "$cooldown_need" ] 2>/dev/null; then
                         _gb_unforce_level
                         rm -f "$GB_COOLDOWN_COUNT_FILE"
@@ -702,9 +704,6 @@ check_gb_grace_period() {
                             gb_apply
                         fi
                         monitor_log "GAMEBOOST" "COOLDOWN COMPLETE: temp<70C 60s, returning to user level"
-                    else
-                        cooldown_count=$((cooldown_count + 1))
-                        printf '%s\n' "$cooldown_count" > "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
                     fi
                 fi
             fi
