@@ -56,6 +56,18 @@ monitor_log() {
     printf '%s\n' "[$monitor_log_time] [MONITOR] [$monitor_log_status] $monitor_log_message" >> "$LOG_FILE" 2>/dev/null
 }
 
+# Source gameboost.sh for gb_apply/gb_restore/gb_safety_check functions.
+# MODDIR = common/ (this script's directory), so gameboost.sh is a sibling.
+_gb_monitor_save_log="$LOG_FILE"
+if [ -f "$MODDIR/gameboost.sh" ]; then
+    . "$MODDIR/gameboost.sh" 2>/dev/null
+else
+    monitor_log "GAMEBOOST" "WARN: gameboost.sh not found at $MODDIR/gameboost.sh, gb_apply/gb_restore unavailable"
+fi
+# Restore monitor.sh LOG_FILE (gameboost.sh redefines it).
+LOG_FILE="$_gb_monitor_save_log"
+unset _gb_monitor_save_log
+
 monitor_cleanup() {
     if [ -f "$PID_FILE" ] && [ "$(cat "$PID_FILE" 2>/dev/null)" = "$$" ]; then
         rm -f "$PID_FILE"
@@ -434,6 +446,8 @@ handle_foreground_event() {
                         fi
                         printf '%s\n' "1" > "$GB_ACTIVE_FILE" 2>/dev/null
                         monitor_log "GAMEBOOST" "APPLIED for $handle_pkg (temp=${current_temp}mC)"
+                    else
+                        monitor_log "GAMEBOOST" "WARN: gb_apply unavailable, boost skipped for $handle_pkg"
                     fi
                 fi
             fi
@@ -626,6 +640,9 @@ check_gb_grace_period() {
                     && command -v gb_restore >/dev/null 2>&1; then
                     gb_restore
                     printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
+                elif [ -f "$GB_ACTIVE_FILE" ] && [ "$(cat "$GB_ACTIVE_FILE" 2>/dev/null)" = "1" ] \
+                    && ! command -v gb_restore >/dev/null 2>&1; then
+                    monitor_log "GAMEBOOST" "WARN: gb_restore unavailable, cannot restore Daily boost"
                 fi
                 _gb_unforce_level
                 sh "$MODDIR/apply_now.sh" battery monitor >> "$LOG_FILE" 2>&1
@@ -635,6 +652,8 @@ check_gb_grace_period() {
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
                 _gb_unforce_level
                 monitor_log "GAMEBOOST" "RESTORED after ${GB_GRACE}s grace"
+            else
+                monitor_log "GAMEBOOST" "WARN: gb_restore unavailable, cannot restore after grace"
             fi
             rm -f "$GB_PENDING_FILE"
         fi
@@ -656,6 +675,8 @@ check_gb_grace_period() {
                 # Critical: restore and apply battery
                 if command -v gb_restore >/dev/null 2>&1; then
                     gb_restore
+                else
+                    monitor_log "GAMEBOOST" "WARN: gb_restore unavailable during critical temp restore"
                 fi
                 _gb_unforce_level
                 sh "$MODDIR/apply_now.sh" battery monitor >> "$LOG_FILE" 2>&1
@@ -666,6 +687,8 @@ check_gb_grace_period() {
                 # High: restore and apply balanced
                 if command -v gb_restore >/dev/null 2>&1; then
                     gb_restore
+                else
+                    monitor_log "GAMEBOOST" "WARN: gb_restore unavailable during high temp restore"
                 fi
                 _gb_unforce_level
                 sh "$MODDIR/apply_now.sh" balanced monitor >> "$LOG_FILE" 2>&1
@@ -679,6 +702,8 @@ check_gb_grace_period() {
                     _gb_force_level
                     if command -v gb_apply >/dev/null 2>&1; then
                         gb_apply
+                    else
+                        monitor_log "GAMEBOOST" "WARN: gb_apply unavailable during warm temp step-down"
                     fi
                     rm -f "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
                     monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 75000, stepped down to performance"
@@ -702,6 +727,8 @@ check_gb_grace_period() {
                         rm -f "$GB_COOLDOWN_COUNT_FILE"
                         if command -v gb_apply >/dev/null 2>&1; then
                             gb_apply
+                        else
+                            monitor_log "GAMEBOOST" "WARN: gb_apply unavailable during cooldown complete"
                         fi
                         monitor_log "GAMEBOOST" "COOLDOWN COMPLETE: temp<70C 60s, returning to user level"
                     fi
