@@ -1,5 +1,24 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Build 19 — restart fas-rs di live merge (2026-09-22, leader + dev-modul)
+
+- Akar penyebab: do_live_merge() (b18) menulis games.toml baru TAPI
+  fas-rs yang sedang berjalan tidak membacanya — README_EN.md:141
+  ("merged config ... will replace ... on the next restart"). Fix:
+  setelah merge sukses, killall fas-rs + relaunch `run` (flag persis
+  service.sh thp 9 / engine_manager.sh apply_and_restart,
+  RUST_BACKTRACE=1 nohup >> fas_log.txt &), tanpa sleep (jeda ms).
+  Koreksi leader: restart HANYA bila instans berjalan (pidof/killall);
+  bila mati → lewati + log (jangan start di device yang service.sh
+  sengaja lewati karena API/kernel). PID lama+baru dicatat di log.
+- Bukti: sandbox stub — daemon 25606 mati, 25680 hidup, target toml
+  ter-update, log `restarted old_pid=25606 new_pid=25680`. sh -n OK,
+  shellcheck 0. Modul-only: APK tetap v18 (version.txt +
+  ALPHA_COMPANION_VER tak berubah); module.prop 18→19.
+- Status: merge --no-ff ke fusion-v2, push → CI (b19). Verifikasi HP:
+  catat PID fas-rs sebelum/sesudah add/remove (HARUS berubah) +
+  CEK_TES-b18 poin 1-2.
+
 ## Build 18 — 3 perbaikan bug + koreksi leader (2026-09-22, leader + dev-modul 2 tugas + dev-apk 1 tugas)
 
 Akar penyebab masing-masing (bukan cuma "sudah diperbaiki"):
