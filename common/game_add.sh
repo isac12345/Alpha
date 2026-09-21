@@ -233,17 +233,58 @@ do_list() {
     fi
 }
 
+# ---------- remove (kompatibel APK removeGameFlow: "sh game_add.sh remove <pkg>") ----------
+
+do_remove() {
+    _pkg="$1"
+    if ! is_valid_package "$_pkg"; then
+        echo "ERROR: invalid package name: $_pkg"
+        return 1
+    fi
+    # 1. Hapus dari REPO games.toml (no-op bila tidak ada)
+    if [ -f "$FASRS_TOML" ]; then
+        _tmp="$FASRS_TOML.tmp.$$"
+        grep -v "^\"${_pkg}\"[[:space:]]*=" "$FASRS_TOML" > "$_tmp" 2>/dev/null \
+            && mv -f "$_tmp" "$FASRS_TOML"
+        touch "$MERGE_FLAG" 2>/dev/null
+    fi
+    # 2. Hapus dari profile map (kembali ke manual)
+    if [ -f "$MAP_FILE" ]; then
+        _mtmp="$MAP_FILE.tmp.$$"
+        grep -v "^${_pkg}:" "$MAP_FILE" 2>/dev/null > "$_mtmp" \
+            && mv -f "$_mtmp" "$MAP_FILE" 2>/dev/null
+    fi
+    # 3. Sync uperf exclusion
+    if [ -x "$SYNC_SCRIPT" ]; then
+        sh "$SYNC_SCRIPT" "$FASRS_TOML" "$UPERF_JSON" 2>/dev/null
+    fi
+    echo "OK: $_pkg dihapus (kembali ke uperf/manual)"
+    _log "remove: $_pkg"
+}
+
 # ---------- main ----------
 
 case "$1" in
     add)
-        do_add "$2" "$3" "$4"
+        # Kompatibel dua urutan: APK lama kirim "add <pkg> <profile> [fps]",
+        # CLI baru "add <pkg> [fps] [profile]". Deteksi via $3.
+        case "$3" in
+            battery|balanced|performance)
+                do_add "$2" "${4:-30,60}" "$3"
+                ;;
+            *)
+                do_add "$2" "$3" "$4"
+                ;;
+        esac
+        ;;
+    remove)
+        do_remove "$2"
         ;;
     list)
         do_list
         ;;
     *)
-        echo "Usage: game_add.sh [add <pkg> [fps_csv] [profile] | list]"
+        echo "Usage: game_add.sh [add <pkg> [fps_csv] [profile] | remove <pkg> | list]"
         echo ""
         echo "  add <pkg> [fps_csv] [profile]"
         echo "    Tambah game ke fas-rs games.toml + uperf exclusion + profile map."
