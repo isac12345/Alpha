@@ -91,6 +91,18 @@ else
     exit 1
 fi
 
+# 3.1 Load GameBoost Engine (sumber gameboost.sh)
+if [ -f "$MODDIR/common/gameboost.sh" ]; then
+    . "$MODDIR/common/gameboost.sh"
+    echo "[BOOT] tahap gameboost.sh selesai" >> "$LOG_FILE"
+    # Re-read native_boost.conf jika sudah ada (backup asli)
+    if [ -f "$WORK_DIR/native_boost.conf" ]; then
+        echo "[BOOT] native_boost.conf ditemukan, backup asli siap" >> "$LOG_FILE"
+    fi
+else
+    echo "[WARN] gameboost.sh tidak ditemukan, gameboost disabled" >> "$LOG_FILE"
+fi
+
 echo "[INIT] SoC Vendor terdeteksi: $SOC_VENDOR" >> "$LOG_FILE"
 echo "[INIT] CPU Policies: $CPU_POLICIES" >> "$LOG_FILE"
 echo "[INIT] Storage Devices: $STORAGE_DEVICES" >> "$LOG_FILE"

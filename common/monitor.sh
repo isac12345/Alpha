@@ -35,6 +35,16 @@ EVENT_FIFO=""
 LAST_EVENT_PKG_FILE="$STATE_DIR/.foreground_last_pkg"
 HUD_FOREGROUND_FILE="$STATE_DIR/.hud_foreground_pkg"
 
+# GameBoost integration
+GB_GRACE="${ALPHA_GB_GRACE:-12}"
+GB_PENDING_FILE="$STATE_DIR/.gb_pending"
+GB_ACTIVE_FILE="$STATE_DIR/.gb_active"
+GB_SAFETY_INTERVAL=15
+GB_SAFETY_LAST=0
+GB_FORCED_LEVEL=""
+GB_COOLDOWN_SECS=60
+GB_COOLDOWN_COUNT_FILE="$STATE_DIR/.gb_cooldown_count"
+
 monitor_log() {
     monitor_log_status="$1"
     monitor_log_message="$2"
@@ -180,6 +190,87 @@ check_notify_available() {
     return 0
 }
 
+# Check if package is transient (should be ignored)
+is_transient_package() {
+    local pkg="$1"
+    case "$pkg" in
+        com.android.systemui) return 0 ;;
+        *inputmethod*) return 0 ;;
+        com.alphabubble) return 0 ;;
+        *permissioncontroller*) return 0 ;;
+    esac
+    return 1
+}
+
+# GameBoost safety check function
+gb_safety_check() {
+    local current_temp=0
+    local max_temp=0
+    local valid_count=0
+    
+    # Read thermal zones
+    if [ -d "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}" ]; then
+        for zone in "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"/thermal_zone*; do
+            [ -r "$zone/temp" ] || continue
+            local temp_val
+            temp_val=$(tr -d '[:space:]' < "$zone/temp" 2>/dev/null)
+            # Skip invalid values: empty, non-numeric, -274000, -40000
+            case "$temp_val" in
+                ''|*[!0-9-]*) continue ;;
+                -274000|-40000) continue ;;
+            esac
+            # Convert to milliC if needed (some devices report in milliC already)
+            if [ "$temp_val" -gt 1000 ] 2>/dev/null; then
+                current_temp=$temp_val
+            else
+                current_temp=$((temp_val * 1000))
+            fi
+            if [ "$current_temp" -gt "$max_temp" ] 2>/dev/null; then
+                max_temp=$current_temp
+            fi
+            valid_count=$((valid_count + 1))
+        done
+    fi
+    
+    # No valid thermal zones
+    if [ "$valid_count" -eq 0 ]; then
+        echo "0"
+        return 0
+    fi
+    
+    echo "$max_temp"
+    return 0
+}
+
+# Check battery status
+check_battery_status() {
+    local capacity=0
+    local status=""
+    local capacity_file="/sys/class/power_supply/battery/capacity"
+    local status_file="/sys/class/power_supply/battery/status"
+    
+    # Check if files exist
+    if [ ! -r "$capacity_file" ] || [ ! -r "$status_file" ]; then
+        echo "OK"
+        return 0
+    fi
+    
+    capacity=$(tr -d '[:space:]' < "$capacity_file" 2>/dev/null)
+    status=$(tr -d '[:space:]' < "$status_file" 2>/dev/null)
+    
+    # Skip if invalid
+    case "$capacity" in ''|*[!0-9]*) echo "OK"; return 0 ;; esac
+    
+    # Battery low without charging
+    if [ "$capacity" -lt 15 ] 2>/dev/null && [ "$status" != "Charging" ]; then
+        echo "LOW"
+        return 0
+    fi
+    
+    echo "OK"
+    return 0
+}
+
 notify_mode_change() {
     notify_pkg="$1"
     notify_profile="$2"
@@ -243,6 +334,12 @@ handle_foreground_event() {
         *.*) ;;
         *) return 0 ;;
     esac
+    
+    # Skip transient packages
+    if is_transient_package "$handle_pkg"; then
+        return 0
+    fi
+    
     handle_last=""
     [ -f "$LAST_EVENT_PKG_FILE" ] && handle_last=$(cat "$LAST_EVENT_PKG_FILE" 2>/dev/null)
     [ "$handle_pkg" = "$handle_last" ] && return 0
@@ -254,13 +351,91 @@ handle_foreground_event() {
     fi
     handle_current=""
     [ -f "$CURRENT_STATE_FILE" ] && handle_current=$(tr -d '[:space:]' < "$CURRENT_STATE_FILE" 2>/dev/null)
-    [ "$handle_target" = "$handle_current" ] && return 0
+    
+    # GameBoost integration
+    local gb_active=0
+    [ -f "$GB_ACTIVE_FILE" ] && gb_active=$(cat "$GB_ACTIVE_FILE" 2>/dev/null)
+    
+    # Check if current package is a game with performance profile
+    local is_game_perf=0
+    if [ -n "$(get_game_profile "$handle_pkg")" ] && [ "$handle_target" = "performance" ]; then
+        is_game_perf=1
+    fi
+    
+    # GameBoost logic
+    if [ "$is_game_perf" -eq 1 ]; then
+        # Game with performance profile detected
+        if [ "$gb_active" != "1" ]; then
+            # Check DISABLE_GAMEBOOST gate
+            if [ -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/DISABLE_GAMEBOOST" ]; then
+                monitor_log "GAMEBOOST" "DISABLED by DISABLE_GAMEBOOST file"
+            else
+                # Check battery status
+                local battery_status
+                battery_status=$(check_battery_status)
+                if [ "$battery_status" = "LOW" ]; then
+                    monitor_log "GAMEBOOST" "SKIPPED: battery <15% without charging"
+                else
+                    # Run safety check before apply
+                    local current_temp
+                    current_temp=$(gb_safety_check)
+                    if [ "$current_temp" -ge 95000 ] 2>/dev/null; then
+                        monitor_log "GAMEBOOST" "SKIPPED: temp ${current_temp}mC >= 95000, critical"
+                    elif [ "$current_temp" -ge 85000 ] 2>/dev/null; then
+                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 85000, forcing balanced"
+                        GB_FORCED_LEVEL="balanced"
+                    elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
+                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 75000, forcing performance"
+                        GB_FORCED_LEVEL="performance"
+                    else
+                        GB_FORCED_LEVEL=""
+                    fi
+                    
+                    # Apply gameboost
+                    if command -v gb_apply >/dev/null 2>&1; then
+                        if [ -n "$GB_FORCED_LEVEL" ]; then
+                            # Force specific level
+                            local orig_level
+                            orig_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null)
+                            printf '%s\n' "$GB_FORCED_LEVEL" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                            gb_apply
+                            printf '%s\n' "${orig_level:-performance}" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                        else
+                            gb_apply
+                        fi
+                        printf '%s\n' "1" > "$GB_ACTIVE_FILE" 2>/dev/null
+                        monitor_log "GAMEBOOST" "APPLIED for $handle_pkg (temp=${current_temp}mC)"
+                    fi
+                fi
+            fi
+        fi
+        # Cancel any pending restore
+        if [ -f "$GB_PENDING_FILE" ]; then
+            monitor_log "GAMEBOOST" "CANCEL restore: game returned within grace period"
+            rm -f "$GB_PENDING_FILE"
+        fi
+    else
+        # Not a game with performance profile
+        if [ "$gb_active" = "1" ]; then
+            # Start grace period if not already started
+            if [ ! -f "$GB_PENDING_FILE" ]; then
+                printf '%s\n' "$(date +%s)" > "$GB_PENDING_FILE" 2>/dev/null
+                monitor_log "GAMEBOOST" "GRACE started: ${GB_GRACE}s before restore"
+            fi
+        fi
+    fi
+    
+    if [ "$handle_target" = "$handle_current" ]; then
+        # Still need to check grace period in main loop
+        return 0
+    fi
+    
     if [ "$handle_source" = "event" ]; then
         monitor_log "APPLY-EVENT" "package=$handle_pkg target=$handle_target current=${handle_current:-none}"
     else
         monitor_log "APPLY-POLL" "package=$handle_pkg target=$handle_target current=${handle_current:-none}"
     fi
-    if sh "$MODDIR/apply_now.sh" "$handle_target" monitor >> "$LOG_FILE" 2>&1; then
+    if APPLY_MONITOR_PKG="$handle_pkg" sh "$MODDIR/apply_now.sh" "$handle_target" monitor >> "$LOG_FILE" 2>&1; then
         if get_game_profile "$handle_pkg" >/dev/null 2>&1; then
             notify_mode_change "$handle_pkg" "$handle_target"
         else
@@ -291,6 +466,89 @@ event_stream_reader() {
             handle_foreground_event "$event_pkg" "event"
         fi
     done < "$EVENT_FIFO"
+    return 0
+}
+
+# Check GameBoost grace period and safety
+check_gb_grace_period() {
+    local now
+    now=$(date +%s 2>/dev/null)
+    
+    # Check pending restore
+    if [ -f "$GB_PENDING_FILE" ]; then
+        local pending_time
+        pending_time=$(cat "$GB_PENDING_FILE" 2>/dev/null)
+        case "$pending_time" in ''|*[!0-9]*) rm -f "$GB_PENDING_FILE"; return 0 ;; esac
+        
+        local elapsed=$((now - pending_time))
+        if [ "$elapsed" -ge "$GB_GRACE" ] 2>/dev/null; then
+            # Grace period expired, restore
+            if command -v gb_restore >/dev/null 2>&1; then
+                gb_restore
+                printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
+                monitor_log "GAMEBOOST" "RESTORED after ${GB_GRACE}s grace"
+            fi
+            rm -f "$GB_PENDING_FILE"
+        fi
+    fi
+    
+    # Safety check every 15 seconds if gameboost is active
+    local gb_active=0
+    [ -f "$GB_ACTIVE_FILE" ] && gb_active=$(cat "$GB_ACTIVE_FILE" 2>/dev/null)
+    
+    if [ "$gb_active" = "1" ]; then
+        local time_since_last=$((now - GB_SAFETY_LAST))
+        if [ "$time_since_last" -ge "$GB_SAFETY_INTERVAL" ] 2>/dev/null; then
+            GB_SAFETY_LAST=$now
+            local current_temp
+            current_temp=$(gb_safety_check)
+            
+            # Check thermal thresholds
+            if [ "$current_temp" -ge 95000 ] 2>/dev/null; then
+                # Critical: restore and apply battery
+                if command -v gb_restore >/dev/null 2>&1; then
+                    gb_restore
+                fi
+                sh "$MODDIR/apply_now.sh" battery monitor >> "$LOG_FILE" 2>&1
+                printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
+                rm -f "$GB_PENDING_FILE"
+                monitor_log "GAMEBOOST" "CRITICAL TEMP: ${current_temp}mC >= 95000, forced battery"
+            elif [ "$current_temp" -ge 85000 ] 2>/dev/null; then
+                # High: restore and apply balanced
+                if command -v gb_restore >/dev/null 2>&1; then
+                    gb_restore
+                fi
+                sh "$MODDIR/apply_now.sh" balanced monitor >> "$LOG_FILE" 2>&1
+                printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
+                rm -f "$GB_PENDING_FILE"
+                monitor_log "GAMEBOOST" "HIGH TEMP: ${current_temp}mC >= 85000, forced balanced"
+            elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
+                # Warm: force performance level temporarily
+                if [ -z "$GB_FORCED_LEVEL" ]; then
+                    GB_FORCED_LEVEL="performance"
+                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 75000, forcing performance"
+                fi
+            elif [ "$current_temp" -lt 70000 ] 2>/dev/null; then
+                # Cool down: check if we were forced
+                if [ -n "$GB_FORCED_LEVEL" ]; then
+                    # Check cooldown period
+                    local cooldown_count=0
+                    [ -f "$GB_COOLDOWN_COUNT_FILE" ] && cooldown_count=$(cat "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null)
+                    case "$cooldown_count" in ''|*[!0-9]*) cooldown_count=0 ;; esac
+                    
+                    if [ "$cooldown_count" -ge "$GB_COOLDOWN_SECS" ] 2>/dev/null; then
+                        GB_FORCED_LEVEL=""
+                        rm -f "$GB_COOLDOWN_COUNT_FILE"
+                        monitor_log "GAMEBOOST" "COOLDOWN COMPLETE: returning to normal"
+                    else
+                        cooldown_count=$((cooldown_count + 1))
+                        printf '%s\n' "$cooldown_count" > "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
+                    fi
+                fi
+            fi
+        fi
+    fi
+    
     return 0
 }
 
@@ -358,6 +616,8 @@ run_event_supervised_loop() {
                 monitor_log "EVENT" "event stream healthy (${event_parsed} parsed in ${EVENT_ON_SECS}s)"
             fi
         fi
+        # GameBoost: check grace period + thermal safety
+        check_gb_grace_period
         sleep 2
     done
     stop_event_stream
@@ -393,6 +653,8 @@ run_polling_loop() {
 
         handle_foreground_event "$monitor_foreground_package" "poll"
 
+        # GameBoost: check grace period + thermal safety
+        check_gb_grace_period
         sleep "$SCREEN_ON_INTERVAL"
     done
     return 0

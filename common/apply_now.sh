@@ -9,12 +9,23 @@ LOCK_DIR="$STATE_DIR/apply.lock"
 LOCK_OWNER_FILE="$LOCK_DIR/owner.pid"
 LOG_FILE="${ALPHA_LOG_FILE:-$STATE_DIR/alpha.log}"
 LOCK_TIMEOUT=10
+PROFILE_TRANSITION_FILE="$STATE_DIR/.profile_transitions.log"
 
 apply_log() {
     apply_log_status="$1"
     apply_log_message="$2"
     apply_log_time=$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date)
     printf '%s\n' "[$apply_log_time] [APPLY] [$apply_log_status] $apply_log_message" >> "$LOG_FILE" 2>/dev/null
+}
+
+# Log profile transition with timestamp, package, and reason
+log_profile_transition() {
+    local trans_profile="$1"
+    local trans_pkg="$2"
+    local trans_reason="$3"
+    local trans_time
+    trans_time=$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date)
+    printf '%s|%s|%s|%s\n' "$trans_time" "$trans_profile" "${trans_pkg:-manual}" "${trans_reason:-manual}" >> "$PROFILE_TRANSITION_FILE" 2>/dev/null
 }
 
 release_lock() {
@@ -205,6 +216,8 @@ tune_gpu
 state_tmp="$CURRENT_STATE_FILE.tmp.$$"
 if printf '%s\n' "$ACTIVE_PROFILE" > "$state_tmp" && mv -f "$state_tmp" "$CURRENT_STATE_FILE" 2>/dev/null; then
     apply_log "APPLIED" "current_state=$ACTIVE_PROFILE"
+    # Log transition (profile, package from caller, reason)
+    log_profile_transition "$ACTIVE_PROFILE" "${APPLY_MONITOR_PKG:-}" "${apply_source}"
 else
     rm -f "$state_tmp" 2>/dev/null
     apply_log "ERROR" "failed to atomically write current_state"
