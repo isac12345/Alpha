@@ -45,6 +45,10 @@ GB_FORCED_LEVEL=""
 GB_COOLDOWN_SECS=60
 GB_COOLDOWN_COUNT_FILE="$STATE_DIR/.gb_cooldown_count"
 
+# DAILY anti-lag guard: loadavg threshold tracking
+DAILY_LOADHIGH_FILE="$STATE_DIR/.daily_loadhigh_count"
+DAILY_LOADBAL_FILE="$STATE_DIR/.daily_loadbalanced"
+
 monitor_log() {
     monitor_log_status="$1"
     monitor_log_message="$2"
@@ -261,9 +265,15 @@ check_battery_status() {
     # Skip if invalid
     case "$capacity" in ''|*[!0-9]*) echo "OK"; return 0 ;; esac
     
-    # Battery low without charging
+    # Battery critical (<15%) without charging — reject boost
     if [ "$capacity" -lt 15 ] 2>/dev/null && [ "$status" != "Charging" ]; then
         echo "LOW"
+        return 0
+    fi
+    
+    # Battery low (<30%) without charging — force performance-level boost
+    if [ "$capacity" -lt 30 ] 2>/dev/null && [ "$status" != "Charging" ]; then
+        echo "WARNING"
         return 0
     fi
     
@@ -352,17 +362,26 @@ handle_foreground_event() {
     handle_current=""
     [ -f "$CURRENT_STATE_FILE" ] && handle_current=$(tr -d '[:space:]' < "$CURRENT_STATE_FILE" 2>/dev/null)
     
-    # GameBoost integration
+    # DAILY GAME PROMOTE: when manual profile is battery and a registered
+    # game is detected, temporarily promote to balanced so the game runs
+    # smoothly. After grace period (GB_GRACE), return to battery.
     local gb_active=0
     [ -f "$GB_ACTIVE_FILE" ] && gb_active=$(cat "$GB_ACTIVE_FILE" 2>/dev/null)
-    
+
+    local game_promote=0
+    if [ -n "$(get_game_profile "$handle_pkg")" ] && [ "$handle_current" = "battery" ]; then
+        game_promote=1
+        handle_target="balanced"
+        monitor_log "GAMEBOOST" "DAILY GAME PROMOTE: $handle_pkg detected in Daily mode, promoting to balanced"
+    fi
+
     # Check if current package is a game with performance profile
     local is_game_perf=0
     if [ -n "$(get_game_profile "$handle_pkg")" ] && [ "$handle_target" = "performance" ]; then
         is_game_perf=1
     fi
     
-    # GameBoost logic
+    # GameBoost logic (extreme/boost flow for performance games)
     if [ "$is_game_perf" -eq 1 ]; then
         # Game with performance profile detected
         if [ "$gb_active" != "1" ]; then
@@ -375,6 +394,10 @@ handle_foreground_event() {
                 battery_status=$(check_battery_status)
                 if [ "$battery_status" = "LOW" ]; then
                     monitor_log "GAMEBOOST" "SKIPPED: battery <15% without charging"
+                elif [ "$battery_status" = "WARNING" ]; then
+                    # Battery <30% without charging: force performance-level boost
+                    # (not battery) following HSIN safety policy
+                    monitor_log "GAMEBOOST" "BATTERY WARNING: <30% without charging, forcing performance-level boost"
                 else
                     # Run safety check before apply
                     local current_temp
@@ -423,6 +446,15 @@ handle_foreground_event() {
                 monitor_log "GAMEBOOST" "GRACE started: ${GB_GRACE}s before restore"
             fi
         fi
+        # DAILY GAME PROMOTE: start grace when game-promoted game exits
+        if [ "$game_promote" -eq 0 ] && [ "$handle_current" = "balanced" ]; then
+            local manual_prof
+            manual_prof=$(get_manual_profile)
+            if [ "$manual_prof" = "battery" ] && [ ! -f "$GB_PENDING_FILE" ]; then
+                printf '%s\n' "$(date +%s)" > "$GB_PENDING_FILE" 2>/dev/null
+                monitor_log "GAMEBOOST" "DAILY GRACE started: ${GB_GRACE}s before returning to Daily"
+            fi
+        fi
     fi
     
     if [ "$handle_target" = "$handle_current" ]; then
@@ -469,6 +501,75 @@ event_stream_reader() {
     return 0
 }
 
+# DAILY anti-lag guard: check loadavg1 > 6.5 (8-core) 2x consecutively
+# When triggered, temporarily apply balanced VM/IO to relieve pressure,
+# then return to battery when load drops.
+check_daily_loadavg_guard() {
+    local current_prof
+    current_prof=""
+    [ -f "$CURRENT_STATE_FILE" ] && current_prof=$(tr -d '[:space:]' < "$CURRENT_STATE_FILE" 2>/dev/null)
+    [ "$current_prof" != "battery" ] && return 0
+
+    local load1
+    load1=$(cut -d' ' -f1 /proc/loadavg 2>/dev/null)
+    case "$load1" in ''|*[!0-9.]*) return 0 ;; esac
+
+    # Compare as integer (truncate decimals): load1 > 6.5 means >= 6.5
+    local load1_int
+    load1_int=$(printf '%.0f' "$load1" 2>/dev/null)
+    case "$load1_int" in ''|*[!0-9]*) return 0 ;; esac
+
+    local balanced_applied=0
+    [ -f "$DAILY_LOADBAL_FILE" ] && balanced_applied=$(cat "$DAILY_LOADBAL_FILE" 2>/dev/null)
+
+    if [ "$load1_int" -ge 7 ] 2>/dev/null; then
+        local high_count=0
+        [ -f "$DAILY_LOADHIGH_FILE" ] && high_count=$(cat "$DAILY_LOADHIGH_FILE" 2>/dev/null)
+        case "$high_count" in ''|*[!0-9]*) high_count=0 ;; esac
+        high_count=$((high_count + 1))
+        printf '%s\n' "$high_count" > "$DAILY_LOADHIGH_FILE" 2>/dev/null
+
+        if [ "$high_count" -ge 2 ] 2>/dev/null && [ "$balanced_applied" != "1" ]; then
+            monitor_log "MONITOR" "DAILY LOADGUARD: loadavg1=$load1 >= 6.5 twice, temporarily applying balanced VM/IO"
+            # Save current battery VM/IO values, apply balanced temporarily
+            local saved_vfs saved_dirty saved_dirty_bg saved_stat saved_swap saved_ra
+            saved_vfs="$VM_VFS_CACHE_PRESSURE"
+            saved_dirty="$VM_DIRTY_RATIO"
+            saved_dirty_bg="$VM_DIRTY_BACKGROUND_RATIO"
+            saved_stat="$VM_STAT_INTERVAL"
+            saved_swap="$VM_SWAPPINESS"
+            saved_ra="$IO_READ_AHEAD_KB"
+            # Apply balanced VM/IO values
+            VM_VFS_CACHE_PRESSURE="${BALANCED_VM_VFS_CACHE_PRESSURE:-100}"
+            VM_DIRTY_RATIO="${BALANCED_VM_DIRTY_RATIO:-20}"
+            VM_DIRTY_BACKGROUND_RATIO="${BALANCED_VM_DIRTY_BACKGROUND_RATIO:-10}"
+            VM_STAT_INTERVAL="${BALANCED_VM_STAT_INTERVAL:-10}"
+            VM_SWAPPINESS="${BALANCED_VM_SWAPPINESS:-60}"
+            IO_READ_AHEAD_KB="${BALANCED_IO_READ_AHEAD_KB:-128}"
+            tune_vm 2>/dev/null
+            tune_io 2>/dev/null
+            # Restore battery values in memory (applied when load drops)
+            VM_VFS_CACHE_PRESSURE="$saved_vfs"
+            VM_DIRTY_RATIO="$saved_dirty"
+            VM_DIRTY_BACKGROUND_RATIO="$saved_dirty_bg"
+            VM_STAT_INTERVAL="$saved_stat"
+            VM_SWAPPINESS="$saved_swap"
+            IO_READ_AHEAD_KB="$saved_ra"
+            printf '%s\n' "1" > "$DAILY_LOADBAL_FILE" 2>/dev/null
+        fi
+    else
+        # Load normal: if we were balanced, restore battery VM/IO
+        if [ "$balanced_applied" = "1" ]; then
+            monitor_log "MONITOR" "DAILY LOADGUARD: loadavg1=$load1 < 6.5, restoring Daily VM/IO"
+            tune_vm 2>/dev/null
+            tune_io 2>/dev/null
+            rm -f "$DAILY_LOADBAL_FILE" 2>/dev/null
+        fi
+        rm -f "$DAILY_LOADHIGH_FILE" 2>/dev/null
+    fi
+    return 0
+}
+
 # Check GameBoost grace period and safety
 check_gb_grace_period() {
     local now
@@ -482,8 +583,14 @@ check_gb_grace_period() {
         
         local elapsed=$((now - pending_time))
         if [ "$elapsed" -ge "$GB_GRACE" ] 2>/dev/null; then
-            # Grace period expired, restore
-            if command -v gb_restore >/dev/null 2>&1; then
+            # Grace period expired: restore original profile
+            local manual_prof
+            manual_prof=$(get_manual_profile)
+            if [ "$manual_prof" = "battery" ]; then
+                # DAILY restore: apply_now battery to go back to Daily
+                sh "$MODDIR/apply_now.sh" battery monitor >> "$LOG_FILE" 2>&1
+                monitor_log "GAMEBOOST" "DAILY RESTORED after ${GB_GRACE}s grace, returning to Daily"
+            elif command -v gb_restore >/dev/null 2>&1; then
                 gb_restore
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
                 monitor_log "GAMEBOOST" "RESTORED after ${GB_GRACE}s grace"
@@ -618,6 +725,8 @@ run_event_supervised_loop() {
         fi
         # GameBoost: check grace period + thermal safety
         check_gb_grace_period
+        # DAILY: anti-lag guard (loadavg)
+        check_daily_loadavg_guard
         sleep 2
     done
     stop_event_stream
@@ -655,6 +764,8 @@ run_polling_loop() {
 
         # GameBoost: check grace period + thermal safety
         check_gb_grace_period
+        # DAILY: anti-lag guard (loadavg)
+        check_daily_loadavg_guard
         sleep "$SCREEN_ON_INTERVAL"
     done
     return 0

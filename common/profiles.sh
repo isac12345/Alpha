@@ -1,9 +1,11 @@
 #!/system/bin/sh
 # Alpha v1 - Profile data and loader
 
-# Battery profile: lower clocks, conservative memory and network behavior.
+# DAILY (label Daily, internal battery) profile: conservative clocks and
+# memory, safe for all-day use. Internal name remains "battery" for
+# backward compat with apply_now / current_state / active_profile files.
 BATTERY_GOVERNOR_PREFERENCE="schedutil walt interactive performance"
-BATTERY_CPU_FREQ_MAX_PERCENT=65
+BATTERY_CPU_FREQ_MAX_PERCENT=75
 BATTERY_CPU_FREQ_MIN_PERCENT=0
 BATTERY_BOOST_CPU_INPUT=1
 BATTERY_BOOST_WALT_INPUT=1
@@ -13,11 +15,11 @@ BATTERY_IO_ADD_RANDOM=0
 BATTERY_IO_IOSTATS=0
 BATTERY_IO_NOMERGES=2
 BATTERY_IO_READ_AHEAD_KB=128
-# M4: battery: dirty<=20, vfs=100, swap>=stock bila zRAM aktif (dihitung di tune_vm)
-BATTERY_VM_SWAPPINESS=70
+# DAILY: VM tuned near stock (70/100/20/10) but safer swap for zRAM
+BATTERY_VM_SWAPPINESS=80
 BATTERY_VM_VFS_CACHE_PRESSURE=100
 BATTERY_VM_DIRTY_RATIO=20
-BATTERY_VM_DIRTY_BACKGROUND_RATIO=10
+BATTERY_VM_DIRTY_BACKGROUND_RATIO=5
 BATTERY_VM_STAT_INTERVAL=10
 BATTERY_THERMAL_SAFE_OVERRIDE=0
 BATTERY_THERMAL_HEADROOM_PERCENT=80
