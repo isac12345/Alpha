@@ -59,15 +59,30 @@ cpu_detect_owner() {
     return 0
 }
 
-# Mapp profil Alpha → mode fas-rs:
-#   battery → powersave, balanced → balance, performance → performance
+# Mapp profil Alpha → mode fas-rs via powercfg.sh:
+#   battery → powersave, balanced → balance,
+#   performance + boost aktif → fast, performance tanpa boost → performance
+# "boost aktif" = file $STATE_DIR/boost_level ada (ditulis oleh gb_apply).
 _cpu_apply_powercfg() {
     local _mode=""
+    local _conf_dir="${ALPHA_STATE_DIR:-${ALPHA_CONF_DIR:-/data/adb/alpha}}"
     case "${ACTIVE_PROFILE:-balanced}" in
-        battery)     _mode="powersave" ;;
-        balanced)    _mode="balance" ;;
-        performance) _mode="performance" ;;
-        *)           _mode="balance" ;;
+        battery)
+            _mode="powersave"
+            ;;
+        balanced)
+            _mode="balance"
+            ;;
+        performance)
+            if [ -f "$_conf_dir/boost_level" ]; then
+                _mode="fast"
+            else
+                _mode="performance"
+            fi
+            ;;
+        *)
+            _mode="balance"
+            ;;
     esac
 
     # Cari powercfg.sh — path fas-rs standar

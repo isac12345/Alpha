@@ -215,7 +215,10 @@ tune_gpu
 
 state_tmp="$CURRENT_STATE_FILE.tmp.$$"
 if printf '%s\n' "$ACTIVE_PROFILE" > "$state_tmp" && mv -f "$state_tmp" "$CURRENT_STATE_FILE" 2>/dev/null; then
-    apply_log "APPLIED" "current_state=$ACTIVE_PROFILE"
+    # User-facing log: label battery as "Daily" (internal state stays "battery")
+    _display_profile="$ACTIVE_PROFILE"
+    [ "$_display_profile" = "battery" ] && _display_profile="Daily"
+    apply_log "APPLIED" "current_state=$ACTIVE_PROFILE (Daily=$_display_profile)"
     # Log transition (profile, package from caller, reason)
     log_profile_transition "$ACTIVE_PROFILE" "${APPLY_MONITOR_PKG:-}" "${apply_source}"
 else
@@ -225,6 +228,8 @@ else
     exit 1
 fi
 
-apply_log "SUMMARY" "profile=$ACTIVE_PROFILE applied=$APPLIED_COUNT skipped=$SKIPPED_COUNT failed=$FAILED_COUNT"
+_display_summary="$ACTIVE_PROFILE"
+[ "$_display_summary" = "battery" ] && _display_summary="Daily"
+apply_log "SUMMARY" "profile=$ACTIVE_PROFILE (Daily=$_display_summary) applied=$APPLIED_COUNT skipped=$SKIPPED_COUNT failed=$FAILED_COUNT"
 release_lock
 exit 0
