@@ -91,6 +91,13 @@ public final class ToolsKit {
                             .setPositiveButton("OK", null)
                             .show();
                     styleDialog(d);
+                    // Gaya tombol OK langsung pasca-show (di onClick sudah terlambat: dialog menutup).
+                    try {
+                        android.widget.Button btnOk = d.getButton(AlertDialog.BUTTON_POSITIVE);
+                        if (btnOk != null) stylePillOutline(btnOk);
+                    } catch (Throwable t2) {
+                        Log.w(TAG, "dexoptDone: pill OK gagal: " + t2);
+                    }
                 } catch (Throwable t) {
                     Log.w(TAG, "dexoptDone: dialog gagal: " + t);
                 }
@@ -101,14 +108,61 @@ public final class ToolsKit {
     private static void styleDialog(AlertDialog d) {
         try {
             if (d == null || d.getWindow() == null) return;
+            float denc = d.getContext().getResources().getDisplayMetrics().density;
             android.graphics.drawable.GradientDrawable gd =
                     new android.graphics.drawable.GradientDrawable();
             gd.setColor(android.graphics.Color.parseColor("#1e1e1e"));
-            gd.setCornerRadius(24);
+            gd.setCornerRadius(12 * denc);
             d.getWindow().setBackgroundDrawable(gd);
         } catch (Throwable t) {
             Log.w(TAG, "styleDialog gagal: " + t);
         }
+    }
+
+    private static void stylePillOutline(android.widget.Button b) {
+        try {
+            float d = b.getResources().getDisplayMetrics().density;
+            android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+            gd.setCornerRadius(24 * d);
+            gd.setColor(android.graphics.Color.TRANSPARENT);
+            gd.setStroke((int) (1 * d), android.graphics.Color.parseColor("#87878a"));
+            b.setBackground(gd);
+            b.setTextColor(android.graphics.Color.parseColor("#f4f2ee"));
+            b.setTypeface(android.graphics.Typeface.MONOSPACE);
+            b.setTextSize(11);
+            int ph = (int) (16 * d), pv = (int) (8 * d);
+            b.setPadding(ph, pv, ph, pv);
+            b.setElevation(0);
+            b.setStateListAnimator(null);
+        } catch (Throwable t) {
+            Log.w(TAG, "stylePillOutline: " + t);
+        }
+    }
+
+    /** Style initial dexopt dialog (app picker): dark rounded bg + pill outline buttons. */
+    public static void styleDexoptDialog(final android.app.AlertDialog d) {
+        HelperGuard.run(d != null ? d.getContext() : null, "styleDexoptDialog", () -> {
+            try {
+                if (d == null) return;
+                // Style window background (dark rounded)
+                styleDialog(d);
+                // Buttons may not exist until dialog is shown; post to main looper
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    try {
+                        if (d.isShowing()) {
+                            android.widget.Button btnNeg = d.getButton(android.app.AlertDialog.BUTTON_NEGATIVE);
+                            android.widget.Button btnPos = d.getButton(android.app.AlertDialog.BUTTON_POSITIVE);
+                            if (btnNeg != null) stylePillOutline(btnNeg);
+                            if (btnPos != null) stylePillOutline(btnPos);
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "styleDexoptDialog buttons gagal: " + t);
+                    }
+                });
+            } catch (Throwable t) {
+                Log.w(TAG, "styleDexoptDialog gagal: " + t);
+            }
+        });
     }
 
     // C2: setelah APPLY RES sukses (hook Toast hasil, v1=Context).
