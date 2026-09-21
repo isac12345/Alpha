@@ -34,6 +34,45 @@ _log() {
     printf '[game_add] %s\n' "$1" >> "$LOG_FILE" 2>/dev/null
 }
 
+# Live merge: jalankan fas-rs merge dari game_add.sh sendiri (tanpa reboot).
+# Panggil SETELAH merge flag disentuh. Binary/toml pakai path repo ($REPO_DIR),
+# target ke $FASRS_DIR. Gagal = log warning, operasi utama tetap sukses.
+do_live_merge() {
+    _fasrs_bin="$REPO_DIR/fasrs/fas-rs"
+    _fasrs_toml="$REPO_DIR/fasrs/games.toml"
+    _update_tmp="$FASRS_DIR/.update_games.toml"
+
+    # Pastikan target dir ada
+    if ! mkdir -p "$FASRS_DIR" 2>/dev/null; then
+        _log "WARN: live merge: gagal buat FASRS_DIR=$FASRS_DIR"
+        return 0
+    fi
+
+    # Cek binary
+    if [ ! -x "$_fasrs_bin" ]; then
+        _log "WARN: live merge: fas-rs binary tidak ada/eksekusi: $_fasrs_bin"
+        return 0
+    fi
+
+    # Cek toml
+    if [ ! -f "$_fasrs_toml" ]; then
+        _log "WARN: live merge: games.toml tidak ada: $_fasrs_toml"
+        return 0
+    fi
+
+    # Jalankan merge (tangkap exit code SEBELUM perintah lain menimpanya)
+    "$_fasrs_bin" merge "$_fasrs_toml" > "$_update_tmp" 2>/dev/null
+    _merge_rc=$?
+    if [ "$_merge_rc" -eq 0 ]; then
+        rm -f "$MERGE_FLAG" 2>/dev/null
+        mv -f "$_update_tmp" "$FASRS_DIR/games.toml" 2>/dev/null
+        _log "live merge: OK"
+    else
+        rm -f "$_update_tmp" 2>/dev/null
+        _log "WARN: live merge: fas-rs merge gagal (exit $_merge_rc)"
+    fi
+}
+
 is_valid_package() {
     case "$1" in
         ''|*[!A-Za-z0-9._]*) return 1 ;;
@@ -140,8 +179,9 @@ ${_new_line}" "$FASRS_TOML" > "$_tmp"
     fi
     mv -f "$_tmp" "$FASRS_TOML"
 
-    # 2. Sentuh merge flag agar service.sh merge ke /sdcard saat boot
+    # 2. Sentuh merge flag + live merge (tanpa reboot)
     touch "$MERGE_FLAG" 2>/dev/null
+    do_live_merge
 
     # 3. Sync uperf exclusion (games.toml -> uperf.json regex)
     if [ -x "$SYNC_SCRIPT" ]; then
@@ -241,18 +281,21 @@ do_remove() {
         echo "ERROR: invalid package name: $_pkg"
         return 1
     fi
-    # 1. Hapus dari REPO games.toml (no-op bila tidak ada)
+    # 1. Hapus dari REPO games.toml (no-op bila tidak ada).
+    # CATATAN: mv TANPA && — grep -v exit 1 bila hasilnya kosong
+    # (entri terakhir dihapus), dan itu justru kasus yang harus di-mv.
     if [ -f "$FASRS_TOML" ]; then
         _tmp="$FASRS_TOML.tmp.$$"
-        grep -v "^\"${_pkg}\"[[:space:]]*=" "$FASRS_TOML" > "$_tmp" 2>/dev/null \
-            && mv -f "$_tmp" "$FASRS_TOML"
+        grep -v "^\"${_pkg}\"[[:space:]]*=" "$FASRS_TOML" > "$_tmp" 2>/dev/null
+        mv -f "$_tmp" "$FASRS_TOML"
         touch "$MERGE_FLAG" 2>/dev/null
+        do_live_merge
     fi
-    # 2. Hapus dari profile map (kembali ke manual)
+    # 2. Hapus dari profile map (kembali ke manual; mv tanpa &&, alasan sama)
     if [ -f "$MAP_FILE" ]; then
         _mtmp="$MAP_FILE.tmp.$$"
-        grep -v "^${_pkg}:" "$MAP_FILE" 2>/dev/null > "$_mtmp" \
-            && mv -f "$_mtmp" "$MAP_FILE" 2>/dev/null
+        grep -v "^${_pkg}:" "$MAP_FILE" 2>/dev/null > "$_mtmp"
+        mv -f "$_mtmp" "$MAP_FILE" 2>/dev/null
     fi
     # 3. Sync uperf exclusion
     if [ -x "$SYNC_SCRIPT" ]; then
