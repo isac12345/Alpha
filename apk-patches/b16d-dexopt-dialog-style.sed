@@ -1,0 +1,3 @@
+# Batch3 hook C5: style initial dexopt dialog (app picker). Anchor: invoke-virtual show() + .line 219 (unik 1x di openDexopt).
+# v8 = AlertDialog. Tanpa .locals baru.
+s#    invoke-virtual {v8}, Landroid/app/AlertDialog;->show\(\)V\n\n    \.line 219#    invoke-virtual {v8}, Landroid/app/AlertDialog;->show()V\n    invoke-static {v8}, Lcom/alphabubble/ToolsKit;->styleDexoptDialog(Landroid/app/AlertDialog;)V\n\n    .line 219#

@@ -138,6 +138,32 @@ public final class ToolsKit {
         }
     }
 
+    /** Style initial dexopt dialog (app picker): dark rounded bg + pill outline buttons. */
+    public static void styleDexoptDialog(final android.app.AlertDialog d) {
+        HelperGuard.run(d != null ? d.getContext() : null, "styleDexoptDialog", () -> {
+            try {
+                if (d == null) return;
+                // Style window background (dark rounded)
+                styleDialog(d);
+                // Buttons may not exist until dialog is shown; post to main looper
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    try {
+                        if (d.isShowing()) {
+                            android.widget.Button btnNeg = d.getButton(android.app.AlertDialog.BUTTON_NEGATIVE);
+                            android.widget.Button btnPos = d.getButton(android.app.AlertDialog.BUTTON_POSITIVE);
+                            if (btnNeg != null) stylePillOutline(btnNeg);
+                            if (btnPos != null) stylePillOutline(btnPos);
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "styleDexoptDialog buttons gagal: " + t);
+                    }
+                });
+            } catch (Throwable t) {
+                Log.w(TAG, "styleDexoptDialog gagal: " + t);
+            }
+        });
+    }
+
     // C2: setelah APPLY RES sukses (hook Toast hasil, v1=Context).
     // Countdown 15 dtk, revert bila tak konfirmasi.
     public static void confirmKeep(Context c) {
