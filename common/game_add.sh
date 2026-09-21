@@ -67,6 +67,18 @@ do_live_merge() {
         rm -f "$MERGE_FLAG" 2>/dev/null
         mv -f "$_update_tmp" "$FASRS_DIR/games.toml" 2>/dev/null
         _log "live merge: OK"
+
+        # Restart fas-rs agar games.toml hasil merge langsung terbaca
+        # Pola sama dengan service.sh tahap 9 & engine_manager.sh apply_and_restart
+        _old_pid=$(pidof fas-rs 2>/dev/null) || true
+        killall fas-rs 2>/dev/null || _log "live merge: killall fas-rs (proses mungkin tidak berjalan, lanjut relaunch)"
+        RUST_BACKTRACE=1 nohup "$_fasrs_bin" run "$_fasrs_toml" >> "$FASRS_DIR/fas_log.txt" 2>&1 &
+        _new_pid=$!
+        if [ -n "$_new_pid" ]; then
+            _log "live merge: fas-rs restarted old_pid=${_old_pid:-?} new_pid=$_new_pid"
+        else
+            _log "WARN: live merge: relaunch fas-rs gagal, operasi add/remove tetap sukses"
+        fi
     else
         rm -f "$_update_tmp" 2>/dev/null
         _log "WARN: live merge: fas-rs merge gagal (exit $_merge_rc)"
