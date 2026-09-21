@@ -88,15 +88,16 @@ public final class ToolsKit {
                     AlertDialog d = new AlertDialog.Builder(a)
                             .setTitle("Hasil dexopt")
                             .setMessage(res + "\nDurasi: " + (ms / 1000.0) + " dtk\nStatus: " + after)
-                            .setPositiveButton("OK", (di, w) -> {
-                                try {
-                                    // Find OK button in dialog
-                                    android.widget.Button btn = (android.widget.Button) d.getButton(AlertDialog.BUTTON_POSITIVE);
-                                    stylePillOutline(btn);
-                                } catch (Throwable t) { Log.w(TAG, "style pill gagal: " + t); }
-                            })
+                            .setPositiveButton("OK", null)
                             .show();
                     styleDialog(d);
+                    // Gaya tombol OK langsung pasca-show (di onClick sudah terlambat: dialog menutup).
+                    try {
+                        android.widget.Button btnOk = d.getButton(AlertDialog.BUTTON_POSITIVE);
+                        if (btnOk != null) stylePillOutline(btnOk);
+                    } catch (Throwable t2) {
+                        Log.w(TAG, "dexoptDone: pill OK gagal: " + t2);
+                    }
                 } catch (Throwable t) {
                     Log.w(TAG, "dexoptDone: dialog gagal: " + t);
                 }
@@ -118,7 +119,7 @@ public final class ToolsKit {
         }
     }
 
-    public static void stylePillOutline(android.widget.Button b) {
+    private static void stylePillOutline(android.widget.Button b) {
         try {
             float d = b.getResources().getDisplayMetrics().density;
             android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();

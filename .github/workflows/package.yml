@@ -127,6 +127,21 @@ jobs:
           sed -f apk-patches/b11b-bggravity.sed -i "$F"
           test "$(grep -c 'setGravity(I)V' "$F")" = "1" || { echo "hook gravity gagal"; exit 1; }
           echo "hook gravity OK"
+      - name: Apply b16 hooks (card alpha x2 + bubble refresh + dexopt style)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          sed -f apk-patches/b16a-cardalpha-seekbar.sed -i "$F"
+          test "$(grep -c 'CardAlpha;->setupSeekBar' "$F")" = "1" || { echo "hook cardalpha seekbar gagal"; exit 1; }
+          sed -f apk-patches/b16b-cardalpha-resume.sed -i "$F"
+          test "$(grep -c 'CardAlpha;->applyFromPrefs' "$F")" = "2" || { echo "hook cardalpha resume gagal"; exit 1; }
+          sed -f apk-patches/b16d-dexopt-dialog-style.sed -i "$F"
+          test "$(grep -c 'ToolsKit;->styleDexoptDialog' "$F")" = "1" || { echo "hook dexopt style gagal"; exit 1; }
+          echo "hook b16 MainActivity OK"
+          F='work/decode/smali_classes4/com/alphabubble/BubbleService.smali'
+          sed -f apk-patches/b16c-bubble-refresh.sed -i "$F"
+          test "$(grep -c 'BUBBLE_STYLE_REFRESH' "$F")" = "1" || { echo "hook bubble refresh gagal"; exit 1; }
+          echo "hook b16 BubbleService OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
@@ -213,6 +228,9 @@ jobs:
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/BgEditor;" \
             || { echo "BgEditor tidak ada di classes5.dex"; exit 1; }
           echo "8 kelas di classes5.dex OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/CardAlpha;" \
+            || { echo "CardAlpha tidak ada di classes5.dex"; exit 1; }
+          echo "9 kelas di classes5.dex OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump xmltree work/AlphaBubble-signed.apk AndroidManifest.xml | grep -q "BubbleSettingsActivity" \
             || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
           echo "activity di manifest OK"

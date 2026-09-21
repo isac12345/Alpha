@@ -3,7 +3,6 @@ package com.alphabubble;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -15,6 +14,9 @@ public final class CardAlpha {
     private static final String TAG = "CardAlpha";
     private static final String PREFS = "alpha_bubble";
     private static final String KEY_CARD_ALPHA = "card_alpha_pct";
+    // Warna background kartu gelap membulat: card_bg.xml solid @color/alpha_dark
+    // (#0a0a0a, decode res/values/colors.xml:6) + kartu BUBBLE HomeCards (#1e1e1e,
+    // HomeCards.java:238). Hanya dua ini yang diubah alphanya; teks tak disentuh.
 
     private CardAlpha() {}
 
@@ -85,9 +87,10 @@ public final class CardAlpha {
         Drawable bg = v.getBackground();
         if (bg instanceof GradientDrawable) {
             GradientDrawable gd = (GradientDrawable) bg;
-            // Check if it's the card background (color #1e1e1e)
-            if (gd.getColor() == Color.parseColor("#1e1e1e")) {
-                // Apply alpha to the drawable (not setAlpha on view, which fades text)
+            // getColor() = ColorStateList (bukan int) — bandingkan defaultColor.
+            // setAlpha pada drawable SAJA (bukan View.setAlpha) agar teks tetap terbaca.
+            android.content.res.ColorStateList cs = gd.getColor();
+            if (cs != null && isCardColor(cs.getDefaultColor())) {
                 gd.setAlpha(pct * 255 / 100);
             }
         }
@@ -98,5 +101,9 @@ public final class CardAlpha {
                 applyRecursive(vg.getChildAt(i), pct);
             }
         }
+    }
+
+    private static boolean isCardColor(int c) {
+        return c == 0xFF0A0A0A || c == 0xFF1E1E1E;
     }
 }
