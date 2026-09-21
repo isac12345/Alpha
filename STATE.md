@@ -1,5 +1,15 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- FALLBACK MODEL (2026-09-21): plugin `opencode-runtime-fallback@0.2.4`
+  ter-pin (exact + lock) di ~/.config/opencode; 2 kandidat ditolak
+  (peva3: tanpa rantai/agent + Ralph-loop; zaplakhov: tanpa rantai +
+  dep tak-pin + native sqlite). Rantai per agent + TTFT 60 dtk +
+  cooldown 600 dtk di opencode.json/opencode-fallback.json. Uji:
+  primer bogus → log buktikan resolvedAgent + model_not_found +
+  planned→mimo; mimo jawab "OK" (15,3 dtk); agent uji dihapus.
+  Tanpa bakar kuota. Rincian + pantau/mati: NOTES.md § FALLBACK.
+  WAJIB user restart (server PID 3868 masih config lama).
+
 - SERAH-TERIMA FINAL (2026-09-21): build run 35542625045 SUCCESS
   (apk-edit 35542624998 + package, 24/24 steps). Tag batch4-built
   (built, bukan tested). Artefak: ~/work/final/apk/AlphaBubble-signed.apk

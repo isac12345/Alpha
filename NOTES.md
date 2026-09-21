@@ -247,3 +247,50 @@ Server: `http://127.0.0.1:20128/v1/models` ada `Alpha-think`, `Alpha-fast`, `Bud
   STATE/NOTES uji-tim) terhapus oleh checkout/reset pekerja di working
   tree bersama → diterapkan ulang; aturan baru AGENTS.md p7 melarang
   checkout/reset cabang di repo utama oleh pekerja Task.
+
+## FALLBACK MODEL OTOMATIS (2026-09-21, tanpa router)
+
+- Backup: ~/work/backup-opencode-20260921-fallback (63M, penuh).
+- Audit 3 kandidat (README + SELURUH source dibaca):
+  - PILIH: youngbinkim0/opencode-fallback = npm
+    `opencode-runtime-fallback@0.2.4` (MIT, latest 2026-04-06, 80 komit,
+    28 star/6 fork). Rantai per agent: YA via `fallback_models` di blok
+    agent opencode.json (format asli). TTFT: YA `timeout_seconds`.
+    Cooldown + pulih otomatis: YA (`cooldown_seconds` + recoverToOriginal
+    tiap prompt). Pemicu: 429/5xx (retry_on_errors) + built-in kuota,
+    model-not-found, missing-key. Dep runtime: 1 (jsonc-parser,
+    Microsoft) + peer @opencode-ai/plugin. Jaringan selain model: NOL.
+    Telemetri: NOL. Exec: NOL (13 file source bersih — hanya SDK calls,
+    baca config, tulis log lokal).
+  - TOLAK peva3 `opencode-fallback@1.2.0`: tanpa rantai per agent (satu
+    model global) + fitur Ralph-loop (kirim prompt sendiri tiap idle —
+    perilaku otonom tak diinginkan).
+  - TOLAK zaplakhov `opencode-rate-limit@1.4.0`: tanpa rantai per agent
+    (pool global) + dep `@opencode-ai/plugin@latest` TAK-PIN + native
+    better-sqlite3 (berat di Termux) + baca DB internal OpenCode.
+- Versi ter-pin: `opencode-runtime-fallback: 0.2.4` (exact di
+  ~/.config/opencode/package.json + lock; integrity
+  sha512-V0bTGkWSkquXhmyH5vcxNIebSNNuploSUZ4utrGqI7bE+x5iW3wO/U9IdbSqRgowYBeH++D1fPANwQQDM/oHOg==).
+  Yang lain TIDAK dipasang.
+- Konfigurasi: plugin `opencode-runtime-fallback` di opencode.json +
+  `~/.config/opencode/opencode-fallback.json` (enabled, retry_on_errors
+  [429,500,502,503,504], cooldown 600 dtk, TTFT 60 dtk, max 10,
+  notify). Rantai: leader [muse-spark → ollama nemotron-3-ultra →
+  mimo-v2.5-free]; dev-apk [nemotron-free → laguna-s-2.1 → gemma4:31b →
+  nemotron]; dev-modul [mimo-v2.5-free → nemotron → laguna-xs-2.1].
+  Ollama Cloud maks 1 per rantai, bukan cadangan pertama pekerja.
+- UJI (tanpa bakar kuota, agent sementara uji-fallback, sudah dihapus):
+  primer bogus `opencode/tidak-ada-uji` → log membuktikan
+  `resolvedAgent: uji-fallback`, `errorType: model_not_found`,
+  `Planned fallback: tidak-ada-uji -> mimo-v2.5-free (attempt 1)`.
+  Kaki cadangan dibuktikan terpisah: mimo menjawab "OK" (15,3 dtk).
+  Batas headless: `opencode run` keluar saat error terminal sehingga
+  replay tak selesai dalam mode run; di sesi TUI sesi hidup dan replay
+  mendarat. Tanpa model berbayar / kuota OpenRouter terpakai.
+- PANTAU: `tail -f ~/.config/opencode/opencode-fallback.log`
+  (tampilkan JSON per baris); status sesi di TUI via toast fallback.
+- MEMATIKAN: hapus entri `"plugin"` dari `~/.config/opencode/opencode.json`
+  (atau `"enabled": false` di `opencode-fallback.json`), lalu restart.
+- RESTART: server opencode PID 3868 masih konfigurasi lama — user WAJIB
+  restart (`kill 3868` lalu jalankan opencode kembali) agar fallback
+  aktif di sesi utama. Proses `opencode run` uji memakai config baru.
