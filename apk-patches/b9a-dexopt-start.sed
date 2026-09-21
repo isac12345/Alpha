@@ -1,3 +1,3 @@
-# Batch2 hook A: tombol Dexopt -> progres mulai. Anchor unik (call 1x).
-# p0 = MainActivity. Tanpa .locals baru.
-s#    invoke-direct {p0}, Lcom/alphabubble/MainActivity;->openDexopt()V#    invoke-static {p0}, Lcom/alphabubble/ToolsKit;->dexoptStart(Landroid/app/Activity;)V\n    invoke-direct {p0}, Lcom/alphabubble/MainActivity;->openDexopt()V#
+# Batch2 hook A: tombol COMPILE di dialog dexopt -> progres mulai. Anchor unik (launch$default di lambda$31).
+# p4 = MainActivity (this$0). Tanpa .locals baru.
+s#    \.line 217\n    iget-object v14, v8, Lcom/alphabubble/MainActivity;->scope:Lkotlinx/coroutines/CoroutineScope;\n\n    invoke-static {}, Lkotlinx/coroutines/Dispatchers;->getIO\(\)Lkotlinx/coroutines/CoroutineDispatcher;#    .line 217\n    invoke-static {p4}, Lcom/alphabubble/ToolsKit;->dexoptStart(Landroid/app/Activity;)V\n    iget-object v14, v8, Lcom/alphabubble/MainActivity;->scope:Lkotlinx/coroutines/CoroutineScope;\n\n    invoke-static {}, Lkotlinx/coroutines/Dispatchers;->getIO()Lkotlinx/coroutines/CoroutineDispatcher;#
