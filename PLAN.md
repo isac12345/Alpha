@@ -32,6 +32,12 @@
 - [ ] Daftar game nama + ikon.
 - [ ] Keystore final.
 
+## Game Boost paritas Extreme HSIN (2026-09-21, merge 0532eca)
+- [x] common/gameboost.sh gb_apply/gb_restore + native_boost.conf + sakelar (extreme default).
+- [x] Pemicu monitor (game+performance, grace 12 dtk) + thermal 75/85/95C + baterai + auto-kembali.
+- [x] SF_LATCH opt-in + bin/pgr-log + CEK_PGR.md. Sandbox (a)-(e) + verifikasi leader (a)+(c).
+- [ ] BELUM tes HP (uji A/B ikut CEK_PGR.md).
+
 ## Aturan build
 - Nama versi tetap v1. Internal versionCode = version.txt = ALPHA_COMPANION_VER, naik per build.
 - Tiap batch = satu build; alpha-test dulu (maks 3x per masalah); merge hanya bila user OK.

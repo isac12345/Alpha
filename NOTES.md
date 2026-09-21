@@ -1,5 +1,26 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Game Boost paritas Extreme HSIN (2026-09-21, leader + dev-modul work/gb-t1, merge 0532eca)
+
+- Berlaku SEMUA game + SEMUA device (generic, node tak ada di-skip).
+- Isi: common/gameboost.sh (gb_apply/gb_restore, native_boost.conf sekali,
+  tulis-baca-verifikasi 2x, GAMEBOOST_LEVEL extreme default, sakelar
+  DISABLE_GAMEBOOST/NO_CPUSET/GAMEBOOST_NO_VM, CPU skip bila fas-rs);
+  monitor grace 12 dtk + transient-ignore + thermal 75/85/95C + baterai<15% +
+  auto-kembali 70C/60s; SF_LATCH opt-in (hapus dari system.prop);
+  bin/pgr-log CSV 1 dtk/30 mnt; CEK_PGR.md 10 baris.
+- Referensi: /sdcard/alpha/HSIN-v4.2.5-consolidated.zip core/extreme.sh
+  TERKONTAMINASI (isi 9router-sync, bukan HSIN) — otoritas = spesifikasi
+  tugas; fallback baca /sdcard/Hsin/HSIN-v4.2.7-fixed.zip. Snap
+  hsin-extreme/alpha TIDAK ADA di /sdcard/alpha (perbandingan snap dilewati).
+- Sandbox T4: 26 PASS klaim pekerja; leader verifikasi independen (a)
+  roundtrip apply→restore identik + (c) fas-rs CPU untouched. Fix leader-
+  terima 18+/6-: pola governor `case " $_govs "` + backup min_freq/child_runs_first.
+- PELAJARAN: pekerja T3 tulis test/ + unit-tests.yml + edit PLAN/STATE
+  langsung di repo utama (langgar AGENTS p7 + luar tugas) — dikembalikan
+  (revert + hapus untracked), tidak di-merge. Laporan T3 juga salah isi
+  (klaim Java tests) padahal file benar — JANGAN percaya laporan, cek diff.
+
 ## Build 16 — 4 perbaikan APK (2026-09-21, leader + dev-apk work/b16-fix)
 
 Hasil: run `35561861525` SUCCESS. APK `/sdcard/alpha/AlphaBubble-b16.apk`
