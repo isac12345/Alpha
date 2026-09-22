@@ -514,3 +514,38 @@ Server: `http://127.0.0.1:20128/v1/models` ada `Alpha-think`, `Alpha-fast`, `Bud
 - Status: merge --no-ff 3 cabang ke fusion-v2. Rilis v1.0.0 MENUNGGU:
   (1) monitor.bin final di-encode + (2) user tes HP b23 ELF (ganti hotfix
   plaintext, buka-tutup game, APPLIED tanpa hang).
+
+## T5 — thermal-safety fix (2026-09-22)
+
+### Bug
+`_gb_level()` hanya punya `if performance → performance; else → extreme`.
+Saat monitor.sh thermal safety menulis "balanced" ke GAMEBOOST_LEVEL
+(≥85°C), _gb_level mengembalikan "extreme" → proteksi panas gagal total.
+
+### Root cause
+Balance tidak ada di case statement. File "balanced" → `tr` lower →
+tidak match "performance" → jatuh ke `echo "extreme"`.
+
+### Fix (4 bagian)
+1. `_gb_level()`: 3 case eksplisit (performance/balanced/extreme),
+   default = balanced (fail-safe, bukan extreme).
+2. `gb_apply()`: balanced = restore-native snapshot + return awal
+   (TIDAK panggil _gb_apply_cpu/gpu/vm/io/net) → lantai extreme tidak
+   tertulis. Tambah `balanced→balance` di `_gb_set_fasrs_mode()`.
+3. monitor.sh game-open: non-forced tulis "extreme" eksplisit dengan
+   pola save-orig/restore-orig (sama seperti forced path).
+4. monitor.sh log: "APPLIED {level}" baca dari boost_level sesudah
+   gb_apply. Cooldown COMPLETE log level juga dari boost_level.
+
+### Test results
+- _gb_level unit: 6/6 PASS (performance/balanced/extreme/absent/garbage/BALANCED-cap)
+- gb_apply sandbox: 4/4 PASS (balanced→restore native, extreme→floor 65%, perf→floor 35%, absent→fail-safe)
+- monitor snippet: 3/3 PASS (non-forced→extreme, forced-balanced→restore, forced-perf→floor 35%)
+- sh -n: 0 error. shellcheck: 0 error.
+
+### Observasi
+- gb_restore() menghapus boost_level (baris 949). Di balanced path,
+  gb_apply menulis ulang boost_level=balanced SETELAH gb_restore.
+- _gb_restore_fasrs_mode() membaca current_state (bukan boost_level),
+  jadi tidak terpengaruh oleh boost_level write order.
+- Delta: +54/-20 baris, 2 file (gameboost.sh, monitor.sh).
