@@ -119,14 +119,76 @@ public final class BubbleStyle {
                     Log.w(TAG, "cropRatio: src size invalid " + sw + "x" + sh);
                     return;
                 }
-                // Rasio layar device
-                android.util.DisplayMetrics dm = c.getResources().getDisplayMetrics();
-                int dw = dm.widthPixels, dh = dm.heightPixels;
-                if (dw <= 0 || dh <= 0) {
-                    // fallback: gunakan output size yang diberikan
+                // Rasio layar device — berlapis: Activity decorView -> WindowManager -> Resources.getSystem()
+                android.util.DisplayMetrics dm = null;
+                int dw = 0, dh = 0;
+                boolean gotMetrics = false;
+                // 1) Coba dari Activity yang sedang tampil (decorView)
+                if (c instanceof Activity) {
+                    try {
+                        Activity act = (Activity) c;
+                        android.view.View decor = act.getWindow().getDecorView();
+                        if (decor != null) {
+                            dm = new android.util.DisplayMetrics();
+                            decor.getDisplay().getRealMetrics(dm);
+                            dw = dm.widthPixels;
+                            dh = dm.heightPixels;
+                            if (dw > 0 && dh > 0) gotMetrics = true;
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "cropRatio: decorView metrics gagal: " + t);
+                    }
+                }
+                // 2) Coba WindowManager defaultDisplay
+                if (!gotMetrics) {
+                    try {
+                        WindowManager wm = (WindowManager) c.getSystemService(Context.WINDOW_SERVICE);
+                        if (wm != null) {
+                            dm = new android.util.DisplayMetrics();
+                            wm.getDefaultDisplay().getMetrics(dm);
+                            dw = dm.widthPixels;
+                            dh = dm.heightPixels;
+                            if (dw > 0 && dh > 0) gotMetrics = true;
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "cropRatio: WindowManager metrics gagal: " + t);
+                    }
+                }
+                // 3) Coba Resources context
+                if (!gotMetrics) {
+                    try {
+                        dm = c.getResources().getDisplayMetrics();
+                        dw = dm.widthPixels;
+                        dh = dm.heightPixels;
+                        if (dw > 0 && dh > 0) gotMetrics = true;
+                    } catch (Throwable t) {
+                        Log.w(TAG, "cropRatio: Resources metrics gagal: " + t);
+                    }
+                }
+                // 4) Cadangan terakhir: Resources.getSystem() — rasio device sebenarnya
+                if (!gotMetrics) {
+                    try {
+                        dm = android.content.res.Resources.getSystem().getDisplayMetrics();
+                        dw = dm.widthPixels;
+                        dh = dm.heightPixels;
+                        if (dw > 0 && dh > 0) {
+                            gotMetrics = true;
+                            Log.w(TAG, "cropRatio: metrics ctx 0, pakai system " + dw + "x" + dh);
+                        }
+                    } catch (Throwable t) {
+                        Log.w(TAG, "cropRatio: system metrics gagal: " + t);
+                    }
+                }
+                // 5) Total gagal: pakai outWidth/outHeight hanya sebagai ukuran OUTPUT (bukan rasio target)
+                if (!gotMetrics) {
                     dw = outWidth > 0 ? outWidth : sw;
                     dh = outHeight > 0 ? outHeight : sh;
-                    Log.w(TAG, "cropRatio: metrics 0, fallback " + dw + "x" + dh);
+                    Log.w(TAG, "cropRatio: metrics TOTAL 0, output paksa " + dw + "x" + dh);
+                    try {
+                        android.widget.Toast.makeText(c, "Ukuran layar tak terbaca, pakai rasio sistem", android.widget.Toast.LENGTH_LONG).show();
+                    } catch (Throwable t) {
+                        Log.w(TAG, "cropRatio: toast gagal: " + t);
+                    }
                 }
                 float targetRatio = (float) dw / dh;
                 float srcRatio = (float) sw / sh;
