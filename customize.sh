@@ -209,6 +209,14 @@ set_perm "$MODPATH/common/sync_uperf_exclusion.sh" 0 0 0755
 set_perm "$MODPATH/common/engine_manager.sh" 0 0 0755
 set_perm "$MODPATH/common/game_add.sh" 0 0 0755
 set_perm "$MODPATH/common/render_manager.sh" 0 0 0755
+set_perm "$MODPATH/common/monitor.bin" 0 0 0755
+set_perm "$MODPATH/common/watchdog.bin" 0 0 0755
+set_perm "$MODPATH/common/apply_now.bin" 0 0 0755
+set_perm "$MODPATH/common/game_add.bin" 0 0 0755
+set_perm "$MODPATH/common/engine_manager.bin" 0 0 0755
+set_perm "$MODPATH/common/game_manager.bin" 0 0 0755
+set_perm "$MODPATH/common/sync_uperf_exclusion.bin" 0 0 0755
+set_perm "$MODPATH/bin/pgr-log.bin" 0 0 0755
 set_perm "$MODPATH/common/asoulopt_install.sh" 0 0 0644
 set_perm "$MODPATH/common/companion_install.sh" 0 0 0644
 set_perm "$MODPATH/common/profiles.sh" 0 0 0644

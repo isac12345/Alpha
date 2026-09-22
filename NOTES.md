@@ -476,3 +476,41 @@ Server: `http://127.0.0.1:20128/v1/models` ada `Alpha-think`, `Alpha-fast`, `Bud
 - RESTART: server opencode PID 3868 masih konfigurasi lama — user WAJIB
   restart (`kill 3868` lalu jalankan opencode kembali) agar fallback
   aktif di sesi utama. Proses `opencode run` uji memakai config baru.
+
+## MTK universal + b23 final (2026-09-22, leader + dev-modul T1-T4)
+
+- Prinsip (koreksi user): "EXTREME"/"BALANCED" = label tampilan dari state
+  internal performance/balanced yang SUDAH ADA — tanpa variabel/state baru.
+  Nilai tuning di balik performance/balanced dibuat universal (deteksi
+  chipset), bukan tambah profil.
+- T1 detect.sh (+165/-3, DETECT_VERSION 2→3): detect_chipset_family() =
+  unisoc|mtk|mtk_legacy_unsupported|unknown, folder > nama (asopt → unisoc;
+  fpsgo tanpa /proc/ppm+/proc/gpufreq → mtk; legacy → mtk_legacy_unsupported;
+  sisanya unknown). Koreksi leader: nama platform TAK BOLEH menentukan
+  sendiri (cabang "via nama" pekerja dihapus → unknown), GPU path generik
+  (*.gpu/*.mali) khusus MALI, vendor lain tetap resolver lama. Diagnostik:
+  "chipset detection: <hasil> (matched via: folder/keduanya/tidak-ada)".
+  CPU_POLICIES kini sorted ascending cpuinfo_max_freq (semua cluster, 1/2/3+).
+- T2 engine/gameboost (+67/-18): alpha_opp_snap_nearest() (seri → bawah)
+  dipakai tune_cpu_freq max+min; loop semua policy tanpa asumsi jumlah;
+  tune_gpu_mali/tune_devfreq log 0/>1 kandidat; gameboost governor devfreq
+  cek available dulu, fallback performance→schedutil→sugov_ext→
+  simple_ondemand→ondemand (sugov_ext tambahan leader, untuk MTK).
+  Verifikasi: tidak ada tulis ke asopt; semua stune ter-guard.
+- T3 monitor.sh (+18/-11): gb_safety_check baca per-zone `timeout 2 cat`
+  (fallback langsung bila tanpa timeout) + filter rentang -50000..150000
+  mC (ganti sentinel -274000/-40000). Dekat dengan hotfix b23 plaintext
+  yang teruji HP (timeout sama; beda: b23 sentinel-list, final range).
+- T4 sandbox 70/70 PASS + rerun independen leader IDENTIK: S1 Unisoc
+  (unisoc, extreme p0/p6=1036800, balanced 1459200/1574400, revert identik),
+  S2 MTK (mtk, extreme 1300000/1400000, balanced 1600000/2200000, revert
+  identik), S3 unknown (fallback, revert identik), S4 3-cluster (loop 3/3),
+  S5 snap (85%×2M=1.7M→1600000). sh -n 16/16, shellcheck 0 error.
+  Bukti: /data/data/com.termux/files/usr/tmp/opencode/sbx-mtk/
+  (full_output.txt + rerun-leader.txt). Catatan: balanced 85% bisa snap
+  SEDIKIT di atas target (nearest, mis. 1370200→1459200) — sesuai spek.
+- PELAJARAN: pekerja tulis "via nama" walau spek revisi melarang —
+  spek REVISI harus di-quote verbatim di brief bila mengoreksi spek awal.
+- Status: merge --no-ff 3 cabang ke fusion-v2. Rilis v1.0.0 MENUNGGU:
+  (1) monitor.bin final di-encode + (2) user tes HP b23 ELF (ganti hotfix
+  plaintext, buka-tutup game, APPLIED tanpa hang).
