@@ -238,3 +238,15 @@
   real), profile battery, fas-rs powersave, file uji dihapus,
   monitor RC2 restart PID 30579. PENDING: flash RC2 penuh
   (gameboost.sh T5 belum live di HP).
+
+- RC2-SYNC + OPEN/CLOSE TEST (2026-09-22, leader, tanpa reboot/game):
+  3 file RC2 (gameboost/engine/detect.sh, md5 cocok) disalin ke modul
+  (backup di /sdcard/alpha/pre-rc2sync/), monitor restart PID 11311.
+  OPEN (extreme): p0 614400→1040000, p6 768000→1040000,
+  gpu 384M→850M, boost_level=extreme, fas-rs powersave→fast. CLOSE
+  (restore): semua kembali native + powersave + active=0.
+  KOREKSI CATATAN: lantai boost pakai _alpha_opp_cap_pick (OPP
+  terbesar ≤ target, TIDAK pernah lampaui %); snap-nearest sejati
+  hanya di engine (profile max). Klaim laporan MTK soal "snap di
+  boost" salah — p6=1040000 BENAR (cap-≤ dari 1183000), bukan bug.
+  Device kini setara RC2 penuh. TINGGAL: perintah rilis dari user.
