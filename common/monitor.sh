@@ -218,42 +218,49 @@ is_transient_package() {
     return 1
 }
 
-# GameBoost safety check function
+# GameBoost safety check function (b23: timeout + range filter)
 gb_safety_check() {
     local current_temp=0
     local max_temp=0
     local valid_count=0
-    
+
     # Read thermal zones
     if [ -d "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}" ]; then
         for zone in "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"/thermal_zone*; do
             [ -r "$zone/temp" ] || continue
             local temp_val
-            temp_val=$(tr -d '[:space:]' < "$zone/temp" 2>/dev/null)
-            # Skip invalid values: empty, non-numeric, -274000, -40000
+            # b23: timeout 2s per zone to prevent hang on unresponsive sysfs
+            if command -v timeout >/dev/null 2>&1; then
+                temp_val=$(timeout 2 cat "$zone/temp" 2>/dev/null | tr -d '[:space:]')
+            else
+                temp_val=$(tr -d '[:space:]' < "$zone/temp" 2>/dev/null)
+            fi
+            # Validate numeric (empty/non-numeric → skip)
             case "$temp_val" in
                 ''|*[!0-9-]*) continue ;;
-                -274000|-40000) continue ;;
             esac
-            # Convert to milliC if needed (some devices report in milliC already)
-            if [ "$temp_val" -gt 1000 ] 2>/dev/null; then
-                current_temp=$temp_val
-            else
+            # Convert to milliC: if |val| <= 1000 assume °C, multiply by 1000
+            if [ "${temp_val#-}" -le 1000 ] 2>/dev/null; then
                 current_temp=$((temp_val * 1000))
+            else
+                current_temp=$temp_val
             fi
+            # Filter valid range: -50000..150000 milliC
+            [ "$current_temp" -ge -50000 ] 2>/dev/null && \
+                [ "$current_temp" -le 150000 ] 2>/dev/null || continue
             if [ "$current_temp" -gt "$max_temp" ] 2>/dev/null; then
                 max_temp=$current_temp
             fi
             valid_count=$((valid_count + 1))
         done
     fi
-    
+
     # No valid thermal zones
     if [ "$valid_count" -eq 0 ]; then
         echo "0"
         return 0
     fi
-    
+
     echo "$max_temp"
     return 0
 }
