@@ -293,17 +293,27 @@ check_battery_status() {
     return 0
 }
 
+translate_profile_label() {
+    case "$1" in
+        battery) printf '%s\n' "Daily" ;;
+        balanced) printf '%s\n' "Balanced" ;;
+        performance) printf '%s\n' "Extreme" ;;
+        *) printf '%s\n' "$1" ;;
+    esac
+}
+
 notify_mode_change() {
     notify_pkg="$1"
     notify_profile="$2"
     [ "$NOTIFY_MODE_SWITCH" = "1" ] || return 0
     [ "$NOTIFY_AVAILABLE" = "1" ] || return 0
+    notify_label=$(translate_profile_label "$notify_profile")
     if [ -n "$notify_pkg" ]; then
-        notify_title="Alpha: $notify_profile"
-        notify_text="$notify_pkg aktif - profile $notify_profile"
+        notify_title="Alpha: $notify_label"
+        notify_text="$notify_pkg aktif - profile $notify_label"
     else
-        notify_title="Alpha: $notify_profile"
-        notify_text="Keluar dari game - kembali ke manual ($notify_profile)"
+        notify_title="Alpha: $notify_label"
+        notify_text="Keluar dari game - kembali ke manual ($notify_label)"
     fi
     if cmd notification post -S bigtext -t "$notify_title" "$NOTIFY_TAG" "$notify_text" >/dev/null 2>&1; then
         return 0
