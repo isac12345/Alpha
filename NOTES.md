@@ -1,5 +1,40 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Build 20 — fix radio Fill/Fit + cropRatio fallback (2026-09-22, leader + dev-apk 2 tugas)
+
+Akar penyebab masing-masing:
+
+1. Kedua radio tampak terpilih — kedua RadioButton dibuat via
+   `new RadioButton(a)` TANPA ID (default NO_ID=-1), sehingga
+   RadioGroup tak bisa menegakkan eksklusivitas; tambahan pula
+   `rbFill.setChecked(true)` dipanggil SEBELUM addView (di luar
+   RadioGroup). Akibat: `getCheckedRadioButtonId()` = -1 dan
+   perbandingan `== rbFill.getId()` (-1==-1) selalu true. Fix:
+   `setId(View.generateViewId())` untuk keduanya + `rg.check(id)`
+   SETELAH addView (BgEditor.java, +3/-1). Bukan masalah
+   drawable/selector (tak ada style kustom di overlay).
+2. `cropRatio: metrics 0, fallback` pakai rasio salah — satu-satunya
+   sumber metrics adalah `c.getResources().getDisplayMetrics()`;
+   bila 0 (context belum attach / application context), fallback
+   memakai outWidth/outHeight atau ukuran sumber (bisa persegi).
+   Fix (BubbleStyle.java, +68/-6): rantai berlapis decorView
+   Activity (getRealMetrics) → WindowManager.getDefaultDisplay →
+   Resources context → `Resources.getSystem()` (rasio device
+   sebenarnya, mis. 720x1600) → total-gagal pakai outWidth/outHeight
+   HANYA sebagai ukuran output. Tiap fallback melog Log.w eksplisit
+   (`metrics ctx 0, pakai system WxH` / `metrics TOTAL 0, output
+   paksa WxH`); jalur total-gagal + Toast.LENGTH_LONG. Signature +
+   logika FILL/FIT/letterbox tak tersentuh.
+- Verifikasi leader: diff 2 file disjoint; brace balance OK (delta
+  paren -5 = 5 komentar bernomor `// N)`); import View sudah ada;
+  kedua commit di work/b20-bgfix, merge --no-ff 7c43a63 tanpa
+  konflik. Bump 3 file ke 20 (version.txt 18→20, module.prop 19→20,
+  ALPHA_COMPANION_VER 18→20).
+- Bukti CI: run 35672669126 SUCCESS (package 34 dtk: javac semua
+  java/ + d8 + rebuild + sign + enforce versionCode 20).
+- Status: fusion-v2 sudah push. Verifikasi HP ikut CEK_TES-b20.md
+  (radio visual, logcat tanpa "metrics 0", Fill penuh 720x1600).
+
 ## Build 19 — restart fas-rs di live merge (2026-09-22, leader + dev-modul)
 
 - Akar penyebab: do_live_merge() (b18) menulis games.toml baru TAPI
