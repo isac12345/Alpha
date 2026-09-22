@@ -9,7 +9,6 @@ ui_print "  Governor/Freq: 100% dipegang fas-rs (bukan Alpha/Uperf)"
 ui_print "================================================="
 
 # ---------------------------------------------------------
-# 1. Guardrail arsitektur (dari Alpha v1) - wajib ARM64
 # ---------------------------------------------------------
 DEVICE_ARCH="$ARCH"
 if [ -z "$DEVICE_ARCH" ]; then
@@ -30,22 +29,17 @@ case "$DEVICE_ARCH" in
 esac
 
 # ---------------------------------------------------------
-# 2. Setup direktori kerja Alpha
 # ---------------------------------------------------------
 WORK_DIR="/data/adb/alpha"
 ui_print "- Menyiapkan direktori kerja Alpha: $WORK_DIR"
 mkdir -p "$WORK_DIR"
 chmod 0755 "$WORK_DIR"
-# M6: tulis penanda Alpha — uninstall.sh pakai ini untuk menentukan
-# apakah config uperf/fas-rs milik Alpha boleh dihapus.
 printf '%s\n' "1" > "$WORK_DIR/.alpha_installed" 2>/dev/null
 
-# Bersihkan cache deteksi lama saat reinstall agar hardware terdeteksi ulang
 rm -f "$WORK_DIR/detected.conf"
 rm -f "$WORK_DIR/alpha.log"
 
 # ---------------------------------------------------------
-# 3. Pilih config Uperf sesuai chipset (subsistem thread/cgroup classifier saja)
 # ---------------------------------------------------------
 UPERF_USER_PATH="/sdcard/Android/yc/uperf"
 UPERF_SUPPORTED=0
@@ -67,21 +61,16 @@ if [ -f "$MODPATH/uperf/script/libsysinfo.sh" ]; then
     if [ "$UPERF_CFGNAME" != "unsupported" ] && [ -f "$MODPATH/uperf/config/$UPERF_CFGNAME.json" ]; then
         mkdir -p "$UPERF_USER_PATH"
         cp -f "$MODPATH/uperf/config/$UPERF_CFGNAME.json" "$UPERF_USER_PATH/uperf.json"
-        # M1: Nonaktifkan modul cpu di salinan uperf.json — Alpha/fas-rs
-        # memegang penuh kendali CPU governor/freq, supaya tidak rebutan.
-        # Cek verifikasi: pastikan baris setelah "cpu": berisi "enable": false.
         _uperf_cpu_tmp="$UPERF_USER_PATH/.uperf.json.cpu_tmp"
         cp -f "$UPERF_USER_PATH/uperf.json" "$_uperf_cpu_tmp" 2>/dev/null
         if sed -i '/"cpu":/{n;s/"enable": true/"enable": false/}' "$UPERF_USER_PATH/uperf.json" 2>/dev/null \
            && grep -A1 '"cpu"' "$UPERF_USER_PATH/uperf.json" 2>/dev/null | grep -q '"enable": false'; then
-            # M1: Validasi JSON setelah modifikasi — pastikan tidak corrupt
             _json_ok=0
             if command -v python3 >/dev/null 2>&1; then
                 python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$UPERF_USER_PATH/uperf.json" 2>/dev/null && _json_ok=1
             elif command -v jq >/dev/null 2>&1; then
                 jq empty "$UPERF_USER_PATH/uperf.json" 2>/dev/null && _json_ok=1
             else
-                # Fallback: validasi struktur dasar (buka+tutup kurung)
                 _opens=$(tr -cd '{' < "$UPERF_USER_PATH/uperf.json" 2>/dev/null | wc -c)
                 _closes=$(tr -cd '}' < "$UPERF_USER_PATH/uperf.json" 2>/dev/null | wc -c)
                 [ "$_opens" -gt 0 ] 2>/dev/null && [ "$_opens" = "$_closes" ] 2>/dev/null && _json_ok=1
@@ -98,15 +87,6 @@ if [ -f "$MODPATH/uperf/script/libsysinfo.sh" ]; then
         fi
         rm -f "$_uperf_cpu_tmp" 2>/dev/null
         [ ! -e "$UPERF_USER_PATH/perapp_powermode.txt" ] && cp -f "$MODPATH/uperf/config/perapp_powermode.txt" "$UPERF_USER_PATH/perapp_powermode.txt"
-        # Injeksi idempoten rule "Alpha-FasrsManaged" (exclusion game fas-rs).
-        # Struktur object PERSIS mengikuti rule sejenis yang sudah ada di
-        # modules.sched.rules[] config ini, ditaruh TEPAT sebelum "Default
-        # rule" (regex "." match-all) supaya package fas-rs cocok ke rule ini
-        # dulu dan dapat treatment netral (ac=auto pc=auto = jangan sentuh).
-        # common/sync_uperf_exclusion.sh mengandalkan baris "regex" yang
-        # langsung berada setelah baris "name" rule ini - format di bawah
-        # menjaga adjacency tersebut. Cek-duplikat dulu supaya aman
-        # dijalankan ulang saat update modul.
         if grep -q '"name": "Alpha-FasrsManaged"' "$UPERF_USER_PATH/uperf.json" 2>/dev/null; then
             ui_print "- Rule Alpha-FasrsManaged sudah ada di uperf.json."
         elif ! grep -q '"name": "Default rule"' "$UPERF_USER_PATH/uperf.json" 2>/dev/null; then
@@ -166,15 +146,9 @@ else
     ui_print "! libsysinfo.sh Uperf tidak ditemukan, backend Uperf dilewati."
 fi
 
-# Config chipset lain sudah tidak diperlukan setelah dipilih, hapus untuk hemat ruang
 rm -rf "$MODPATH/uperf/config"
 
 # ---------------------------------------------------------
-# 4. Stage AsoulOpt (thread-affinity daemon, modul terpisah).
-#    Instalasi aktual DITUNDA ke service.sh (boot pertama, one-shot):
-#    customize.sh ini sendiri sedang berjalan sebagai proses instalasi,
-#    jadi nested install modul lain di sini berisiko race dengan
-#    installer root manager yang sedang aktif.
 # ---------------------------------------------------------
 ASOULOPT_STAGED="$MODPATH/uperf/asoulopt-staged.zip"
 if [ "$UPERF_SUPPORTED" = "1" ] && [ -f "$MODPATH/uperf/modules/asoulopt.zip" ]; then
@@ -195,7 +169,6 @@ fi
 rm -rf "$MODPATH/uperf/modules"
 
 # ---------------------------------------------------------
-# 5. Set permission
 # ---------------------------------------------------------
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm "$MODPATH/service.sh" 0 0 0755
@@ -209,6 +182,14 @@ set_perm "$MODPATH/common/sync_uperf_exclusion.sh" 0 0 0755
 set_perm "$MODPATH/common/engine_manager.sh" 0 0 0755
 set_perm "$MODPATH/common/game_add.sh" 0 0 0755
 set_perm "$MODPATH/common/render_manager.sh" 0 0 0755
+set_perm "$MODPATH/common/monitor.bin" 0 0 0755
+set_perm "$MODPATH/common/watchdog.bin" 0 0 0755
+set_perm "$MODPATH/common/apply_now.bin" 0 0 0755
+set_perm "$MODPATH/common/game_add.bin" 0 0 0755
+set_perm "$MODPATH/common/engine_manager.bin" 0 0 0755
+set_perm "$MODPATH/common/game_manager.bin" 0 0 0755
+set_perm "$MODPATH/common/sync_uperf_exclusion.bin" 0 0 0755
+set_perm "$MODPATH/bin/pgr-log.bin" 0 0 0755
 set_perm "$MODPATH/common/asoulopt_install.sh" 0 0 0644
 set_perm "$MODPATH/common/companion_install.sh" 0 0 0644
 set_perm "$MODPATH/common/profiles.sh" 0 0 0644
@@ -221,8 +202,6 @@ if [ -d "$MODPATH/uperf/script" ]; then
 fi
 
 # ---------------------------------------------------------
-# 6. Setup fas-rs (frame-aware CPU scheduler). Ini pemegang tunggal
-#    governor/scaling-freq di modul gabungan ini.
 # ---------------------------------------------------------
 FASRS_DIR="/sdcard/Android/fas-rs"
 FASRS_CONF="$FASRS_DIR/games.toml"
@@ -264,14 +243,6 @@ else
 fi
 
 # ---------------------------------------------------------
-# 7. Companion APK (Alpha Control, kontrol native utama).
-#    Coba install langsung di sini HANYA kalau Android booted (flash via
-#    manager app): pm install menyentuh PackageManagerService, BUKAN
-#    subsistem modul, jadi tidak kena race nested-install seperti kasus
-#    AsoulOpt dulu. Kalau flash via recovery (pm tidak ada / belum boot),
-#    lewati diam-diam - service.sh akan coba sekali saat boot pertama.
-#    Guard versi di companion_install.sh: tidak install ulang kalau sudah
-#    current (preferensi/permission user aman), tidak pernah downgrade.
 # ---------------------------------------------------------
 if [ -f "$MODPATH/common/companion_install.sh" ] && [ -f "$MODPATH/companion/AlphaBubble.apk" ]; then
     set_perm "$MODPATH/companion/AlphaBubble.apk" 0 0 0644
