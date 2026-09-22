@@ -5,7 +5,7 @@
 # Naikkan DETECT_VERSION setiap logic deteksi berubah supaya cache lama
 # otomatis di-refresh (tanpa detect ulang tiap boot).
 
-DETECT_VERSION=2
+DETECT_VERSION=3
 
 CONF_DIR="${ALPHA_CONF_DIR:-/data/adb/alpha}"
 CACHE_FILE="$CONF_DIR/detected.conf"
@@ -14,6 +14,101 @@ SYSFS_CPU_PREFIX="${SYSFS_CPU_PREFIX:-/sys/devices/system/cpu}"
 SYSFS_BLOCK_PREFIX="${SYSFS_BLOCK_PREFIX:-/sys/block}"
 SYSFS_GPU_PREFIX="${SYSFS_GPU_PREFIX:-/sys}"
 SYSFS_THERMAL_PREFIX="${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"
+DEV_CPUSET_PREFIX="${DEV_CPUSET_PREFIX:-/dev/cpuset}"
+PROC_PPM_PATH="${PROC_PPM_PATH:-/proc/ppm}"
+PROC_GPUFREQ_PATH="${PROC_GPUFREQ_PATH:-/proc/gpufreq}"
+
+# Deteksi chipset family: unisoc | mtk | mtk_legacy_unsupported | unknown
+# Prioritas sinyal: struktur folder LEBIH dipercaya dari nama platform.
+detect_chipset_family() {
+    local folder_mtk=0
+    local folder_unisoc=0
+    local has_ppm=0
+    local has_gpufreq=0
+    local name_mtk=0
+    local name_unisoc=0
+    local result=""
+    local match_via=""
+
+    # --- Sinyal folder ---
+    if [ -d "$DEV_CPUSET_PREFIX/asopt" ]; then
+        folder_unisoc=1
+    fi
+    if [ -d "$SYSFS_GPU_PREFIX/kernel/fpsgo" ]; then
+        folder_mtk=1
+    fi
+
+    # --- Sinyal /proc (MTK legacy) ---
+    if [ -e "$PROC_PPM_PATH" ]; then
+        has_ppm=1
+    fi
+    if [ -e "$PROC_GPUFREQ_PATH" ]; then
+        has_gpufreq=1
+    fi
+
+    # --- Sinyal nama (getprop, guard command -v) ---
+    if command -v getprop >/dev/null 2>&1; then
+        local board_hw=""
+        board_hw=$(getprop ro.board.platform 2>/dev/null)
+        if [ -z "$board_hw" ]; then
+            board_hw=$(getprop ro.hardware 2>/dev/null)
+        fi
+        board_hw=$(printf '%s' "${board_hw:-}" | tr '[:upper:]' '[:lower:]')
+        case "$board_hw" in
+            ums*|sc*|t6*|t7*) name_unisoc=1 ;;
+            mt[0-9]*)          name_mtk=1 ;;
+        esac
+    fi
+
+    # --- Logika deteksi (folder > nama, /proc menandai legacy) ---
+    if [ "$folder_unisoc" -eq 1 ] || [ "$folder_mtk" -eq 1 ]; then
+        if [ "$folder_unisoc" -eq 1 ] && [ "$folder_mtk" -eq 0 ]; then
+            result="unisoc"
+            match_via="folder"
+        elif [ "$folder_mtk" -eq 1 ] && [ "$folder_unisoc" -eq 0 ]; then
+            # MTK modern: fpsgo ada, /proc/ppm dan /proc/gpufreq TIDAK ada
+            if [ "$has_ppm" -eq 0 ] && [ "$has_gpufreq" -eq 0 ]; then
+                result="mtk"
+                match_via="folder"
+            else
+                result="mtk_legacy_unsupported"
+                match_via="folder"
+            fi
+        else
+            # Kedua folder ada — ambigu, pakai /proc sebagai penentu
+            if [ "$has_ppm" -eq 1 ] || [ "$has_gpufreq" -eq 1 ]; then
+                result="mtk_legacy_unsupported"
+                match_via="folder"
+            else
+                result="unknown"
+                match_via="folder"
+            fi
+        fi
+    elif [ "$has_ppm" -eq 1 ] || [ "$has_gpufreq" -eq 1 ]; then
+        # Tidak ada sinyal folder, tapi /proc ada → legacy tanpa fpsgo
+        result="mtk_legacy_unsupported"
+        match_via="folder"
+    else
+        # Tidak ada sinyal folder sama sekali → unknown. Nama platform
+        # SENGAJA tidak boleh menentukan sendiri (penguat saja), supaya
+        # tidak salah tebak di device yang tidak dikenal.
+        result="unknown"
+        match_via="tidak-ada"
+    fi
+
+    # Nama platform hanya penguat: bila sinyal folder dan nama sepakat,
+    # catat "keduanya" supaya jejak debug jelas. Nama tidak pernah
+    # mengubah hasil yang sudah ditentukan folder.
+    if [ "$match_via" = "folder" ]; then
+        if { [ "$result" = "unisoc" ] && [ "$name_unisoc" -eq 1 ]; } || \
+           { [ "$result" = "mtk" ] && [ "$name_mtk" -eq 1 ]; }; then
+            match_via="keduanya"
+        fi
+    fi
+
+    printf 'chipset detection: %s (matched via: %s)\n' "$result" "$match_via" >&2
+    printf '%s' "$result"
+}
 
 detect_soc() {
     local codename=""
@@ -84,6 +179,29 @@ detect_clusters() {
         fi
     done
     printf '%s' "$policies" | sed 's/[ \t]*$//'
+}
+
+# Daftar SEMUA policy di cpufreq/policy*, urut ASCENDING berdasar
+# cpuinfo_max_freq. Output: "policy0 policy6" (nama saja, spasi-pisah).
+# Fallback: kalau cpuinfo_max_freq tak terbaca untuk sebuah policy,
+# taruh policy itu paling akhir (jangan drop).
+detect_cpu_policies_sorted() {
+    local sorted="" unsorted="" p freq
+    for p in "$SYSFS_CPU_PREFIX"/cpufreq/policy*; do
+        [ -d "$p" ] || continue
+        freq=$(tr -d '[:space:]' < "$p/cpuinfo_max_freq" 2>/dev/null)
+        case "$freq" in ''|*[!0-9]*) freq="0" ;; esac
+        if [ "$freq" -eq 0 ] 2>/dev/null; then
+            unsorted="${unsorted}$(basename "$p") "
+        else
+            sorted="${sorted}${freq} $(basename "$p")
+"
+        fi
+    done
+    # Sort ascending by freq, extract names only (one per line)
+    sorted=$(printf '%s' "$sorted" | sort -n | awk '{print $2}')
+    # Combine: sorted first, then unsorted (paling akhir), convert to space-separated
+    printf '%s %s' "$sorted" "$unsorted" | tr '\n' ' ' | sed 's/^[ \t]*//;s/[ \t]*$//'
 }
 
 detect_storage() {
@@ -256,6 +374,37 @@ resolve_gpu_devfreq_path() {
     esac
 }
 
+# Cari devfreq GPU generik: match *.gpu atau *.mali (case-insensitive)
+# di $SYSFS_GPU_PREFIX/class/devfreq/.
+# 0 hasil → stdout kosong + log ke stderr, return 1.
+# >1 hasil → pakai yang pertama (urutan sort), log semua kandidat ke stderr.
+# 1 hasil → print path itu.
+resolve_gpu_devfreq_generic() {
+    local candidates="" c
+    for c in "$SYSFS_GPU_PREFIX"/class/devfreq/*; do
+        [ -d "$c" ] || continue
+        case "$(basename "$c")" in
+            *[Gg][Pp][Uu]*) candidates="${candidates}${c}
+" ;;
+            *[Mm][Aa][Ll][Ii]*) candidates="${candidates}${c}
+" ;;
+        esac
+    done
+    candidates=$(printf '%s' "$candidates" | sed '/^$/d' | sort)
+    local count
+    count=$(printf '%s\n' "$candidates" | wc -l)
+    case "$count" in ''|*[!0-9]*) count=0 ;; esac
+    if [ "$count" -eq 0 ] 2>/dev/null; then
+        printf 'GPU devfreq: tidak ditemukan, skip tuning GPU\n' >&2
+        return 1
+    fi
+    if [ "$count" -gt 1 ] 2>/dev/null; then
+        printf 'GPU devfreq: %d kandidat ditemukan:\n' "$count" >&2
+        printf '%s' "$candidates" >&2
+    fi
+    printf '%s' "$candidates" | head -n 1
+}
+
 # Deteksi zona thermal yang valid via ISI file (type + temp numerik),
 # bukan via nama folder. Prioritas: gpu > soc > tsens > cpu.
 # Mengisi global: THERMAL_SUPPORTED (1/0), THERMAL_PATH (file temp),
@@ -301,11 +450,19 @@ fi
 
 mkdir -p "$CONF_DIR"
 
+CHIPSET_FAMILY=$(detect_chipset_family)
 SOC_VENDOR=$(detect_soc)
-CPU_POLICIES=$(detect_clusters)
+CPU_POLICIES=$(detect_cpu_policies_sorted)
 STORAGE_DEVICES=$(detect_storage)
 GPU_VENDOR=$(detect_gpu_vendor)
-GPU_DEVFREQ_PATH=$(resolve_gpu_devfreq_path)
+# Jalur devfreq GPU dinamis (*.gpu/*.mali) hanya untuk MALI — node Mali
+# generik aman dipakai consumer (gameboost/engine). Vendor lain tetap
+# pakai resolver lama supaya GPU_DEVFREQ_PATH tidak menunjuk node asing.
+if [ "$GPU_VENDOR" = "MALI" ]; then
+    GPU_DEVFREQ_PATH=$(resolve_gpu_devfreq_generic)
+else
+    GPU_DEVFREQ_PATH=$(resolve_gpu_devfreq_path)
+fi
 detect_thermal
 DETECT_DATE=$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date 2>/dev/null)
 
@@ -317,6 +474,7 @@ cat <<EOF > "$CACHE_FILE"
 DETECT_VERSION="$DETECT_VERSION"
 DETECT_DATE="$DETECT_DATE"
 SOC_VENDOR="$SOC_VENDOR"
+CHIPSET_FAMILY="$CHIPSET_FAMILY"
 CPU_POLICIES="$CPU_POLICIES"
 STORAGE_DEVICES="$STORAGE_DEVICES"
 GPU_VENDOR="$GPU_VENDOR"
@@ -325,6 +483,10 @@ THERMAL_SUPPORTED="$THERMAL_SUPPORTED"
 THERMAL_PATH="$THERMAL_PATH"
 THERMAL_TYPE="$THERMAL_TYPE"
 # Arti nilai eksplisit:
+# CHIPSET_FAMILY=unisoc -> device Unisoc (folder asopt terdeteksi).
+# CHIPSET_FAMILY=mtk -> device MediaTek modern (fpsgo ada, tanpa /proc/ppm).
+# CHIPSET_FAMILY=mtk_legacy_unsupported -> device MTK lama (/proc/ppm atau /proc/gpufreq ada); pakai fallback aman.
+# CHIPSET_FAMILY=unknown -> tidak ada sinyal yang cocok; jangan asumsikan vendor.
 # GPU_VENDOR=UNKNOWN -> tidak ada GPU yang dikenali; lewati tuning GPU.
 # GPU_DEVFREQ_PATH kosong -> node devfreq GPU tidak ketemu; lewati baca/tulis devfreq GPU.
 # THERMAL_SUPPORTED=0 -> tidak ada thermal zone valid; lewati cek suhu.
