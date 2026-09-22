@@ -224,12 +224,19 @@ gb_safety_check() {
     local max_temp=0
     local valid_count=0
     
-    # Read thermal zones
+    # Read thermal zones. Tiap baca DIBATASI timeout: sebagian driver
+    # thermal (teramati: thermal_zone12/13 Unisoc) bisa menggantung
+    # pembaca selamanya (tr spin, subshell tak kembali, loop monitor
+    # mati total). Zona gagal-baca di-skip, bukan ditunggu.
     if [ -d "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}" ]; then
         for zone in "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"/thermal_zone*; do
             [ -r "$zone/temp" ] || continue
             local temp_val
-            temp_val=$(tr -d '[:space:]' < "$zone/temp" 2>/dev/null)
+            if command -v timeout >/dev/null 2>&1; then
+                temp_val=$(timeout 2 cat "$zone/temp" 2>/dev/null | tr -d '[:space:]' 2>/dev/null)
+            else
+                temp_val=$(cat "$zone/temp" 2>/dev/null | tr -d '[:space:]' 2>/dev/null)
+            fi
             # Skip invalid values: empty, non-numeric, -274000, -40000
             case "$temp_val" in
                 ''|*[!0-9-]*) continue ;;
