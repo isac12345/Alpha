@@ -144,7 +144,7 @@ tune_cpu_freq() {
             if [ -f "$avail_freq_file" ]; then
                 local max_freqs
                 max_freqs=$(tr ' ' '\n' < "$avail_freq_file" 2>/dev/null | grep -E '^[0-9]+$' | sort -n)
-                target_max=$(alpha_opp_cap_pick "$target_max" "$max_freqs")
+                target_max=$(alpha_opp_snap_nearest "$target_max" "$max_freqs")
             fi
         fi
 
@@ -159,7 +159,7 @@ tune_cpu_freq() {
                 if [ -f "$avail_freq_file" ]; then
                     local min_freqs
                     min_freqs=$(tr ' ' '\n' < "$avail_freq_file" 2>/dev/null | grep -E '^[0-9]+$' | sort -n)
-                    min_target=$(alpha_opp_cap_pick "$min_target" "$min_freqs")
+                    min_target=$(alpha_opp_snap_nearest "$min_target" "$min_freqs")
                 fi
                 [ -n "$min_target" ] && apply_tweak "$category" "$min_node" "$min_target"
             fi
@@ -489,6 +489,7 @@ tune_gpu_mali_kbase() {
 tune_gpu_mali() {
     local category="GPU"
     local mali_dev=""
+    local mali_candidates=""
     # Cache-first: pakai hasil detect.sh. Glob di bawah cuma fallback
     # kalau cache kosong (DETECT_VERSION lama / GPU path tak ketemu).
     if [ -n "${GPU_DEVFREQ_PATH:-}" ] && [ -f "$GPU_DEVFREQ_PATH/available_frequencies" ] && [ -f "$GPU_DEVFREQ_PATH/max_freq" ]; then
@@ -498,30 +499,36 @@ tune_gpu_mali() {
         [ -n "${GPU_DEVFREQ_PATH:-}" ] || log_msg "SKIPPED" "$category" "GPU_DEVFREQ_PATH kosong di cache, pakai fallback scan"
         for mali_cand in "${GPU_SYSFS_PREFIX:-/sys}"/class/misc/mali0/device/devfreq/*.gpu "${GPU_SYSFS_PREFIX:-/sys}"/class/misc/mali0/device/devfreq/*.mali; do
             if [ -f "$mali_cand/available_frequencies" ] && [ -f "$mali_cand/max_freq" ]; then
-                mali_dev="$mali_cand"
-                break
+                [ -z "$mali_dev" ] && mali_dev="$mali_cand"
+                mali_candidates="$mali_candidates $mali_cand"
             fi
         done
     fi
     if [ -z "$mali_dev" ]; then
         for mali_cand in "${GPU_SYSFS_PREFIX:-/sys}"/devices/platform/*.mali*/devfreq/* "${GPU_SYSFS_PREFIX:-/sys}"/devices/*/*.mali*/devfreq/*; do
             if [ -f "$mali_cand/available_frequencies" ] && [ -f "$mali_cand/max_freq" ]; then
-                mali_dev="$mali_cand"
-                break
+                [ -z "$mali_dev" ] && mali_dev="$mali_cand"
+                mali_candidates="$mali_candidates $mali_cand"
             fi
         done
     fi
     if [ -z "$mali_dev" ]; then
         for mali_cand in "$SYSFS_DEVFREQ_PREFIX"/*mali*; do
             if [ -f "$mali_cand/available_frequencies" ] && [ -f "$mali_cand/max_freq" ]; then
-                mali_dev="$mali_cand"
-                break
+                [ -z "$mali_dev" ] && mali_dev="$mali_cand"
+                mali_candidates="$mali_candidates $mali_cand"
             fi
         done
     fi
     if [ -z "$mali_dev" ]; then
-        log_msg "SKIPPED" "$category" "Mali terdeteksi tapi node tuning devfreq tidak ditemukan, skip aman"
+        log_msg "SKIPPED" "$category" "Mali terdeteksi tapi node tuning devfreq tidak ditemukan (0 kandidat), skip aman"
         return 0
+    fi
+    # Log semua kandidat bila >1 ditemukan; pakai yang pertama.
+    local _n_cand
+    _n_cand=$(echo "$mali_candidates" | wc -w)
+    if [ "${_n_cand:-0}" -gt 1 ] 2>/dev/null; then
+        log_msg "INFO" "$category" "devfreq kandidat=$_n_cand, pakai pertama=$mali_dev semua=$mali_candidates"
     fi
     if [ "${GPU_ADRENO_SKIP:-1}" = "1" ]; then
         log_msg "SKIPPED" "$category" "Mali profile skip enabled (stock)"
@@ -635,6 +642,7 @@ tune_boost_silencer() {
 # Unlock bandwidth bus memori DDR/LLCC/L3 dengan validasi available frequencies jika ada
 tune_devfreq() {
     local category="DEVFREQ"
+    local _devfreq_matched=0
     # Qualcomm bus_dcvs & generic devfreq
     for max_node in "$SYSFS_DEVFREQ_PREFIX"/*cpubw*/max_freq \
                     "$SYSFS_DEVFREQ_PREFIX"/*gpubw*/max_freq \
@@ -643,6 +651,7 @@ tune_devfreq() {
                     "$SYSFS_CPU_PREFIX"/bus_dcvs/LLCC/*/max_freq \
                     "$SYSFS_CPU_PREFIX"/bus_dcvs/L3/*/max_freq; do
         if [ -f "$max_node" ]; then
+            _devfreq_matched=$((_devfreq_matched + 1))
             local bus_dir
             bus_dir=$(dirname "$max_node")
             local avail_node="$bus_dir/available_frequencies"
@@ -672,6 +681,8 @@ tune_devfreq() {
             apply_tweak "$category" "$max_node" "$target_freq"
         fi
     done
+    [ "$_devfreq_matched" -eq 0 ] 2>/dev/null && \
+        log_msg "SKIPPED" "$category" "0 devfreq bus node ditemukan, skip aman"
 }
 
 # --- 5. TUNE BLOCK I/O ---
@@ -842,7 +853,45 @@ tune_render() {
     return 1
 }
 
-# --- 8. OPP CAP PICKER (Helper untuk tuning frekuensi berbasis persentase) ---
+# --- 8. OPP SNAP-NEAREST (Helper untuk tuning frekuensi) ---
+# Pilih frekuensi dengan selisih absolut terkecil ke target; seri → pilih
+# yang LEBIH RENDAH.  Driver cpufreq sering menolak/membulatkan nilai yang
+# tidak ada di tabel OPP, jadi nearest lebih aman daripada cap_pick yang
+# hanya mencari <= target.
+alpha_opp_snap_nearest() {
+    local target="$1"
+    local avail="$2"
+
+    case "$target" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+
+    local best="" best_diff=""
+    for f in $avail; do
+        case "$f" in
+            ''|*[!0-9]*) continue ;;
+        esac
+        local diff
+        if [ "$f" -ge "$target" ]; then
+            diff=$(( f - target ))
+        else
+            diff=$(( target - f ))
+        fi
+        if [ -z "$best" ] || [ "$diff" -lt "$best_diff" ] 2>/dev/null || \
+           { [ "$diff" -eq "$best_diff" ] 2>/dev/null && [ "$f" -lt "$best" ] 2>/dev/null; }; then
+            best="$f"
+            best_diff="$diff"
+        fi
+    done
+
+    if [ -n "$best" ]; then
+        printf '%s\n' "$best"
+    else
+        return 1
+    fi
+}
+
+# --- 9. OPP CAP PICKER (Helper untuk tuning frekuensi berbasis persentase) ---
 # Memilih frekuensi terdekat yang <= target dari daftar frekuensi kernel yang valid
 # Murni POSIX integer arithmetic tanpa awk/bc/python
 alpha_opp_cap_pick() {

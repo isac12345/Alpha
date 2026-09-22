@@ -535,21 +535,21 @@ _gb_apply_gpu() {
         # Governor -> performance (cadangan lain)
         if [ -f "$_df/available_governors" ]; then
             local _govs
-            _govs=$(cat "$_df/available_governors" 2>/dev/null)
+            _govs=$(cat "$_df/available_governors" 2>/dev/null | tr '\n' ' ')
             local _want="performance"
+            local _found=""
+            # Cek performance dulu; bila tak ada, fallback: schedutil > sugov_ext > simple_ondemand > ondemand
             case " $_govs " in
-                *" $_want "*)
-                    _gb_write "$_df/governor" "$_want" "GPU_GOV"
-                    ;;
+                *" $_want "*) _found="$_want" ;;
                 *)
-                    local _fb=""
-                    for _fb in schedutil simple_ondemand ondemand; do
-                        case "$_govs" in
-                            *" $_fb "*) _gb_write "$_df/governor" "$_fb" "GPU_GOV"; break ;;
+                    for _fb in schedutil sugov_ext simple_ondemand ondemand; do
+                        case " $_govs " in
+                            *" $_fb "*) _found="$_fb"; break ;;
                         esac
                     done
                     ;;
             esac
+            [ -n "$_found" ] && _gb_write "$_df/governor" "$_found" "GPU_GOV"
         fi
 
         # Max freq = GPU_MAX_FREQ bawaan (cap ke OPP tabel)
