@@ -28,6 +28,21 @@
    cabang di repo utama (28 Sep 2026: reset pekerja menghapus
    edit leader yang belum commit). Gunakan `git worktree` atau
    kerja di cabang tanpa pindah HEAD utama.
+8. Arsip fix + verifikasi 2 langkah (aturan permanen 2026-09-22,
+   perintah user — user pelupa, jadi ini wajib tiap perbaikan).
+   Status tiap perbaikan: TUNGGU -> L1 -> L2 -> ARSIP. Dilarang loncat.
+   - L1 = verifikasi teknis oleh leader, WAJIB bukti konkret
+     (ID run CI hijau + output: versionCode/grep/test). Tanpa bukti
+     = belum selesai, jujur tulis begitu.
+   - L2 = user tes di HP + bilang OK ("alhamdulillah", "udah",
+     perintah rilis, dsb). Tanpa ini status tetap "tunggu HP test".
+   - Hanya item L2 yang masuk: (a) FIXLOG.md lokal (= "otak":
+     satu entri per item: tanggal, apa, bukti L1, bukti L2,
+     bahasa sederhana), (b) repo arsip isac12345/modulroot
+     (remote `arsip`; `git push arsip <cabang>` + FIXLOG.md ikut).
+     Yang belum L2 DILARANG masuk arsip.
+   - Tanpa force push ke mana pun. Push arsip gagal fast-forward
+     = lapor ke user, jangan dipaksa.
 
 ## Khusus Alpha (project ini)
 - Stack: modul Magisk (Alpha + Uperf + fas-rs Fusion) untuk device root Unisoc + GPU Mali, plus APK Kotlin View/XML (AGP 8.3.2). Kelas utama: MainActivity, RootShell, BubbleService/FloatingBubbleService, ProfileTileService (QS tile), AddGameDialog, GamesFragment.
