@@ -267,3 +267,10 @@
   HASIL: AlphaBubble-signed.apk versionCode=20 (CN=Alpha Control),
   ZIP 5639313 (md5 a2346d6a) = APK identik di dalam; rilis v1.0.0
   di-upload ulang + salinan di /sdcard/alpha/Alpha-Fusion-v1.zip.
+
+- PUBLIK + RILIS FINAL (2026-09-22, leader, perintah user):
+  repo Alpha PRIVATE→PUBLIC (hygiene dicek dulu: riwayat + file
+  bersih dari jks/keystore/password). Rilis v1.0.0 diunduh ulang
+  dan dicek: module.prop v20, APK v20 (CN=Alpha Control),
+  update-binary/service.sh/customize/uninstall ada, sintaks
+  gameboost+monitor OK, md5 rilis = sdcard (a2346d6a).
