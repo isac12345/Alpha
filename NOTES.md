@@ -476,3 +476,22 @@ Server: `http://127.0.0.1:20128/v1/models` ada `Alpha-think`, `Alpha-fast`, `Bud
 - RESTART: server opencode PID 3868 masih konfigurasi lama — user WAJIB
   restart (`kill 3868` lalu jalankan opencode kembali) agar fallback
   aktif di sesi utama. Proses `opencode run` uji memakai config baru.
+
+## Build 23 — hang thermal_zone12 matikan loop monitor (2026-09-22, leader live-device + fix 9 baris)
+
+- Root cause (observasi live, bukan tebakan): `tr` baca thermal_zone12/temp
+  spin selamanya (utime+stime ~1555 dtk CPU, 0 voluntary switch; repro
+  terisolasi `tr < zone12` gantung >10 dtk) → subshell `$(gb_safety_check)`
+  tak kembali → monitor induk blokir pipe_read selamanya. Proses hidup,
+  loop mati, nol baris log. Pemicu: tiap game-open performance.
+- Fix (common/monitor.sh, +9/-2): baca per-zone dibatasi `timeout 2 cat`
+  bila tersedia (pola sama seperti run_dumpsys), zona gagal → skip.
+  Teruji terisolasi 0.68 dtk + 6/6 siklus buka-tutup live via am/input.
+- Follow-up TERPISAH (temuan live, belum dikerjakan): guard single-instance
+  `*monitor.sh*` tak cocok cmdline plaintext (`sh .../monitor.bin`) —
+  watchdog tick 180 dtk melahirkan monitor kembar tiap tick pada deploy
+  plaintext (di ELF rilis normal karena argv raksasa self-match).
+  Sementara: prune manual ke 1 instans.
+- PELAJARAN: sleep fixed untuk uji otomasi → false-negative di tengah
+  transisi; pakai tunggu-berbasis-kondisi (poll state sampai timeout).
+  killall gagal karena comm proses = sh/tr, bukan monitor.bin — kill by PID.
