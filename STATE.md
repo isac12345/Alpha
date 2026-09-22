@@ -209,3 +209,16 @@
   + monitor-b23final.bin (55200). Push fusion-v2 DONE (lihat bawah).
   BLOCKED: (1) user tes HP b23 ELF (ikut TESTING.md rel-v1), (2) setelah
   lolos → tag v1.0.0 + GitHub Release + public. Tanpa force push.
+
+- T5 THERMAL-SAFETY FIX (2026-09-22, leader, BELUM RILIS):
+  fusion-v2 HEAD = 38c089d (merge T5 thermal-safety). Bug: _gb_level()
+  hanya mengenali performance → thermal safety ≥85C menulis balanced →
+  jatuh ke extreme → device tetap max saat seharusnya pendingin.
+  Fix: _gb_level() case eksplisit 3 nilai + default balanced (fail-safe);
+  gb_apply() level balanced = restore-native + return awal; monitor.sh
+  game-open non-forced tulis extreme eksplisit + log level dari
+  boost_level. Unit test 6/6 PASS (performance/balanced/extreme/absent/garbage/caps).
+  Sandbox 4/4 PASS (balanced→restore native, extreme→floor 65%,
+  perf→floor 35%, absent→fail-safe balanced). Monitor snippet 3/3 PASS.
+  RC2 zip: 491d3b17, ~/storage/shared/alpha/Alpha-Fusion-v1-release-clean-RC2.zip.
+  MENUNGGU: (1) user tes HP b23 + thermal safety (ganti monitor.bin), (2) tag v1.0.0 + release + public.
