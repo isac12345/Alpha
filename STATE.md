@@ -250,3 +250,8 @@
   hanya di engine (profile max). Klaim laporan MTK soal "snap di
   boost" salah — p6=1040000 BENAR (cap-≤ dari 1183000), bukan bug.
   Device kini setara RC2 penuh. TINGGAL: perintah rilis dari user.
+
+- RILIS v1.0.0 (2026-09-22): rilis pagi (zip FINAL lama) diganti total:
+  asset kini RC2 `Alpha-Fusion-v1-release-clean.zip` (5721270, md5
+  491d3b17), catatan dipangkas ke 6 baris. Tag lokal konflik dihapus.
+  SISA USER: Public repo.
