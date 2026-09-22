@@ -197,3 +197,15 @@
 - b18 PERBAIKAN 3 BUG (2026-09-22, leader + dev-modul x2 + dev-apk x1): (1) game_add live merge (do_live_merge, +fix leader `&& mv` entri-terakhir) — work/b18-gamemerge abaa8ff; (2) monitor source gameboost.sh + 7 WARN log — work/b18-gbmon 1066f64; (3) cropRatio rasio-layar + bump v18 (3 file versi, +fix leader ALPHA_COMPANION_VER) — work/b18-crop 6cf73c5. Merge --no-ff x3 ke fusion-v2. Akar penyebab di NOTES.md §Build 18. CEK_TES-b18.md ditulis. Verifikasi: sandbox live add/remove + emulasi source + grep statis; build+live HP menyusul (CI + user).
 - b19 RESTART FAS-RS (2026-09-22, leader + dev-modul work/b19-fasrsrestart 30235cb + koreksi leader 70fa4c4): do_live_merge killall+relaunch setelah merge sukses (flag service.sh thp 9); restart hanya bila instans berjalan. Akar penyebab (README_EN:141 next-restart) di NOTES.md §Build 19. Sandbox: PID 25606→25680. Modul-only: APK v18, module.prop 19. Merge --no-ff cccea01.
 - b20 FIX RADIO + CROPRATIO (2026-09-22, leader + dev-apk x2 di work/b20-bgfix): (1) radio Fill/Fit ID unik via generateViewId + rg.check pasca-addView (508e00d, BgEditor +3/-1; akar: tanpa ID → NO_ID=-1 → eksklusivitas mati); (2) cropRatio rantai metrics decorView→WManager→Resources→Resources.getSystem + Log.w/Toast eksplisit per fallback (9ce2e31, BubbleStyle +68/-6; akar: single-source metrics + fallback rasio salah). Bump 3 file →20 (4f73ed7). Merge --no-ff 7c43a63, push → CI run 35672669126 SUCCESS (package 34s, javac+d8+sign+enforce v20). Rincian: NOTES.md §Build 20. Verifikasi HP: CEK_TES-b20.md.
+
+- MTK UNIVERSAL RC1 (2026-09-22, leader + dev-modul T1-T4, BELUM RILIS):
+  fusion-v2 = ed092b7 (3 merge --no-ff: T1 detect, T2 apply, T3 thermal +
+  commit feat(mtk) customize/README/NOTES). Sandbox 70/70 PASS, rerun
+  independen leader IDENTIK (sbx-mtk/full_output.txt + rerun-leader.txt).
+  Stage rel-v1 dari HEAD: 8 .bin fresh via shc 4.0.3 (AArch64, game_add
+  smoke OK) + stub, ziplist IDENTIK dengan FINAL lama, README MTK jujur
+  (sandbox-only, legacy belum didukung), APK sha256 SAMA 159d4e77....
+  RC1 zip `059341fa` di /sdcard/alpha/Alpha-Fusion-v1-release-clean-RC1.zip
+  + monitor-b23final.bin (55200). Push fusion-v2 DONE (lihat bawah).
+  BLOCKED: (1) user tes HP b23 ELF (ikut TESTING.md rel-v1), (2) setelah
+  lolos → tag v1.0.0 + GitHub Release + public. Tanpa force push.
