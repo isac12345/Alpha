@@ -423,6 +423,8 @@ handle_foreground_event() {
                     # Run safety check before apply
                     local current_temp
                     current_temp=$(gb_safety_check)
+                    # TEMP-DBG SEMENTARA-T6: log tiap pemanggilan (hapus sebelum rilis)
+                    monitor_log "THERMAL-DBG" "game-open safety_check temp=${current_temp}mC"
                     if [ "$current_temp" -ge 95000 ] 2>/dev/null; then
                         monitor_log "GAMEBOOST" "SKIPPED: temp ${current_temp}mC >= 95000, critical"
                     elif [ "$current_temp" -ge 85000 ] 2>/dev/null; then
@@ -682,6 +684,8 @@ check_gb_grace_period() {
             GB_SAFETY_LAST=$now
             local current_temp
             current_temp=$(gb_safety_check)
+            # TEMP-DBG SEMENTARA-T6: log tiap pemanggilan (hapus sebelum rilis)
+            monitor_log "THERMAL-DBG" "periodic safety_check temp=${current_temp}mC gb_active=${gb_active}"
             
             # Check thermal thresholds
             if [ "$current_temp" -ge 95000 ] 2>/dev/null; then
