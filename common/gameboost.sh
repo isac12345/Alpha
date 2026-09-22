@@ -1,7 +1,9 @@
 #!/system/bin/sh
-# Alpha Fusion - Game Boost Engine (Extreme / Performance)
+# Alpha Fusion - Game Boost Engine (Extreme / Balanced / Performance)
 # Paritas HSIN extreme + performance; generic untuk semua device + game.
-# POSIX sh; semua tulis = dua kali tulis-baca-verifikasi.
+# Balanced = restore native (pendinginan), extreme = lantai 65%,
+# performance = lantai 35%. POSIX sh; semua tulis = dua kali
+# tulis-baca-verifikasi.
 # Sakelar: DISABLE_GAMEBOOST, NO_CPUSET, GAMEBOOST_NO_VM, GAMEBOOST_LEVEL
 
 CONF_DIR="${ALPHA_CONF_DIR:-/data/adb/alpha}"
@@ -125,15 +127,23 @@ _gb_write() {
 
 # ============================================================
 # Level Detection
+# _gb_level membaca GAMEBOOST_LEVEL dan mengembalikan salah satu
+# dari: "performance", "balanced", "extreme". Default fail-safe
+# (file absen / isi tak dikenal) = "balanced" supaya thermal
+# safety tidak pernah jatuh ke mode paling kencang.
 # ============================================================
 _gb_level() {
     if [ -f "$CONF_DIR/GAMEBOOST_LEVEL" ]; then
         local _lv
         _lv=$(cat "$CONF_DIR/GAMEBOOST_LEVEL" 2>/dev/null \
               | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
-        [ "$_lv" = "performance" ] && { echo "performance"; return 0; }
+        case "$_lv" in
+            performance) echo "performance"; return 0 ;;
+            balanced)    echo "balanced";    return 0 ;;
+            extreme)     echo "extreme";     return 0 ;;
+        esac
     fi
-    echo "extreme"
+    echo "balanced"
 }
 
 # ============================================================
@@ -769,6 +779,20 @@ gb_apply() {
     _level=$(_gb_level)
     _gb_log "INFO" "level=$_level"
 
+    # Balanced = pendinginannya device: kembali ke snapshot native
+    # (restore CPU floor → native, GPU lock → native, cpuset → native,
+    #  stune/uclamp → native), set fas-rs ke balance, selesai.
+    # TIDAK panggil _gb_apply_cpu/gpu/vm/io/net supaya tidak
+    # meninggalkan floor/lantai extreme.
+    if [ "$_level" = "balanced" ]; then
+        _gb_log "INFO" "balanced: restoring native snapshot (pendinginan)"
+        gb_restore
+        printf '%s\n' "balanced" > "$CONF_DIR/boost_level" 2>/dev/null
+        _gb_set_fasrs_mode "balanced"
+        _gb_log "INFO" "gb_apply complete level=balanced (restore-only)"
+        return 0
+    fi
+
     # 4. CPU — lantai tetap jalan walau fas-rs aktif (lantai ≠ mematikan fas-rs)
     local _cpu_owner="${CPU_OWNER:-alpha}"
     _gb_log "INFO" "CPU_OWNER=$_cpu_owner (lantai tetap dijalankan)"
@@ -796,11 +820,12 @@ gb_apply() {
 }
 
 # Mode fas-rs mengikuti boost (tidak kill apa pun):
-# extreme → fast, performance → performance.
+# extreme → fast, balanced → balance, performance → performance.
 _gb_set_fasrs_mode() {
     local _want=""
     case "$1" in
-        extreme) _want="fast" ;;
+        extreme)     _want="fast" ;;
+        balanced)    _want="balance" ;;
         performance) _want="performance" ;;
         *) return 0 ;;
     esac

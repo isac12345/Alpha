@@ -437,22 +437,28 @@ handle_foreground_event() {
                     
                     # Apply gameboost
                     if command -v gb_apply >/dev/null 2>&1; then
-                        if [ -n "$GB_FORCED_LEVEL" ]; then
-                            # Force specific level
-                            local orig_level
-                            orig_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null)
-                            printf '%s\n' "$GB_FORCED_LEVEL" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
-                            gb_apply
-                            if [ -n "$orig_level" ]; then
-                                printf '%s\n' "$orig_level" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
-                            else
-                                rm -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
-                            fi
+                        # Simpan orig_level, tulis level target, apply,
+                        # kembalikan orig_level. Berlaku untuk forced
+                        # DAN non-forced (extreme eksplisit supaya
+                        # _gb_level tidak jatuh ke fail-safe balanced).
+                        local orig_level
+                        orig_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null)
+                        local _target_level="${GB_FORCED_LEVEL:-extreme}"
+                        printf '%s\n' "$_target_level" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                        gb_apply
+                        if [ -n "$orig_level" ]; then
+                            printf '%s\n' "$orig_level" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
                         else
-                            gb_apply
+                            rm -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
                         fi
+                        # Log level BENAR-BENAR diterapkan (baca boost_level
+                        # sesudah gb_apply, sebelum orig restore di atas
+                        # sudah mengembalikan GAMEBOOST_LEVEL ke user).
+                        local _applied
+                        _applied=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/boost_level" 2>/dev/null)
+                        [ -z "$_applied" ] && _applied="$_target_level"
                         printf '%s\n' "1" > "$GB_ACTIVE_FILE" 2>/dev/null
-                        monitor_log "GAMEBOOST" "APPLIED for $handle_pkg (temp=${current_temp}mC)"
+                        monitor_log "GAMEBOOST" "APPLIED ${_applied} for $handle_pkg (temp=${current_temp}mC)"
                     else
                         monitor_log "GAMEBOOST" "WARN: gb_apply unavailable, boost skipped for $handle_pkg"
                     fi
@@ -732,12 +738,15 @@ check_gb_grace_period() {
                     if [ "$cooldown_count" -ge "$cooldown_need" ] 2>/dev/null; then
                         _gb_unforce_level
                         rm -f "$GB_COOLDOWN_COUNT_FILE"
+                        local _cool_level=""
                         if command -v gb_apply >/dev/null 2>&1; then
                             gb_apply
+                            _cool_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/boost_level" 2>/dev/null)
                         else
                             monitor_log "GAMEBOOST" "WARN: gb_apply unavailable during cooldown complete"
                         fi
-                        monitor_log "GAMEBOOST" "COOLDOWN COMPLETE: temp<70C 60s, returning to user level"
+                        [ -z "$_cool_level" ] && _cool_level="(unknown)"
+                        monitor_log "GAMEBOOST" "COOLDOWN COMPLETE: temp<70C 60s, level=${_cool_level}"
                     fi
                 fi
             fi
