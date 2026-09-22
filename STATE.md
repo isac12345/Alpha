@@ -255,3 +255,15 @@
   asset kini RC2 `Alpha-Fusion-v1-release-clean.zip` (5721270, md5
   491d3b17), catatan dipangkas ke 6 baris. Tag lokal konflik dihapus.
   SISA USER: Public repo.
+
+- REBUILD APK v20 HIJAU (2026-09-22, leader): secret signing di Alpha
+  hilang total (daftar kosong) → semua run fusion-v2 merah di
+  Align+sign. Repo Alpha-Old masih punya secret + run hijau (bukti
+  pasangan benar). User isi ulang KEYSTORE_PASSWORD + KEYSTORE_B64
+  (file alpha-release.jks SALAH → "password incorrect"; ganti ke
+  ~/keys/alpha-new.jks → run 35729531470 SUCCESS 34 dtk).
+  PELAJARAN: ada 2 keystore (alpha-release.jks 07:22 vs
+  alpha-new.jks 14:05); yang cocok password = alpha-new.jks.
+  HASIL: AlphaBubble-signed.apk versionCode=20 (CN=Alpha Control),
+  ZIP 5639313 (md5 a2346d6a) = APK identik di dalam; rilis v1.0.0
+  di-upload ulang + salinan di /sdcard/alpha/Alpha-Fusion-v1.zip.
