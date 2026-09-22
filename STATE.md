@@ -222,3 +222,19 @@
   perf→floor 35%, absent→fail-safe balanced). Monitor snippet 3/3 PASS.
   RC2 zip: 491d3b17, ~/storage/shared/alpha/Alpha-Fusion-v1-release-clean-RC2.zip.
   MENUNGGU: (1) user tes HP b23 + thermal safety (ganti monitor.bin), (2) tag v1.0.0 + release + public.
+
+- ON-DEVICE THERMAL TEST (2026-09-22, leader langsung di HP itel P671L
+  ums9230, root): monitor.bin RC2 (1118cce8) + debug THERMAL-DBG
+  (ba66c551) dipasang sementara, dikembalikan ke RC2 sesudahnya.
+  HASIL: (1) periodic safety_check jalan tiap ~15s saat .gb_active=1
+  (47-49°C real). (2) bind-mount fake 86000 dari namespace Termux
+  TIDAK terlihat monitor (baca tetap ~45°C) → WAJIB via `su -M`
+  (mount-master). (3) Dengan fake terlihat: THERMAL-DBG temp=86000 →
+  `HIGH TEMP: 86000mC >= 85000, forced balanced` → gb_restore +
+  apply_now balanced, .gb_active=0, scaling tetap native
+  (614400/768000). (4) gb_apply-balanced T5 (copy fixed di /sdcard,
+  device gameboost.sh masih pra-T5!) → restore-only, tanpa lantai
+  extreme, boost_level=balanced. REVERT TOTAL: fake umount (41880
+  real), profile battery, fas-rs powersave, file uji dihapus,
+  monitor RC2 restart PID 30579. PENDING: flash RC2 penuh
+  (gameboost.sh T5 belum live di HP).

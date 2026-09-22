@@ -549,3 +549,16 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - _gb_restore_fasrs_mode() membaca current_state (bukan boost_level),
   jadi tidak terpengaruh oleh boost_level write order.
 - Delta: +54/-20 baris, 2 file (gameboost.sh, monitor.sh).
+
+## PELAJARAN on-device (2026-09-22)
+- shc -r: isi script UTUH kelihatan di /proc/PID/cmdline (bukan
+  enkripsi thd pembaca root lokal). Encode = anti-edit-santai saja.
+- Bind-mount fake sensor dari Termux+su TIDAK terlihat proses Magisk
+  (namespace beda). Pakai `su -M` (mount-master).
+- Pola ps `monitor.bin -c` parent+child = NORMAL (child = subshell
+  reader). Jangan dibunuh sebagai "duplikat".
+- Watchdog restart monitor ≤180s setelah kill (pidfile+cmdline check).
+  Kill monitor aman, verifikasi via baris START baru + md5 .bin.
+- Sourcing copy gameboost.sh dari /sdcard dgn env override
+  (ALPHA_CONF_DIR, CPU_POLICIES) = cara uji fungsi modul di HP tanpa
+  ubah file modul.
