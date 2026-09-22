@@ -107,16 +107,18 @@ public final class BgEditor {
         final RadioGroup rg = new RadioGroup(a);
         rg.setOrientation(RadioGroup.HORIZONTAL);
         final RadioButton rbFill = new RadioButton(a);
+        rbFill.setId(View.generateViewId());
         rbFill.setText("Fill");
         rbFill.setTypeface(Typeface.MONOSPACE);
         rbFill.setTextColor(Color.parseColor(CLR_INK));
-        rbFill.setChecked(true);
         final RadioButton rbFit = new RadioButton(a);
+        rbFit.setId(View.generateViewId());
         rbFit.setText("Fit");
         rbFit.setTypeface(Typeface.MONOSPACE);
         rbFit.setTextColor(Color.parseColor(CLR_INK));
         rg.addView(rbFill);
         rg.addView(rbFit);
+        rg.check(rbFill.getId());
         root.addView(rg);
 
         final AlertDialog[] box = new AlertDialog[1];
