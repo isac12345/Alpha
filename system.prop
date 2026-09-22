@@ -1,0 +1,5 @@
+# Alpha + Uperf + fas-rs Fusion - Rendering properties
+
+debug.renderengine.skia_use_perfetto_track_events=false
+vendor.perf.framepacing.enable=false
+persist.sys.framepredict.enable=false

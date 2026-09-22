@@ -1,0 +1,29 @@
+[config]
+keep_std = true
+scene_game_list = true
+
+[game_list]
+# Pilih engine per-game cukup lewat daftar ini (satu sumber kontrol, tidak
+# perlu file konfigurasi terpisah):
+#   - Package ADA di sini      -> dipegang penuh fas-rs; otomatis DILEWATI
+#     oleh classifier cpuset uperf (disinkron tiap boot via
+#     common/sync_uperf_exclusion.sh).
+#   - Package TIDAK ADA di sini -> tetap dipegang uperf seperti biasa.
+# Tambah/hapus baris di bawah untuk game baru, format:
+#   "nama.package" = [fps1, fps2, ...]   atau   "nama.package" = fps_tunggal
+
+[powersave]
+margin_fps = 3.0
+core_temp_thresh = 80000
+
+[balance]
+margin_fps = 1.0
+core_temp_thresh = 90000
+
+[performance]
+margin_fps = 0.3
+core_temp_thresh = 95000
+
+[fast]
+margin_fps = 0
+core_temp_thresh = 95000
