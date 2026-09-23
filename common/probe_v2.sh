@@ -67,7 +67,8 @@ _probe_zram_options() {
 # lalu cc yang sedang aktif, lalu token pertama yang tersedia.
 _probe_cc_pick() {
     local _av="$1" _act="$2" _c
-    for _c in bbr cubic; do
+    # Preferensi dinamis dari daftar device: bbr3 > bbr2 > bbr > cubic > aktif
+    for _c in bbr3 bbr2 bbr cubic; do
         case " $_av " in
             *" $_c "*)
                 printf '%s\n' "$_c"

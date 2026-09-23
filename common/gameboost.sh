@@ -770,12 +770,22 @@ _gb_apply_io() {
 # ============================================================
 _gb_cc_pick() {
     local _av="$1" _act="$2" _c
-    for _c in bbr cubic; do
+    # Urutan preferensi, tapi HANYA kandidat yang ADA di daftar device
+    # (dinamis per-device, tanpa memaksa satu nilai statis):
+    # bbr3 > bbr2 > bbr > cubic > hormati aktif > gagal.
+    for _c in bbr3 bbr2 bbr cubic; do
         case " $_av " in
-            *" $_c "*) printf '%s\n' "$_c"; return 0 ;;
+            *" $_c "*)
+                printf '%s\n' "$_c"
+                return 0
+                ;;
         esac
     done
-    [ -n "$_act" ] && { printf '%s\n' "$_act"; return 0; }
+    # Tidak ada kandidat preferensi → hormati cc aktif device (caller skip-tulis)
+    if [ -n "$_act" ] && [ "$_act" != "-" ]; then
+        printf '%s\n' "$_act"
+        return 0
+    fi
     return 1
 }
 
@@ -866,6 +876,14 @@ _gb_apply_zram() {
     done
     [ -z "$_want" ] && _want="$_act"
     [ -z "$_want" ] && { _gb_log "SKIPPED" "ZRAM no algorithm detected"; return 0; }
+    # Hormati device yang sudah pakai keluarga lz4 (lz4/lz4k/lz4kd/lz4hc):
+    # decompress tercepat, jangan tulis ulang beda varian yang tersedia.
+    case "$_act" in
+        lz4*)
+            _gb_log "INFO" "ZRAM already lz4-family ($_act), skip write"
+            return 0
+            ;;
+    esac
     if [ "$_want" = "$_act" ]; then
         _gb_log "INFO" "ZRAM comp already $_act, skip write"
         return 0

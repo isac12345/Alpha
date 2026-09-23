@@ -174,6 +174,21 @@ assert_eq "e: rmem kembali" "4194304" "$(rd "$E/proc/sys/net/core/rmem_max")"
 assert_eq "e: expire kembali" "3000" "$(rd "$E/proc/sys/vm/dirty_expire_centisecs")"
 assert_eq "e: zram kembali (aktif)" "zstd" "$(zram_active "$E/sys/block/zram0/comp_algorithm")"
 
-rm -rf "$A" "$B" "$C" "$E"
-printf '== hasil: %s PASS, %s FAIL ==\n' "$PASS" "$FAIL"
+# ---------- skenario (f): MTK-like — hormati bbr3 + lz4kd ----------
+printf '%s\n' "--- skenario (f): MTK-like, cc bbr3 + zram lz4kd dihormati ---"
+F=$(mktemp -d) || exit 1
+mk_fakefs "$F"
+printf 'reno bbr bbr3 bic cubic westwood htcp' > "$F/proc/sys/net/ipv4/tcp_available_congestion_control"
+printf 'bbr3' > "$F/proc/sys/net/ipv4/tcp_congestion_control"
+printf 'lzo lzo-rle lz4 lz4hc lz4k [lz4kd] deflate zstd' > "$F/sys/block/zram0/comp_algorithm"
+gb_env "$F"
+printf 'extreme' > "$F/conf/GAMEBOOST_LEVEL"
+gb_apply >/dev/null 2>&1
+assert_eq "f: cc tetap bbr3 (bukan diturunkan ke bbr)" "bbr3" "$(rd "$F/proc/sys/net/ipv4/tcp_congestion_control")"
+assert_eq "f: zram tetap lz4kd (lz4-family dihormati)" "lz4kd" "$(zram_active "$F/sys/block/zram0/comp_algorithm")"
+assert_eq "f: node lain tetap applied (expire)" "1500" "$(rd "$F/proc/sys/vm/dirty_expire_centisecs")"
+if grep -q "already lz4-family" "$F/alpha.log" 2>/dev/null; then ok "f: log skip lz4-family"; else bad "f: log skip lz4-family"; fi
+if grep -q "cc already bbr3" "$F/alpha.log" 2>/dev/null; then ok "f: log cc already bbr3"; else bad "f: log cc already bbr3"; fi
+rm -rf "$A" "$B" "$C" "$E" "$F"
+printf '== hasil total: %s PASS, %s FAIL ==\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
