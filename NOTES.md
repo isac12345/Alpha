@@ -562,3 +562,30 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Sourcing copy gameboost.sh dari /sdcard dgn env override
   (ALPHA_CONF_DIR, CPU_POLICIES) = cara uji fungsi modul di HP tanpa
   ubah file modul.
+
+## v2 net/mem/io — cabang work/v2-netmemio (2026-09-23, BELUM L2, tidak sentuh rilis v1.0.0)
+- Tugas 1 (dev-general, model dev-modul mati): common/probe_v2.sh read-only
+  (PREFIX override, parse [algo] zram + cc_pick bbr>cubic>aktif) +
+  docs/PROBE_V2.md (instruksi HP) + sandbox/test-v2-nodes.sh 30/30 PASS,
+  shellcheck 0. Commit 9a79b27.
+- Tugas 2 (worker 2x hasil KOSONG -> leader ambil alih): perluas
+  gameboost.sh TANPA mekanisme snapshot baru (+162/-10):
+  backup +rmem/wmem/low_latency/expire/zram_comp_algorithm(+options);
+  _gb_apply_net prioritas cc + rmem/wmem 2x cap 8MB (GLOBAL, moderat)
+  + low_latency best-effort; _gb_apply_zram baru (lz4>lzo-rle>lzo>zstd,
+  tulis 1x + readback, gagal = SKIP bukan reset); _gb_apply_io +expire
+  setengah floor 500 (dirty_ratio tetap milik VM, no double-tulis);
+  gb_restore pasangan persis semua node baru, zram TERAKHIR best-effort.
+  sandbox/test-v2-apply.sh 37/37 PASS (normal/restore-persis, zram
+  read-only SKIP, cc SELinux-denial lanjut, idempoten, balanced
+  restore-only). sh -n OK; shellcheck hanya SC3043 (pre-existing,
+  baseline 76 -> pola file mksh, kelas baru nol).
+- PELAJARAN: (1) subagent dev-modul/dev-general bisa kembalikan hasil
+  kosong 2x tanpa error — langsung ambil alih, jangan putaran ke-3.
+  (2) chmod 444 tak mempan simulasi SELinux di sandbox karena _gb_write
+  chmod-ulang file milik sendiri — pakai symlink-ke-direktori untuk
+  simulasi write-denial kernel. (3) restore zram di fake-fs: bandingkan
+  algoritma AKTIF hasil parse, bukan teks mentah (kernel format [x]).
+- BUTUH L1-live + L2: user jalankan docs/PROBE_V2.md di HP Unisoc +
+  tester MTK, isi tabel node|default|extreme|daily|status; tes koneksi
+  umum (browsing/chat) saat Extreme aktif; revert verifikasi persis.

@@ -274,3 +274,5 @@
   dan dicek: module.prop v20, APK v20 (CN=Alpha Control),
   update-binary/service.sh/customize/uninstall ada, sintaks
   gameboost+monitor OK, md5 rilis = sdcard (a2346d6a).
+
+- v2 net/mem/io (2026-09-23): cabang work/v2-netmemio, 2 commit (probe+sandbox, gb-perluas). Sandbox 30/30 + 37/37 PASS (leader-verified). BELUM live-HP: tunggu probe user (Unisoc+MTK) ikut docs/PROBE_V2.md + tes koneksi umum Extreme. Rilis v1.0.0 tak tersentuh.
