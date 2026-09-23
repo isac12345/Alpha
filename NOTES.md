@@ -590,3 +590,9 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   Fix UX saja: 1 TextView statis di kartu RENDER (activity_main.xml):
   "Catatan: ganti render perlu tutup aplikasi yang sedang berjalan
   agar berlaku." (4f1561d). XML valid. Tanpa tombol/logika tambahan.
+
+## b27 — L1 HIJAU (2026-09-23, run 35827491773 SUCCESS 37 dtk)
+- Bukti: overlay applied; versionCode 20 = version.txt; classes5
+  lengkap; apksigner verified. sh -n 5/5 + sandbox 16/16 (pra-CI).
+- Status: L1. L2 = flash modul: reboot cek adj -1000 (monitor,
+  watchdog, fas-rs) + HOME 3s/20s + warning render tampil.
