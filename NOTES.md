@@ -11,12 +11,13 @@
   Bump module.prop 21→22 modul-only.
 - Verifikasi: bash -n 3/3, shellcheck 0, sandbox sysfs palsu
   membuktikan 40% aktif (360000 vs 35%→300000).
-- PELAJARAN OPP: snap-down = rung terbesar ≤ target; 40%×1612000
-  =644800 vs 35%=564200 — bila rung-2 p0 T615 >644800 maka
-  floor tetap 614400 (NO-OP di p0). Nilai % tanpa tabel OPP
-  = tebak-tebakan; wajib minta scaling_available_frequencies
-  asli sebelum klaim gain floor. Uclamp/thermal/balanced-% =
-  tulis langsung, pasti efektif.
+- PELAJARAN OPP (terbukti 2026-09-23, izin user baca device):
+  OPP asli T615: p0 8 rung (614400..1612000), p6 7 rung
+  (768000..1820000). 40% (644800/728000) = NO-OP total
+  (snap ke 614400/768000, sama kayak 35%). Fix: floor 50%
+  (806000/910000 → 768000/768000): p0 +1 rung, p6 tetap.
+  Aturan: % floor TIDAK BOLEH diklaim tanpa tabel OPP asli;
+  izin baca read-only dari user cukup via cat biasa (tanpa su).
 - Status: L1 sandbox saja. MENUNGGU push/CI + tes HP (L2).
 
 ## Build 20 — fix radio Fill/Fit + cropRatio fallback (2026-09-22, leader + dev-apk 2 tugas)

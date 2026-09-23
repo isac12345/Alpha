@@ -12,7 +12,18 @@
   35%→300000, mekanisme snap-down terbukti). JUJUR: floor 40%
   di T615 kemungkinan nempel rung sama (644800 vs 564200,
   snap-down ke 614400 bila rung-2 >644800) — minta OPP asli
-  user untuk hitung pas. MENUNGGU: push/CI + tes HP (L2).
+- PERF50 (2026-09-23, leader, izin user baca device langsung):
+  OPP asli T615 dibaca dari HP (tanpa su, read-only):
+  p0=614400..1612000 (8 rung), p6=768000..1820000 (7 rung).
+  Matematika: 40% = 644800/728000 → snap-down 614400/768000
+  = SAMA PERSIS kayak 35% (perubahan kemarin NO-OP, jujur
+  diakui). Floor 50% = 806000/910000 → 768000/768000:
+  p0 NAIK 1 rung (+25%), p6 tetap (rung-2 p6=1040000 butuh
+  ≥57.2%, sengaja tidak diambil demi rem thermal). Cabang
+  work/perf50 → merge --no-ff ke fusion-v2. Bukti L1: bash -n
+  OK + sandbox TABEL ASLI → p0=768000 p6=768000. Live snapshot:
+  min_freq masih native (boost tidak aktif saat dicek).
+  MENUNGGU: push/CI + tes HP (L2).
 
 - FLOOR-75 (2026-09-23): dispatch dev-modul GAGAL — model
   `opencode/mimo-v2.5-free` retired ("Model not found:
