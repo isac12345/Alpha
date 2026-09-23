@@ -723,3 +723,15 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Bukti hijau: hook gravity/bgfull/bgrefresh OK; javac OK; v20; sign.
 - PELAJARAN: cek sisa marker HARUS pola `^<|^>|^===` (bukan cuma
   `<<<<<<<`), + brace balance, SEBELUM push.
+
+## b31 — cold start tertumpuk (2026-09-23, leader; di b30-navglow, TANPA build)
+- Akar (lebih spesifik dari dugaan): BUKAN attach/show hilang — XML
+  7x gone + show(dashboard) di attach SUDAH ADA. Pelakunya setTab()
+  LAMA di onCreate:92 yang jalan SETELAH attach dan un-hide semua
+  child by-index (cocok layout 2-tab lama, merusak layout 4-tab).
+  Bukti: onCreate:4806 `invoke-direct {p0,v3} setTab`, cocok gejala
+  (dingin=tumpuk, pindah tab=normal via NavTabs.show).
+- Fix: b31-coldstart.sed ganti call itu -> NavTabs.showDashboard
+  (anchor {p0,v3} unik 1x; 2 lambda tombol-lama tak tersentuh) +
+  method baru + workflow assert. Simulasi: attach=1, showDashboard=1,
+  v3=0, lambda=2, brace 0/0. CI BELUM. Status: TUNGGU.
