@@ -562,3 +562,22 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Sourcing copy gameboost.sh dari /sdcard dgn env override
   (ALPHA_CONF_DIR, CPU_POLICIES) = cara uji fungsi modul di HP tanpa
   ubah file modul.
+
+## b28 — bottom nav (2026-09-23, leader; TUNGGU review, TANPA build/CI)
+- Desain disetujui user (3 jawaban: slider=background -> detail Bg;
+  log/device/about -> TOOLS; detail=grup visibility + tombol Kembali).
+- Isi (commit di work/b28-nav dari fusion-v2): layout root jadi
+  LinearLayout (ScrollView scrollRoot bobot-1 + bar 4 tombol
+  DASH/GAMES/CUSTOM/TOOLS); grup tabDashboard/tabGames/tabCustomize/
+  3 detail/detailBg-Icon-Hud/tabTools; bar tab lama GONE (listener
+  smali tetap nempel, anti-NPE); kontrol background+slider pindah ke
+  detailBg; resolusi/dexopt/log/device/about ke tabTools; 17 id baru
+  0x7f06009d-ad; NavTabs.java (attach/show/detail/back + loadGames
+  reflection); b28-nav.sed hook sesudah setContentView (unik 1x);
+  workflow step + assert.
+- Verifikasi statis: XML valid x2; id baru semua ter-pin; NOL id lama
+  hilang; hook=1; brace 0/0. CI BELUM (tunggu approve + "oke build").
+  Catatan merge: warning render b27 ikut disalin ke kartu RENDER di
+  sini (b27 belum merge; urutan merge diatur leader nanti).
+  Quirk dicatat (logika TAK diubah): label "Transparansi kartu" tetap
+  berperilaku lama (kode CardAlpha utuh), cuma pindah tempat.
