@@ -593,3 +593,33 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   versionCode 20 = version.txt; apksigner verified.
 - Status: L1. Lanjut L2 = user flash + screenshot Dashboard + Games
   (area bawah list game sedikit) + bilang OK.
+
+## b26 — refresh instan + Fit letterbox (2026-09-23, leader; cabang susun di atas b25)
+- Akar refresh: alur save BARU (BgEditor via b11a) menulis app_bg_crop
+  tapi TAK PERNAH memicu re-load; BgFull cuma jalan di dalam
+  applyAppBackground (onCreate + 2 path lama). Dialog Atur latar =
+  window terpisah -> kembali ke Activity utama lewat onResume, bukan
+  onCreate -> gambar lama bertahan sampai force-close. TERBUKTI smali
+  (onActivityResult ~4255 lanjutkan flow lama + buka editor; onResume
+  4993-4999 hanya refreshAll).
+- Akar Fit-abu: (1) ZoomView.render(Fit) kanvas transparan (tanpa
+  drawColor) -> tembus abu tema; (2) BgFull.scaleFill SELALU FILL-crop
+  walau user pilih Fit -> letterbox musnah. Jawaban: letterbox HARUSNYA
+  hitam, kemarin abu = DUA bug di atas, bukan FILL salah.
+- Fix (commit eff5f68, tanpa bump versi, tanpa sentuh b24/b25):
+  save tulis app_bg_mode fill/fit + panggil BgFull.apply(a) langsung
+  (instan); render Fit drawColor HITAM 0xFF000000; BgFull mode-aware
+  (FIT -> scaleFit: utuh tengah + kanvas hitam); b26-bgrefresh.sed hook
+  onResume (jaring pengaman); workflow assert BgFull 1->2 + rapikan
+  hitung kelas (BgFull=9, CardAlpha=10).
+- Verifikasi: simulasi sed urutan workflow (b8+b11b+b25+b26):
+  setGravity=1, BgFull=2, HomeCards utuh; brace 0/0. CI BELUM (tanpa
+  push, tunggu "oke build"). Status: TUNGGU.
+- INSIDEN 0360182: commit lokal worker (13:00, tak ter-push) di b25
+  menghapus assert workflow + 36 baris NOTES/STATE + ganti hook 1x->3x.
+  Dipulihkan leader via reset ke 9fc2ef3 (=origin). PELAJARAN: worker
+  JANGAN commit di cabang leader/orang lain; kerja HANYA di cabang
+  tugasnya. Pola "cancel-tapi-jalan" (b16) kini "cancel-lalu-merusak".
+- Follow-up DITEMUKAN (bukan brief ini): "PAKAI BANNER DEFAULT" (clear)
+  hanya hapus app_bg_uri, sisa app_bg_crop -> BgFull bisa re-apply crop
+  sesudah clear. Butuh hook clear terpisah (b27 kandidat).
