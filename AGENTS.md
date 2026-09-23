@@ -52,3 +52,4 @@
 - Build: Gradle lokal di Termux gagal (Maven/Google 403). Build/verifikasi lewat GitHub Actions. Jangan sentuh secret keystore dan config signing.
 - RootShell: setiap perintah root wajib punya timeout, cek exit code, dan quoting aman.
 - Jalur kerja: dev-apk untuk APK, dev-modul untuk modul/backend tweak, leader memeriksa. Fitur baru dianggap belum teruji sampai user test di device.
+- ATURAN PERMANEN BUILD (perintah user 2026-09-23): DILARANG menjalankan CI/build apapun (GitHub Actions, workflow, packaging) TANPA kata "oke build" eksplisit dari user — termasuk fitur masih tahap rencana (banner/icon/floating, dst). Review dulu, tunggu "oke build", baru push yang memicu CI. Push ke work/* = memicu package.yml, jadi commit lokal dulu bila belum boleh build. Merge/bump versi juga butuh konfirmasi eksplisit user setelah tes HP.

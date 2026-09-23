@@ -576,3 +576,11 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - CI HIJAU: run 35810357906 success (hooks OK, javac, d8 min-api 26, sign, enforce v20).
 - BELUM merge fusion-v2, BELUM release — tunggu user tes HP 5 skenario (a-e dokumen
   BG-REDESIGN.md §3) + radio visual.
+- ATURAN BUILD BARU (koreksi user 2026-09-23): jangan jalankan CI/build
+  apapun tanpa kata "oke build" eksplisit dari user (termasuk fitur
+  rencana: banner/icon/floating). Review -> tunggu "oke build" -> push
+  (push work/* = auto-trigger package.yml). Juga: JANGAN merge/bump
+  sampai user konfirmasi tes HP 5 skenario + radio b24. Tercatat di
+  AGENTS.md. (Alasan koreksi: run 35810357906 dijalankan setelah
+  konfirmasi minSdk, tapi user menganggapnya butuh approval build
+  terpisah — aturan eksplisit menang.)
