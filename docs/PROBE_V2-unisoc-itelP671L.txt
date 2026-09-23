@@ -1,0 +1,38 @@
+=== PROBE v2 read-only: NET / Memory-ZRAM / Storage-IO ===
+PROC_SYS_PREFIX=/proc/sys
+SYSFS_BLOCK_PREFIX=/sys/block
+== NET ==
+[OK] node=net/ipv4/tcp_congestion_control exists=Y readable=Y writable=Y value=cubic options=reno cubic
+[SKIP:not-writable] node=net/ipv4/tcp_available_congestion_control exists=Y readable=Y writable=N value=reno cubic options=reno cubic
+[OK] node=net/core/rmem_max exists=Y readable=Y writable=Y value=8388608 options=-
+[OK] node=net/core/wmem_max exists=Y readable=Y writable=Y value=8388608 options=-
+[OK] node=net/ipv4/tcp_low_latency exists=Y readable=Y writable=Y value=0 options=-
+== MEM ==
+[OK] node=vm/swappiness exists=Y readable=Y writable=Y value=70 options=-
+[OK] node=zram0/comp_algorithm exists=Y readable=Y writable=Y value=lz4 options=lzo lzo-rle lz4 zstd
+[OK] node=vm/dirty_ratio exists=Y readable=Y writable=Y value=20 options=-
+[OK] node=vm/dirty_background_ratio exists=Y readable=Y writable=Y value=10 options=-
+== IO ==
+[OK] node=vm/dirty_expire_centisecs exists=Y readable=Y writable=Y value=3000 options=-
+[OK] node=sda/queue/read_ahead_kb exists=Y readable=Y writable=Y value=128 options=-
+[OK] node=sdb/queue/read_ahead_kb exists=Y readable=Y writable=Y value=128 options=-
+[OK] node=sdc/queue/read_ahead_kb exists=Y readable=Y writable=Y value=128 options=-
+== ringkasan ==
+node|default|opsi|writable
+net/ipv4/tcp_congestion_control|cubic|reno cubic|Y
+net/ipv4/tcp_available_congestion_control|reno cubic|reno cubic|N
+net/core/rmem_max|8388608|-|Y
+net/core/wmem_max|8388608|-|Y
+net/ipv4/tcp_low_latency|0|-|Y
+vm/swappiness|70|-|Y
+zram0/comp_algorithm|lz4|lzo lzo-rle lz4 zstd|Y
+vm/dirty_ratio|20|-|Y
+vm/dirty_background_ratio|10|-|Y
+vm/dirty_expire_centisecs|3000|-|Y
+sda/queue/read_ahead_kb|128|-|Y
+sdb/queue/read_ahead_kb|128|-|Y
+sdc/queue/read_ahead_kb|128|-|Y
+== rekomendasi cc (prioritas: bbr, cubic, aktif) ==
+cc_available=reno cubic
+cc_active=cubic
+cc_pick=cubic
