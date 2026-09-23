@@ -595,3 +595,7 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   Bukti: docs/before.txt, after.txt, restored.txt, test.log (commit
   83b6be7). Sisa: data tester MTK (tugas user) — kode tahan-absen jadi
   tidak blocker.
+- LAPORAN MTK (2026-09-23, lisan user): tester MTK sudah jalankan
+  probe_v2, hasil "aman". DATA DETAIL probe_v2-mtk.txt BELUM sampai —
+  tabel sisi MTK (node|default|extreme|daily|status) masih menunggu
+  file itu. Commit lokal saja, tanpa push (aturan "oke build").
