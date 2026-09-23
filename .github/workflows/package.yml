@@ -159,6 +159,13 @@ jobs:
           sed -f apk-patches/b28-nav.sed -i "$F"
           test "$(grep -c 'NavTabs;->attach' "$F")" = "1" || { echo "hook nav gagal"; exit 1; }
           echo "hook nav OK"
+      - name: Apply b31 hook (cold start dashboard)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          sed -f apk-patches/b31-coldstart.sed -i "$F"
+          test "$(grep -c 'NavTabs;->showDashboard' "$F")" = "1" || { echo "hook coldstart gagal"; exit 1; }
+          echo "hook coldstart OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e

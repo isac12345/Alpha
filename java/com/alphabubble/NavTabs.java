@@ -58,6 +58,14 @@ public final class NavTabs {
         HelperGuard.run(a, "navBack", () -> showInner(a, TAB_CUSTOM));
     }
 
+    // b31: pengganti setTab() lama di onCreate. setTab lama iterasi child
+    // by-index (semua kecuali cardGames -> VISIBLE) sehingga di layout baru
+    // ia MEMBUKA PAKSA semua grup tab (cold start tertumpuk). Fungsi ini
+    // menegakkan state awal Dashboard dengan peta id yang benar.
+    public static void showDashboard(final Activity a) {
+        HelperGuard.run(a, "navCold", () -> showInner(a, TAB_DASH));
+    }
+
     private static void showInner(Activity a, String tab) throws Throwable {
         if (tab == null) tab = TAB_DASH;
         setVisible(a, "tabDashboard", TAB_DASH.equals(tab));
