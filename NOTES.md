@@ -623,3 +623,8 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Follow-up DITEMUKAN (bukan brief ini): "PAKAI BANNER DEFAULT" (clear)
   hanya hapus app_bg_uri, sisa app_bg_crop -> BgFull bisa re-apply crop
   sesudah clear. Butuh hook clear terpisah (b27 kandidat).
+
+## b26 — L1 HIJAU (2026-09-23, run 35828118360 SUCCESS 30 dtk)
+- Bukti: hook bgfull OK + hook bgrefresh OK; javac BgFull.class ADA;
+  9+10 kelas classes5.dex OK; versionCode 20; sign verified.
+- Status: L1. L2 = simpan bg tanpa force-close + Fit hitam + APK b26.

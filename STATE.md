@@ -280,6 +280,6 @@
   alih. CI HIJAU run 35824172980 (hook+javac+d8+9kelas+v20+sign). L2 = screenshot
   Dashboard + Games full-height oleh user.
 
-- B26 BG-REFRESH (2026-09-23, TUNGGU): cabang work/b26-bgrefresh
+- B26 BG-REFRESH (2026-09-23, L1): cabang work/b26-bgrefresh
   (eff5f68, susun di atas b25 9fc2ef3). Tanpa push (tunggu "oke
   build"). L2 = simpan bg baru tanpa force-close + cek Fit hitam.
