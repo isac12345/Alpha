@@ -166,6 +166,13 @@ jobs:
           sed -f apk-patches/b31-coldstart.sed -i "$F"
           test "$(grep -c 'NavTabs;->showDashboard' "$F")" = "1" || { echo "hook coldstart gagal"; exit 1; }
           echo "hook coldstart OK"
+      - name: Apply b32 hook (nav refresh onResume)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          sed -f apk-patches/b32-navrefresh.sed -i "$F"
+          test "$(grep -c 'NavTabs;->refresh' "$F")" = "1" || { echo "hook navrefresh gagal"; exit 1; }
+          echo "hook navrefresh OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e

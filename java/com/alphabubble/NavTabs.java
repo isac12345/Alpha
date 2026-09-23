@@ -20,6 +20,16 @@ public final class NavTabs {
     private static final String TAB_CUSTOM = "customize";
     private static final String TAB_TOOLS = "tools";
 
+    // b32: SATU-SATUNYA daftar grup (single source of truth). applyState
+    // menulis ulang SEMUA grup tiap panggilan (idempotent, tanpa skip,
+    // tanpa asumsi state sebelumnya) supaya state basi tak bisa kebawa.
+    private static final String[] GROUPS = {
+        "tabDashboard", "tabGames", "tabCustomize", "tabTools",
+        "detailBg", "detailIcon", "detailHud"
+    };
+    private static String currentTab = TAB_DASH;
+    private static String currentDetail = null;
+
     private NavTabs() {}
 
     public static void attach(final Activity a) {
@@ -44,11 +54,8 @@ public final class NavTabs {
 
     public static void openDetail(final Activity a, final String detail) {
         HelperGuard.run(a, "navDetail", () -> {
-            setVisible(a, "tabDashboard", false);
-            setVisible(a, "tabGames", false);
-            setVisible(a, "tabCustomize", false);
-            setVisible(a, "tabTools", false);
-            setVisible(a, detail, true);
+            currentDetail = detail;
+            applyState(a);
             paintTab(a, null);
             scrollTop(a);
         });
@@ -56,6 +63,12 @@ public final class NavTabs {
 
     public static void goBack(final Activity a) {
         HelperGuard.run(a, "navBack", () -> showInner(a, TAB_CUSTOM));
+    }
+
+    // b32: tegakkan ulang tab/detail aktif (dipanggil tiap onResume).
+    // Jaring pengaman bila state visibility rusak di luar alur tab.
+    public static void refresh(final Activity a) {
+        HelperGuard.run(a, "navRefresh", () -> applyState(a));
     }
 
     // b31: pengganti setTab() lama di onCreate. setTab lama iterasi child
@@ -68,19 +81,37 @@ public final class NavTabs {
 
     private static void showInner(Activity a, String tab) throws Throwable {
         if (tab == null) tab = TAB_DASH;
-        setVisible(a, "tabDashboard", TAB_DASH.equals(tab));
-        setVisible(a, "tabGames", TAB_GAMES.equals(tab));
-        setVisible(a, "tabCustomize", TAB_CUSTOM.equals(tab));
-        setVisible(a, "tabTools", TAB_TOOLS.equals(tab));
-        setVisible(a, "detailBg", false);
-        setVisible(a, "detailIcon", false);
-        setVisible(a, "detailHud", false);
-        // Kartu BUBBLE injeksi: hanya di Dashboard (perilaku setTab lama).
-        View bubble = find(a, CARD_ID);
-        if (bubble != null) bubble.setVisibility(TAB_DASH.equals(tab) ? View.VISIBLE : View.GONE);
+        currentTab = tab;
+        currentDetail = null;
+        applyState(a);
         paintTab(a, tab);
         scrollTop(a);
         if (TAB_GAMES.equals(tab)) refreshGames(a);
+    }
+
+    // Tulis ulang visibilitas SEMUA grup terdaftar + kartu BUBBLE.
+    // Target VISIBLE, sisanya GONE — selalu, tanpa pengecualian.
+    private static void applyState(Activity a) throws Throwable {
+        boolean inDetail = currentDetail != null;
+        for (String g : GROUPS) {
+            boolean show;
+            if (inDetail) show = g.equals(currentDetail);
+            else show = g.equals(tabId(currentTab));
+            setVisible(a, g, show);
+        }
+        // Kartu BUBBLE injeksi: hanya di Dashboard (perilaku setTab lama).
+        View bubble = find(a, CARD_ID);
+        if (bubble != null) {
+            bubble.setVisibility(!inDetail && TAB_DASH.equals(currentTab)
+                    ? View.VISIBLE : View.GONE);
+        }
+    }
+
+    private static String tabId(String tab) {
+        if (TAB_GAMES.equals(tab)) return "tabGames";
+        if (TAB_CUSTOM.equals(tab)) return "tabCustomize";
+        if (TAB_TOOLS.equals(tab)) return "tabTools";
+        return "tabDashboard";
     }
 
     // Pemicu loadGames() asli via reflection (private, tanpa argumen).
