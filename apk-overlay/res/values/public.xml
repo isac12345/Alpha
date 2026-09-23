@@ -294,6 +294,7 @@
     <public type="id" name="btnBackBg" id="0x7f0600ab" />
     <public type="id" name="btnBackIcon" id="0x7f0600ac" />
     <public type="id" name="btnBackHud" id="0x7f0600ad" />
+    <public type="id" name="btnKillApps" id="0x7f0600ae" />
     <public type="integer" name="status_bar_notification_info_maxnum" id="0x7f070000" />
     <public type="layout" name="activity_main" id="0x7f080000" />
     <public type="layout" name="custom_dialog" id="0x7f080001" />

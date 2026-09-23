@@ -44,6 +44,13 @@ public final class NavTabs {
             wireBack(a, "btnBackBg");
             wireBack(a, "btnBackIcon");
             wireBack(a, "btnBackHud");
+            wireKill(a);
+            try {
+                View content = a.findViewById(android.R.id.content);
+                UiAnim.pressAll(a, content);
+            } catch (Throwable t) {
+                Log.w(TAG, "pressAll gagal: " + t);
+            }
             show(a, TAB_DASH);
         });
     }
@@ -57,6 +64,7 @@ public final class NavTabs {
             currentDetail = detail;
             applyState(a);
             paintTab(a, null);
+            UiAnim.fadeIn(a, find(a, detail));
             scrollTop(a);
         });
     }
@@ -85,6 +93,8 @@ public final class NavTabs {
         currentDetail = null;
         applyState(a);
         paintTab(a, tab);
+        UiAnim.fadeIn(a, find(a, tabId(tab)));
+        UiAnim.tabPop(a, find(a, navId(tab)));
         scrollTop(a);
         if (TAB_GAMES.equals(tab)) refreshGames(a);
     }
@@ -112,6 +122,22 @@ public final class NavTabs {
         if (TAB_CUSTOM.equals(tab)) return "tabCustomize";
         if (TAB_TOOLS.equals(tab)) return "tabTools";
         return "tabDashboard";
+    }
+
+    private static String navId(String tab) {
+        if (TAB_GAMES.equals(tab)) return "navGames";
+        if (TAB_CUSTOM.equals(tab)) return "navCustomize";
+        if (TAB_TOOLS.equals(tab)) return "navTools";
+        return "navDash";
+    }
+
+    private static void wireKill(final Activity a) throws Throwable {
+        View v = find(a, "btnKillApps");
+        if (!(v instanceof Button)) {
+            Log.w(TAG, "tombol btnKillApps tak ketemu");
+            return;
+        }
+        ((Button) v).setOnClickListener(view -> KillApps.killAll(a));
     }
 
     // Pemicu loadGames() asli via reflection (private, tanpa argumen).
