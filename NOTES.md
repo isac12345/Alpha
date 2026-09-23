@@ -716,3 +716,10 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   invalidate -> onDraw hitung ulang live. Uji toggle UI live (tap
   galeri) butuh jari user — satu-satunya langkah tak bisa via command.
 - Status: TUNGGU review. Tanpa push/build.
+
+## b29 — L1 HIJAU (2026-09-23, run 35854935921 SUCCESS 42 dtk)
+- Sempat MERAH (35854718031): sisa marker `<` 1 karakter di render
+  lolos grep `<<<<<<<` (pola terlalu sempit). Fix 1 baris + push.
+- Bukti hijau: hook gravity/bgfull/bgrefresh OK; javac OK; v20; sign.
+- PELAJARAN: cek sisa marker HARUS pola `^<|^>|^===` (bukan cuma
+  `<<<<<<<`), + brace balance, SEBELUM push.

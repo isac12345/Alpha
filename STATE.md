@@ -290,5 +290,5 @@
 - B28 NAV (2026-09-23, TUNGGU review): work/b28-nav. Tanpa build/CI.
   Lanjut setelah user approve desain + "oke build".
 
-- B29 CROPMERGE (2026-09-23, TUNGGU review): work/b29-cropmerge
+- B29 CROPMERGE (2026-09-23, L1): work/b29-cropmerge
   (di atas combo e704998 + merge b24). Tanpa build/CI.
