@@ -2,7 +2,7 @@
 # Alpha Fusion - Game Boost Engine (Extreme / Balanced / Performance)
 # Paritas HSIN extreme + performance; generic untuk semua device + game.
 # Balanced = restore native (pendinginan), extreme = lantai 75%,
-# performance = lantai 40%. POSIX sh; semua tulis = dua kali
+# performance = lantai 50%. POSIX sh; semua tulis = dua kali
 # tulis-baca-verifikasi.
 # Sakelar: DISABLE_GAMEBOOST, NO_CPUSET, GAMEBOOST_NO_VM, GAMEBOOST_LEVEL
 
@@ -463,8 +463,9 @@ _gb_apply_cpu() {
         [ -z "$_hw_max" ] && continue
 
         if [ "$_level" = "performance" ]; then
-            # Performance: lantai 40% (agresif ringan anti-stutter, 2026-09-23)
-            _floor=$((_hw_max * 40 / 100))
+            # Performance: lantai 50% (OPP asli T615: p0 806000->768000
+            # naik 1 rung; p6 910000->768000 tetap; 2026-09-23)
+            _floor=$((_hw_max * 50 / 100))
         else
             # Extreme: lantai 75%
             _floor=$((_hw_max * 75 / 100))
