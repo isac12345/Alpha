@@ -33,6 +33,37 @@ public final class BgFull {
         HelperGuard.run(a, "bgFull", () -> applyInner(a));
     }
 
+    // Dipanggil dari clearAppBackground (PAKAI BANNER DEFAULT): hapus kunci
+    // crop + file crop agar crop lama tak muncul lagi sesudah banner
+    // dikembalikan. URI asli (app_bg_uri) sudah dihapus smali caller.
+    public static void clearCrop(Activity a) {
+        HelperGuard.run(a, "bgClearCrop", () -> {
+            SharedPreferences sp = a.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+            try {
+                String u = sp.getString("app_bg_crop", null);
+                if (u != null) {
+                    Uri uri = Uri.parse(u);
+                    if (uri != null && "file".equals(uri.getScheme())) {
+                        String path = uri.getPath();
+                        if (path != null) new File(path).delete();
+                    }
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "clearCrop uri gagal: " + t);
+            }
+            try {
+                new File(a.getFilesDir(), "app_bg_crop.png").delete();
+            } catch (Throwable t) {
+                Log.w(TAG, "clearCrop file gagal: " + t);
+            }
+            try {
+                sp.edit().remove("app_bg_crop").apply();
+            } catch (Throwable t) {
+                Log.w(TAG, "clearCrop pref gagal: " + t);
+            }
+        });
+    }
+
     private static void applyInner(Activity a) throws Throwable {
         if (a == null) return;
         SharedPreferences sp = a.getSharedPreferences(PREFS, Context.MODE_PRIVATE);

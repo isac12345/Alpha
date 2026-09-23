@@ -173,6 +173,13 @@ jobs:
           sed -f apk-patches/b32-navrefresh.sed -i "$F"
           test "$(grep -c 'NavTabs;->refresh' "$F")" = "1" || { echo "hook navrefresh gagal"; exit 1; }
           echo "hook navrefresh OK"
+      - name: Apply b33 hook (clear banner hapus crop)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          sed -f apk-patches/b33-clearcrop.sed -i "$F"
+          test "$(grep -c 'BgFull;->clearCrop' "$F")" = "1" || { echo "hook clearcrop gagal"; exit 1; }
+          echo "hook clearcrop OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e

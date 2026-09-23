@@ -72,6 +72,8 @@ public final class HomeCards {
         LinearLayout card = buildCard(a);
         int idx = Math.min(2, container.getChildCount());
         container.addView(card, idx);
+        // Kartu injeksi muncul belakangan (tak kena pressAll NavTabs.attach).
+        UiAnim.pressAll(a, card);
     }
 
     private static ViewGroup findContainer(ViewGroup g) throws Throwable {

@@ -49,6 +49,42 @@ GB_COOLDOWN_COUNT_FILE="$STATE_DIR/.gb_cooldown_count"
 DAILY_LOADHIGH_FILE="$STATE_DIR/.daily_loadhigh_count"
 DAILY_LOADBAL_FILE="$STATE_DIR/.daily_loadbalanced"
 
+# GUARDIAN silang: watchdog menghidupkan monitor, monitor menghidupkan
+# watchdog (cek time-gated tiap WD_GUARD_INTERVAL, default 300s, pola
+# pidfile+cmdline sama seperti watchdog.sh agar tak dobel start).
+WD_PID_FILE="$STATE_DIR/watchdog.pid"
+WD_GUARD_INTERVAL="${ALPHA_WD_GUARD_INTERVAL:-300}"
+WD_GUARD_LAST=0
+guard_watchdog() {
+    guard_now=$(date '+%s' 2>/dev/null || echo 0)
+    [ -n "$guard_now" ] && [ "$guard_now" -gt 0 ] 2>/dev/null || return 0
+    [ -n "$WD_GUARD_LAST" ] && [ "$WD_GUARD_LAST" -gt 0 ] 2>/dev/null || WD_GUARD_LAST=0
+    guard_elapsed=$((guard_now - WD_GUARD_LAST))
+    [ "$guard_elapsed" -ge "$WD_GUARD_INTERVAL" ] 2>/dev/null || return 0
+    WD_GUARD_LAST=$guard_now
+    wd_ok=0
+    if [ -f "$WD_PID_FILE" ]; then
+        wd_old=$(tr -d '[:space:]' < "$WD_PID_FILE" 2>/dev/null)
+        if [ -n "$wd_old" ] && [ -r "/proc/$wd_old/cmdline" ]; then
+            wd_cmd=$(tr '\000' ' ' < "/proc/$wd_old/cmdline" 2>/dev/null)
+            case "$wd_cmd" in
+                *watchdog.sh*) wd_ok=1 ;;
+            esac
+        fi
+    fi
+    if [ "$wd_ok" -ne 1 ]; then
+        rm -f "$WD_PID_FILE"
+        nohup sh "$MODDIR/watchdog.sh" >> "$LOG_FILE" 2>&1 &
+        wd_new=$!
+        sleep 1
+        if [ -r "/proc/$wd_new/cmdline" ]; then
+            monitor_log "GUARDIAN" "watchdog.sh mati/hilang, start ulang pid=$wd_new"
+        else
+            monitor_log "GUARDIAN" "WARN: watchdog.sh gagal start"
+        fi
+    fi
+}
+
 monitor_log() {
     monitor_log_status="$1"
     monitor_log_message="$2"
@@ -833,6 +869,8 @@ run_event_supervised_loop() {
         check_gb_grace_period
         # DAILY: anti-lag guard (loadavg)
         check_daily_loadavg_guard
+        # GUARDIAN: hidupkan watchdog bila mati
+        guard_watchdog
         sleep 2
     done
     stop_event_stream
@@ -872,6 +910,8 @@ run_polling_loop() {
         check_gb_grace_period
         # DAILY: anti-lag guard (loadavg)
         check_daily_loadavg_guard
+        # GUARDIAN: hidupkan watchdog bila mati
+        guard_watchdog
         sleep "$SCREEN_ON_INTERVAL"
     done
     return 0
