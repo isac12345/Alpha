@@ -15,6 +15,8 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.net.Uri;
+import android.os.Build;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -108,28 +110,71 @@ public final class BubbleStyle {
         final Bitmap[] out = {null};
         HelperGuard.run(c, "cropRatio", () -> {
             try {
-                Bitmap src = BitmapFactory.decodeStream(
-                        c.getContentResolver().openInputStream(uri));
-                if (src == null) {
-                    Log.w(TAG, "cropRatio: decode null");
+                // Pass 1: decode bounds only
+                BitmapFactory.Options boundsOpts = new BitmapFactory.Options();
+                boundsOpts.inJustDecodeBounds = true;
+                InputStream isBounds = c.getContentResolver().openInputStream(uri);
+                if (isBounds == null) {
+                    Log.w(TAG, "cropRatio: open stream for bounds null");
                     return;
                 }
-                int sw = src.getWidth(), sh = src.getHeight();
+                try {
+                    BitmapFactory.decodeStream(isBounds, null, boundsOpts);
+                } finally {
+                    try { isBounds.close(); } catch (Throwable ignore) {}
+                }
+                int sw = boundsOpts.outWidth, sh = boundsOpts.outHeight;
                 if (sw <= 0 || sh <= 0) {
                     Log.w(TAG, "cropRatio: src size invalid " + sw + "x" + sh);
                     return;
                 }
-                // Rasio layar device — berlapis: Activity decorView -> WindowManager -> Resources.getSystem()
-                android.util.DisplayMetrics dm = null;
+                // Compute inSampleSize (maxSide=1600, same as BgEditor.openEditor)
+                int maxSide = 1600;
+                int sample = 1;
+                while (Math.max(sw, sh) / sample > maxSide) sample <<= 1;
+                // Pass 2: decode with inSampleSize
+                BitmapFactory.Options decodeOpts = new BitmapFactory.Options();
+                decodeOpts.inSampleSize = sample;
+                InputStream isDecode = c.getContentResolver().openInputStream(uri);
+                if (isDecode == null) {
+                    Log.w(TAG, "cropRatio: open stream for decode null");
+                    return;
+                }
+                Bitmap src;
+                try {
+                    src = BitmapFactory.decodeStream(isDecode, null, decodeOpts);
+                } finally {
+                    try { isDecode.close(); } catch (Throwable ignore) {}
+                }
+                if (src == null) {
+                    Log.w(TAG, "cropRatio: decode null");
+                    return;
+                }
+                sw = src.getWidth();
+                sh = src.getHeight();
+                // Rasio layar device — rantai prioritas: API30 getCurrentWindowMetrics -> decorView -> WindowManager -> Resources -> Resources.getSystem()
+                DisplayMetrics dm = null;
                 int dw = 0, dh = 0;
                 boolean gotMetrics = false;
+                // 0) API 30+: getCurrentWindowMetrics (NATIVE android.app, tanpa library)
+                if (Build.VERSION.SDK_INT >= 30 && c instanceof Activity) {
+                    try {
+                        Activity act = (Activity) c;
+                        android.graphics.Rect b = act.getWindowManager().getCurrentWindowMetrics().getBounds();
+                        dw = b.width();
+                        dh = b.height();
+                        if (dw > 0 && dh > 0) gotMetrics = true;
+                    } catch (Throwable t) {
+                        Log.w(TAG, "cropRatio: getCurrentWindowMetrics gagal: " + t);
+                    }
+                }
                 // 1) Coba dari Activity yang sedang tampil (decorView)
-                if (c instanceof Activity) {
+                if (!gotMetrics && c instanceof Activity) {
                     try {
                         Activity act = (Activity) c;
                         android.view.View decor = act.getWindow().getDecorView();
                         if (decor != null) {
-                            dm = new android.util.DisplayMetrics();
+                            dm = new DisplayMetrics();
                             decor.getDisplay().getRealMetrics(dm);
                             dw = dm.widthPixels;
                             dh = dm.heightPixels;
@@ -243,14 +288,6 @@ public final class BubbleStyle {
             }
         });
         return out[0];
-    }
-
-    /** Wrapper kompatibilitas: crop lama (dijalankan sebagai FILL dengan ukuran sama).
-     *  @deprecated gunakan cropRatio dengan CropMode.FILL/FIT dan ukuran layar asli. */
-    @Deprecated
-    public static Bitmap cropSquare(Context c, Uri uri, int sizePx) {
-        int w = sizePx, h = sizePx;
-        return cropRatio(c, uri, CropMode.FILL, w, h);
     }
 
     // Simpan URI latar pilihan + minta service refresh.

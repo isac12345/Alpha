@@ -11,9 +11,13 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Typeface;
 import android.net.Uri;
+import android.os.Build;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.util.Pair;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -37,6 +41,64 @@ public final class BgEditor {
     private static final float PILL_RADIUS = 24f;
 
     private BgEditor() {}
+
+    /** Return real device screen size (width, height) using priority fallback chain.
+     *  1) API 30+: WindowManager.getCurrentWindowMetrics().getBounds() (native, no androidx)
+     *  2) decorView.getDisplay().getRealMetrics() (API 17+)
+     *  3) WindowManager.getDefaultDisplay().getMetrics()
+     *  4) Resources.getDisplayMetrics() (context)
+     *  5) Resources.getSystem().getDisplayMetrics() — last resort
+     *  Each failure logs warning. Returns null if all fail. */
+    private static Pair<Integer, Integer> getRealScreenSize(Activity a) {
+        // 1) API 30+: getCurrentWindowMetrics (NATIVE android.app, tanpa library)
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                android.graphics.Rect b = a.getWindowManager().getCurrentWindowMetrics().getBounds();
+                if (b.width() > 0 && b.height() > 0) return Pair.create(b.width(), b.height());
+            } catch (Throwable ignore) {
+                Log.w(TAG, "getRealScreenSize: getCurrentWindowMetrics gagal");
+            }
+        }
+        // 2) decorView.getRealMetrics (API 17+)
+        try {
+            View decor = a.getWindow().getDecorView();
+            DisplayMetrics dm = new DisplayMetrics();
+            decor.getDisplay().getRealMetrics(dm);
+            if (dm.widthPixels > 0 && dm.heightPixels > 0)
+                return Pair.create(dm.widthPixels, dm.heightPixels);
+        } catch (Throwable ignore) {
+            Log.w(TAG, "getRealScreenSize: decorView getRealMetrics gagal");
+        }
+        // 3) WindowManager defaultDisplay
+        try {
+            WindowManager wms = (WindowManager) a.getSystemService(Context.WINDOW_SERVICE);
+            DisplayMetrics dm = new DisplayMetrics();
+            wms.getDefaultDisplay().getMetrics(dm);
+            if (dm.widthPixels > 0 && dm.heightPixels > 0)
+                return Pair.create(dm.widthPixels, dm.heightPixels);
+        } catch (Throwable ignore) {
+            Log.w(TAG, "getRealScreenSize: WindowManager getMetrics gagal");
+        }
+        // 4) Resources context
+        try {
+            DisplayMetrics dm = a.getResources().getDisplayMetrics();
+            if (dm.widthPixels > 0 && dm.heightPixels > 0)
+                return Pair.create(dm.widthPixels, dm.heightPixels);
+        } catch (Throwable ignore) {
+            Log.w(TAG, "getRealScreenSize: Resources context gagal");
+        }
+        // 5) Resources.getSystem() — terakhir
+        try {
+            DisplayMetrics dm = Resources.getSystem().getDisplayMetrics();
+            if (dm.widthPixels > 0 && dm.heightPixels > 0) {
+                Log.w(TAG, "getRealScreenSize: metrics ctx 0, pakai system " + dm.widthPixels + "x" + dm.heightPixels);
+                return Pair.create(dm.widthPixels, dm.heightPixels);
+            }
+        } catch (Throwable ignore) {
+            Log.w(TAG, "getRealScreenSize: Resources.getSystem gagal");
+        }
+        return null;
+    }
 
     // Hook dari MainActivity.onActivityResult (uri galeri). Return true bila
     // ditangani (editor dibuka), false bila flow asli dilanjutkan.
@@ -82,9 +144,10 @@ public final class BgEditor {
         }
         if (src == null) return false;
 
-        int sw = a.getResources().getDisplayMetrics().widthPixels;
-        int sh = a.getResources().getDisplayMetrics().heightPixels;
-        final float targetRatio = (float) sw / sh;
+        Pair<Integer, Integer> screen = getRealScreenSize(a);
+        if (screen == null) return false;
+        int screenW = screen.first;
+        int screenH = screen.second;
 
         LinearLayout root = new LinearLayout(a);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -99,7 +162,7 @@ public final class BgEditor {
         title.setTextSize(14);
         root.addView(title);
 
-        final ZoomView zv = new ZoomView(a, src, targetRatio);
+        final ZoomView zv = new ZoomView(a, src, screenW, screenH);
         LinearLayout.LayoutParams zlp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.0f);
         root.addView(zv, zlp);
@@ -119,6 +182,8 @@ public final class BgEditor {
         rg.addView(rbFill);
         rg.addView(rbFit);
         rg.check(rbFill.getId());
+        zv.setFill(true);
+        rg.setOnCheckedChangeListener((g, id) -> zv.setFill(id == rbFill.getId()));
         root.addView(rg);
 
         final AlertDialog[] box = new AlertDialog[1];
@@ -222,16 +287,24 @@ public final class BgEditor {
 
     private static final class ZoomView extends View {
         private final Bitmap src;
-        private final float targetRatio;
+        private final int screenW;
+        private final int screenH;
         private float scale = 1.0f;
         private float dx, dy;
         private float lastD = -1;
         private float lastX, lastY;
+        private boolean fill = true;
 
-        ZoomView(Context c, Bitmap src, float ratio) {
+        ZoomView(Context c, Bitmap src, int screenW, int screenH) {
             super(c);
             this.src = src;
-            this.targetRatio = ratio;
+            this.screenW = screenW;
+            this.screenH = screenH;
+        }
+
+        void setFill(boolean fill) {
+            this.fill = fill;
+            invalidate();
         }
 
         @Override
@@ -240,7 +313,9 @@ public final class BgEditor {
             if (src == null || src.isRecycled()) return;
             int vw = getWidth(), vh = getHeight();
             if (vw <= 0 || vh <= 0) return;
-            float base = Math.max((float) vw / src.getWidth(), (float) vh / src.getHeight());
+            float base = fill
+                    ? Math.max((float) screenW / src.getWidth(), (float) screenH / src.getHeight())
+                    : Math.min((float) screenW / src.getWidth(), (float) screenH / src.getHeight());
             float s = base * scale;
             float dw = src.getWidth() * s, dh = src.getHeight() * s;
             float maxDx = Math.max(0, (dw - vw) / 2), maxDy = Math.max(0, (dh - vh) / 2);
@@ -291,18 +366,24 @@ public final class BgEditor {
 
         Bitmap render(boolean fill) {
             try {
-                int vw = getWidth(), vh = getHeight();
-                if (vw <= 0 || vh <= 0 || src == null) return null;
+                if (src == null || screenW <= 0 || screenH <= 0) return null;
                 float base = fill
-                        ? Math.max((float) vw / src.getWidth(), (float) vh / src.getHeight())
-                        : Math.min((float) vw / src.getWidth(), (float) vh / src.getHeight());
+                        ? Math.max((float) screenW / src.getWidth(), (float) screenH / src.getHeight())
+                        : Math.min((float) screenW / src.getWidth(), (float) screenH / src.getHeight());
                 float s = base * scale;
-                Bitmap out = Bitmap.createBitmap(vw, vh, Bitmap.Config.ARGB_8888);
+                Bitmap out = Bitmap.createBitmap(screenW, screenH, Bitmap.Config.ARGB_8888);
                 android.graphics.Canvas cv = new android.graphics.Canvas(out);
+                if (!fill) {
+                    cv.drawColor(0xFF000000);
+                }
                 Matrix m = new Matrix();
                 m.postTranslate(-src.getWidth() / 2f, -src.getHeight() / 2f);
                 m.postScale(s, s);
-                m.postTranslate(vw / 2f + dx, vh / 2f + dy);
+                float maxDx = Math.max(0, (src.getWidth() * s - screenW) / 2f);
+                float maxDy = Math.max(0, (src.getHeight() * s - screenH) / 2f);
+                float cx = Math.max(-maxDx, Math.min(maxDx, dx));
+                float cy = Math.max(-maxDy, Math.min(maxDy, dy));
+                m.postTranslate(screenW / 2f + cx, screenH / 2f + cy);
                 cv.drawBitmap(src, m, null);
                 return out;
             } catch (Throwable t) {

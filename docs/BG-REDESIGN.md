@@ -237,13 +237,13 @@ Kode `b20` sudah generate `View.generateViewId()` + `rg.check(rbFill.getId())` (
 
 | File | Fungsi/Metode | Aksi |
 |------|---------------|------|
-| `BgEditor.java` | `ZoomView` constructor | **Hapus parameter `ratio`**, hapus field `targetRatio` |
-| `BgEditor.java` | `ZoomView.onDraw()` (baris 238–258) | **Ganti base scale** pakai `screenW/screenH` (dari `getRealScreenSize`) bukan `vw/vh` |
-| `BgEditor.java` | `ZoomView.render(boolean fill)` (baris 292–312) | **Ganti base scale** sama seperti `onDraw`; output size = `screenW × screenH` |
-| `BgEditor.java` | `openEditor()` (baris 51–174) | **Tambah panggilan `getRealScreenSize(a)`** → teruskan ke `ZoomView`; hapus `targetRatio` lokal |
-| `BubbleStyle.java` | `cropRatio()` (baris 107–246) | **Tambah `inSampleSize`** sebelum decode penuh (pola `openEditor` maxSide 1600); **tambah API 30 `getWindowManager().getCurrentWindowMetrics()`** (native, tanpa library) di awal rantai metrics |
-| `BubbleStyle.java` | `cropSquare()` (baris 250–254) | **HAPUS** (deprecated, tidak dipakai, grep = 0) |
-| `BubbleStyle.java` | `applyCrop()` di `BgEditor` (baris 195–221) | **Tidak diubah** — sudah pakai `Gravity.CENTER`, kompatibel dengan output baru |
+| `BgEditor.java` | `ZoomView` constructor | **sudah diimplementasi** — hapus parameter `ratio`, hapus field `targetRatio` |
+| `BgEditor.java` | `ZoomView.onDraw()` | **sudah diimplementasi** — ganti base scale pakai `screenW/screenH` dari `getRealScreenSize` |
+| `BgEditor.java` | `ZoomView.render(boolean fill)` | **sudah diimplementasi** — ganti base scale, output size = `screenW × screenH` |
+| `BgEditor.java` | `openEditor()` | **sudah diimplementasi** — tambah panggilan `getRealScreenSize(a)`, teruskan ke `ZoomView` |
+| `BubbleStyle.java` | `cropRatio()` | **sudah diimplementasi** — tambah `inSampleSize` dua-pass, tambah API 30 `getCurrentWindowMetrics` |
+| `BubbleStyle.java` | `cropSquare()` | **sudah diimplementasi** — HAPUS (deprecated, tidak dipakai, grep = 0) |
+| `BubbleStyle.java` | `applyCrop()` di `BgEditor` | **Tidak diubah** — sudah pakai `Gravity.CENTER`, kompatibel dengan output baru |
 
 ---
 
@@ -259,4 +259,4 @@ $ git status --short
 ```
 
 ---
-*Dokumen ini untuk review user. **Belum ada kode diubah**. Implementasi mulai setelah persetujuan.*
+*Dokumen ini untuk review user. **Implementasi selesai**. Semua fungsi di §5 sudah diimplementasi.*
