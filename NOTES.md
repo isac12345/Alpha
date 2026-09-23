@@ -1,5 +1,24 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Probe MTK tester: Dimensity 7300 mt6878 (2026-09-23)
+
+- Kernel custom Aetherium 6.1 + KernelSU, governor aktif
+  `performance`, 8 CPU policy0 (0-3, min450000 max1900000)
+  + policy4 (4-7, min400000 max2400000). /proc/ppm +
+  /proc/gpufreq ABSEN + /sys/kernel/fpsgo ADA → detect.sh
+  = `mtk` modern (jalur generik berlaku).
+- GPU Mali-G615 via devfreq 13000000.mali (jalur Mali OK);
+  GED-hal/gpufreq-dump absen (probe-only, aman).
+- Thermal 57 zone: gpu=-274000 + vtskin*=-274000 (sentinel
+  rusak, KENA filter T3 -50000..150000); flash_therm=-40000
+  lolos filter tapi dingin (tak picu step-down). cpuset ADA,
+  stune ABSEN (skip), IO sda/sdb/c mq-deadline tersedia.
+- Floor hitung (tanpa tabel OPP — belum dikirim tester):
+  perf50% → p0 950000 / p4 1200000 (jauh di atas min
+  450000/400000 → PASTI ngefek); extreme75% → 1425000/1800000.
+- BUTUH: scaling_available_frequencies policy0+policy4
+  untuk snap rung pasti.
+
 ## Perf agresif ringan + thermal 78C (2026-09-23, leader langsung, modul 22)
 
 - Minta user: performance galak dikit (anti-stutter), balanced naik
