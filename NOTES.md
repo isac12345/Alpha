@@ -586,3 +586,10 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   Cabang+worktree sempat dibuat worker (kosong) -> leader ambil alih
   implementasi sendiri + verifikasi simulasi. Pola cancel-tapi-jalan
   (b16) TIDAK terjadi di sini (diff kosong saat dicek).
+
+## b25 — L1 HIJAU (2026-09-23, run 35824172980 SUCCESS 36 dtk)
+- Bukti: hook gravity OK + hook bgfull OK (=1 tiap anchor); javac
+  BgFull.class ADA + d8 min-api 26 OK; 9 kelas classes5.dex OK;
+  versionCode 20 = version.txt; apksigner verified.
+- Status: L1. Lanjut L2 = user flash + screenshot Dashboard + Games
+  (area bawah list game sedikit) + bilang OK.
