@@ -562,3 +562,39 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Sourcing copy gameboost.sh dari /sdcard dgn env override
   (ALPHA_CONF_DIR, CPU_POLICIES) = cara uji fungsi modul di HP tanpa
   ubah file modul.
+- `pkill -f "<pola>"` di dalam `su -c '...<pola>...'` BUNUH DIRI:
+  pola cocok dengan cmdline shell sendiri → ChildProcess.kill,
+  output verifikasi hilang. Tulis restore DULU baru kill, verifikasi
+  di command terpisah, atau pola `d[o]` agar tak match diri sendiri.
+
+## Uji floor agresif live ums9230 (2026-09-23, leader langsung, izin user)
+- Baseline (state=battery, gb_active=0): p0 min 614400, p6 min 768000,
+  gpu min=max=384M (kunci uperf/powersave?), kbase boost 0/upthr 88,
+  uclamp fg 0.00/max, baterai 41%, soc ~39-41C. SEMUA dikembalikan
+  identik (verifikasi readback) + tanpa loop sisa.
+- Idle native: cpu0 jatuh ke 614400 (4/6 sampel). Floor 65%
+  (1040000/1040000): cpu0 TERKUNCI 1040000 6/6 — efek kerasa valid.
+- Floor 75% (1040000/1228800): p0 SAMA PERSIS 1040000 (OPP p0:
+  ...1040000,1228800... → 75%×1612000=1209000 cap-down tetap 1040000).
+  Gain 75% HANYA di p6 (1040000→1228800), dan p6 saat idle natural
+  sudah 1404000-1536000 (floor tak terlihat saat idle).
+- Full load 2 core: max TETAP tercapai (1612000/1820000) — floor tak
+  memenggal top. soc 39.4→48.8C (+9C, 5 dtk).
+- GPU lock 850M 8-10 dtk: cur=850M OK, gpu-thm 38C (tanpa beban 3D).
+- Kesimpulan: 65→75% = gain kecil (satu anak tangga p6 doang),
+  biaya panas idle naik. Rekomendasi tetap opsi A kemarin (atau
+  pertahankan 65% bila baterai prioritas).
+
+## Floor extreme 75% universal (2026-09-23, leader ambil alih)
+- User: "perf maximal buat semua hp". dev-modul GAGAL dispatch
+  (model mimo-v2.5-free retired → "Model not found", dicatat STATE) →
+  leader kerjakan langsung (2 angka + rename var, ≤20 baris).
+- Perubahan `common/gameboost.sh`: extreme lantai 65→75%
+  (`_hw_max*75/100`, var `_floor65`→`_floor`) + uclamp.min fg 60→70.
+  Performance 35%/uclamp 15, balanced, thermal 75/85/95: NOL ubah.
+  Jalur generik → berlaku unisoc/mtk/unknown semua.
+- Sandbox PREFIX palsu: extreme 2-cluster p0=1040000/p6=1228800/uclamp70;
+  3-cluster +p4=1300000; performance tetap 35% (p0 614400/p4 500000/
+  p6 768000/uclamp15). bash -n OK, shellcheck SC3043 76=76 (delta 0).
+- Bump module.prop 20→21 modul-only (version.txt/APK tetap 20, preseden b19).
+- Status: commit fusion-v2, BELUM CI/build, BELUM tes HP (L1 sandbox saja).

@@ -1,5 +1,13 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- FLOOR-75 (2026-09-23): dispatch dev-modul GAGAL — model
+  `opencode/mimo-v2.5-free` retired ("Model not found:
+  opencode/mimo-v2.5-free. Did you mean: mimo-v2.6-flash-free,
+  ..."). Sesuai AGENTS p6: tanpa ganti model, leader ambil alih
+  (file 1, ≤20 baris). fusion-v2 = commit floor-75 + bump 21
+  (1 ahead origin). MENUNGGU: CI/package + user tes HP + L2/arsip.
+  User perlu ganti model dev-modul + restart bila mau delegasi lagi.
+
 - RILIS v1-b16-final (2026-09-21): GitHub SUDAH sinkron sebelum rilis
   (fusion-v2 = origin/fusion-v2 = 81c7955, 0 ahead/behind; release
   sebelumnya NOL). Tag `v1-b16-final` di 81c7955 + Release GitHub

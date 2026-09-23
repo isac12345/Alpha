@@ -1,7 +1,7 @@
 #!/system/bin/sh
 # Alpha Fusion - Game Boost Engine (Extreme / Balanced / Performance)
 # Paritas HSIN extreme + performance; generic untuk semua device + game.
-# Balanced = restore native (pendinginan), extreme = lantai 65%,
+# Balanced = restore native (pendinginan), extreme = lantai 75%,
 # performance = lantai 35%. POSIX sh; semua tulis = dua kali
 # tulis-baca-verifikasi.
 # Sakelar: DISABLE_GAMEBOOST, NO_CPUSET, GAMEBOOST_NO_VM, GAMEBOOST_LEVEL
@@ -437,14 +437,14 @@ _gb_read_native() {
 }
 
 # ============================================================
-# CPU Apply — Lantai 65% + uclamp + cpuset (TANPA governor)
+# CPU Apply — Lantai 75% + uclamp + cpuset (TANPA governor)
 # CPU_OWNER dicatat di log, lantai TETAP JALAN walau fas-rs aktif.
 # ============================================================
 _gb_apply_cpu() {
     local _level="$1"
-    local _pol _pol_dir _avail_list _opp_list _hw_max _floor65 _target_min
+    local _pol _pol_dir _avail_list _opp_list _hw_max _floor _target_min
 
-    # --- Frequency Floor (65% OPP tertinggi) ---
+    # --- Frequency Floor (75% OPP tertinggi) ---
     for _pol in $CPU_POLICIES; do
         _pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$_pol"
         [ -d "$_pol_dir" ] || continue
@@ -464,16 +464,16 @@ _gb_apply_cpu() {
 
         if [ "$_level" = "performance" ]; then
             # Performance: lantai 35%
-            _floor65=$((_hw_max * 35 / 100))
+            _floor=$((_hw_max * 35 / 100))
         else
-            # Extreme: lantai 65%
-            _floor65=$((_hw_max * 65 / 100))
+            # Extreme: lantai 75%
+            _floor=$((_hw_max * 75 / 100))
         fi
 
         if [ -n "$_opp_list" ]; then
-            _target_min=$(_alpha_opp_cap_pick "$_floor65" "$_opp_list")
+            _target_min=$(_alpha_opp_cap_pick "$_floor" "$_opp_list")
         else
-            _target_min="$_floor65"
+            _target_min="$_floor"
         fi
         [ -n "$_target_min" ] && _gb_write "$_pol_dir/scaling_min_freq" "$_target_min" "CPU_FREQ"
     done
@@ -501,7 +501,7 @@ _gb_apply_cpu() {
     # --- uclamp ---
     if [ -d "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}" ]; then
         case "$_level" in
-            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "60" "UCLAMP"
+            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "70" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
             performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "15" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
