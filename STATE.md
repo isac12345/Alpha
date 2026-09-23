@@ -283,3 +283,6 @@
 - B26 BG-REFRESH (2026-09-23, L1): cabang work/b26-bgrefresh
   (eff5f68, susun di atas b25 9fc2ef3). Tanpa push (tunggu "oke
   build"). L2 = simpan bg baru tanpa force-close + cek Fit hitam.
+- B27 OOM-GRACE (2026-09-23, L1): work/b27-oom-grace (23547b5).
+  CI HIJAU run 35827491773. L2 = reboot cek adj -1000 x3 +
+  skenario HOME 3s/20s tanpa switch instan + warning render tampil.

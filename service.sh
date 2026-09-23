@@ -17,6 +17,21 @@ LOG_FILE="$WORK_DIR/alpha.log"
 export ALPHA_LOG_FILE="$LOG_FILE"
 export ALPHA_CONF_DIR="$WORK_DIR"
 
+# B27 OOM-GUARD: daemon penting (monitor/watchdog/fas-rs) jangan jadi
+# korban LMK saat RAM penuh. Dipanggil sekali tiap start dengan pid $!.
+# Tulis oom_score_adj di /proc butuh root (konteks ini root) — gagal = warning.
+_oom_guard() {
+    _oom_pid="$1"
+    _oom_name="$2"
+    if [ -n "$_oom_pid" ] && [ -w "/proc/$_oom_pid/oom_score_adj" ]; then
+        if echo -1000 > "/proc/$_oom_pid/oom_score_adj" 2>/dev/null; then
+            echo "[INFO] oom_guard $_oom_name pid=$_oom_pid adj=-1000" >> "$LOG_FILE" 2>/dev/null
+        else
+            echo "[WARN] oom_guard $_oom_name pid=$_oom_pid gagal" >> "$LOG_FILE" 2>/dev/null
+        fi
+    fi
+}
+
 echo "=== Alpha + Uperf Fusion Starting Boot Service: $(date) ===" >> "$LOG_FILE"
 echo "[BOOT] boot service dimulai (MODDIR=$MODDIR WORK_DIR=$WORK_DIR)" >> "$LOG_FILE"
 
@@ -197,6 +212,7 @@ else
     nohup sh "$MODDIR/common/monitor.sh" >> "$LOG_FILE" 2>&1 &
     monitor_pid=$!
     printf '%s\n' "$monitor_pid" > "$MONITOR_PID_FILE"
+    _oom_guard "$monitor_pid" "monitor.sh"
     echo "[INFO] monitor.sh started pid=$monitor_pid" >> "$LOG_FILE"
 fi
 echo "[BOOT] tahap monitor.sh selesai (pid=$monitor_pid)" >> "$LOG_FILE"
@@ -224,6 +240,7 @@ else
     nohup sh "$MODDIR/common/watchdog.sh" >> "$LOG_FILE" 2>&1 &
     watchdog_pid=$!
     printf '%s\n' "$watchdog_pid" > "$WATCHDOG_PID_FILE"
+    _oom_guard "$watchdog_pid" "watchdog.sh"
     echo "[INFO] watchdog.sh started pid=$watchdog_pid" >> "$LOG_FILE"
 fi
 echo "[BOOT] tahap watchdog.sh selesai (pid=$watchdog_pid)" >> "$LOG_FILE"
@@ -323,7 +340,9 @@ if [ -x "$MODDIR/fasrs/fas-rs" ] && [ "${FASRS_API:-0}" -gt 30 ] 2>/dev/null && 
     if [ "$_fasrs_ok" = "0" ]; then
         killall fas-rs 2>/dev/null
         RUST_BACKTRACE=1 nohup "$MODDIR/fasrs/fas-rs" run "$MODDIR/fasrs/games.toml" >> "$FASRS_LOG" 2>&1 &
-        echo "[INFO] fas-rs scheduler started pid=$!" >> "$LOG_FILE"
+        _fasrs_pid=$!
+        _oom_guard "$_fasrs_pid" "fas-rs"
+        echo "[INFO] fas-rs scheduler started pid=$_fasrs_pid" >> "$LOG_FILE"
     else
         echo "[WARN] fas-rs scheduler tidak dijalankan (FASRS_DIR timeout 60s)" >> "$LOG_FILE"
     fi

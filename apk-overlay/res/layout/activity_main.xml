@@ -33,6 +33,7 @@
                 <Button android:textSize="11.0sp" android:textColor="@color/alpha_dark" android:id="@id/btnRenderApply" android:background="@drawable/pill_solid" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="APPLY" android:fontFamily="monospace" android:layout_marginStart="8.0dp" android:stateListAnimator="@null" />
             </LinearLayout>
             <TextView android:textSize="@dimen/alpha_small_text" android:textColor="@color/alpha_ink_dim" android:id="@id/tvRenderStatus" android:paddingTop="8.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Aktif: --" android:fontFamily="monospace" />
+            <TextView android:textSize="@dimen/alpha_small_text" android:textColor="@color/alpha_ink_dim" android:paddingTop="6.0dp" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Catatan: ganti render perlu tutup aplikasi yang sedang berjalan agar berlaku." android:fontFamily="monospace" />
         </LinearLayout>
         <LinearLayout android:orientation="vertical" android:id="@id/cardGames" android:background="@drawable/card_bg" android:padding="@dimen/alpha_card_padding" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="@dimen/alpha_card_margin_bottom">
             <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content">

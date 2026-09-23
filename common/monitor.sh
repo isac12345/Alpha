@@ -489,7 +489,16 @@ handle_foreground_event() {
             fi
         fi
     fi
-    
+
+    # B27 GRACE-DEFER: boost aktif + event non-game -> JANGAN apply_now
+    # instan (itu yang bikin balik Daily seketika pas tekan HOME, padahal
+    # grace 12 dtk belum habis). Revert profil dikerjakan
+    # check_gb_grace_period saat timer habis; batal bila game kembali
+    # (CANCEL). Tanpa boost aktif -> perilaku manual normal (instan).
+    if [ "$gb_active" = "1" ] && [ -f "$GB_PENDING_FILE" ]; then
+        return 0
+    fi
+
     if [ "$handle_target" = "$handle_current" ]; then
         # Still need to check grace period in main loop
         return 0
