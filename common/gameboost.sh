@@ -376,17 +376,19 @@ _gb_backup_native() {
         _v=$(cat "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" 2>/dev/null | tr -d '[:space:]')
         [ -n "$_v" ] && echo "stune_boost=$_v" >> "$NATIVE_CONF.tmp"
     fi
-    # VM asli (backup swappiness, vfs, dirty_ratio, dirty_background_ratio, page-cluster)
+    # VM asli (backup swappiness, vfs, dirty_ratio, dirty_background_ratio, page-cluster,
+    # dirty_expire_centisecs — v2 IO lanjutan; satu penulis dengan _gb_apply_io)
     local _proc="$PROC_SYS_PREFIX"
-    for _vmkey in vm/swappiness vm/vfs_cache_pressure vm/dirty_ratio vm/dirty_background_ratio vm/page-cluster; do
+    for _vmkey in vm/swappiness vm/vfs_cache_pressure vm/dirty_ratio vm/dirty_background_ratio vm/page-cluster vm/dirty_expire_centisecs; do
         [ -f "$_proc/$_vmkey" ] || continue
         _v=$(cat "$_proc/$_vmkey" 2>/dev/null | tr -d '[:space:]')
         case "$_v" in ''|*[!0-9]*) continue ;; esac
         echo "$_vmkey=$_v" >> "$NATIVE_CONF.tmp"
     done
-    # Network asli (backup congestion_control, fastopen, backlog, ecn)
+    # Network asli (backup congestion_control, fastopen, backlog, ecn;
+    # v2: + rmem_max, wmem_max, tcp_low_latency — node GLOBAL, snapshot wajib)
     local _netbase="$PROC_SYS_PREFIX/net/ipv4"
-    for _nk in tcp_congestion_control tcp_fastopen tcp_ecn; do
+    for _nk in tcp_congestion_control tcp_fastopen tcp_ecn tcp_low_latency; do
         [ -f "$_netbase/$_nk" ] || continue
         _v=$(cat "$_netbase/$_nk" 2>/dev/null | tr -d '[:space:]')
         [ -n "$_v" ] && echo "$_nk=$_v" >> "$NATIVE_CONF.tmp"
@@ -395,6 +397,24 @@ _gb_backup_native() {
         _v=$(cat "$PROC_SYS_PREFIX/net/core/netdev_max_backlog" 2>/dev/null | tr -d '[:space:]')
         [ -n "$_v" ] && echo "netdev_max_backlog=$_v" >> "$NATIVE_CONF.tmp"
     }
+    # v2: socket buffer (numeric saja; tcp_available_* info-only, jangan backup)
+    for _nk in rmem_max wmem_max; do
+        [ -f "$PROC_SYS_PREFIX/net/core/$_nk" ] || continue
+        _v=$(cat "$PROC_SYS_PREFIX/net/core/$_nk" 2>/dev/null | tr -d '[:space:]')
+        case "$_v" in ''|*[!0-9]*) continue ;; esac
+        echo "net_core_$_nk=$_v" >> "$NATIVE_CONF.tmp"
+    done
+    # v2: zram comp_algorithm aktif (parse kurung-siku "[lz4]"; read-only = lewati)
+    local _zraw=""
+    if [ -r "$SYSFS_BLOCK_PREFIX/zram0/comp_algorithm" ]; then
+        _zraw=$(cat "$SYSFS_BLOCK_PREFIX/zram0/comp_algorithm" 2>/dev/null)
+        # ambil token berkurung-siku; fallback token pertama
+        _v=$(printf '%s' "$_zraw" | tr ' ' '\n' | grep -E '^\[.*\]$' | tr -d '[]' | head -1)
+        [ -z "$_v" ] && _v=$(printf '%s' "$_zraw" | tr ' ' '\n' | grep -v '^$' | head -1)
+        [ -n "$_v" ] && echo "zram_comp_algorithm=$_v" >> "$NATIVE_CONF.tmp"
+        _v=$(printf '%s' "$_zraw" | tr -d '[]' | tr -s ' ' | sed 's/^ *//;s/ *$//')
+        [ -n "$_v" ] && echo "zram_comp_options=$_v" >> "$NATIVE_CONF.tmp"
+    fi
     # kbase asli (Mali)
     local _kbp="${SYSFS_MODULE_PREFIX:-/sys/module}/mali_kbase/parameters"
     if [ -d "$_kbp" ]; then
@@ -722,11 +742,43 @@ _gb_apply_io() {
             performance) _gb_write "$_dev/queue/read_ahead_kb" "2048" "IO" ;;
         esac
     done
+
+    # v2: dirty_expire_centisecs — SATU-SATUNYA penulis dirty_* di jalur IO
+    # (dirty_ratio + dirty_background_ratio milik _gb_apply_vm, jangan double-tulis).
+    local _exp_nat _exp_tgt
+    _exp_nat=$(_gb_read_native "vm/dirty_expire_centisecs" "")
+    case "$_exp_nat" in ''|*[!0-9]*) ;; *)
+        case "$_level" in
+            extreme)
+                _exp_tgt=$((_exp_nat / 2))
+                [ "$_exp_tgt" -ge 500 ] 2>/dev/null || _exp_tgt=500
+                _gb_write "$PROC_SYS_PREFIX/vm/dirty_expire_centisecs" "$_exp_tgt" "IO"
+                ;;
+            performance)
+                _gb_write "$PROC_SYS_PREFIX/vm/dirty_expire_centisecs" "$_exp_nat" "IO"
+                ;;
+        esac
+        ;;
+    esac
 }
 
 # ============================================================
-# Network Apply — best-effort bbr, backlog=16384, ecn=1
+# Network Apply — cc berprioritas, buffer moderat, backlog, ecn
+# Node GLOBAL (semua koneksi device): buffer cap 8MB, tulis hanya
+# bila beda dari aktif. tcp_low_latency obsolete di kernel modern
+# (best-effort; absen = SKIP otomatis via _gb_write).
 # ============================================================
+_gb_cc_pick() {
+    local _av="$1" _act="$2" _c
+    for _c in bbr cubic; do
+        case " $_av " in
+            *" $_c "*) printf '%s\n' "$_c"; return 0 ;;
+        esac
+    done
+    [ -n "$_act" ] && { printf '%s\n' "$_act"; return 0; }
+    return 1
+}
+
 _gb_apply_net() {
     local _level="$1"
     local _tcp_node="$PROC_SYS_PREFIX/net/ipv4/tcp_congestion_control"
@@ -735,8 +787,21 @@ _gb_apply_net() {
     local _backlog_node="$PROC_SYS_PREFIX/net/core/netdev_max_backlog"
     local _ecn_node="$PROC_SYS_PREFIX/net/ipv4/tcp_ecn"
 
-    # tcp_congestion_control = bbr (jika ada di available), else biarkan
-    if [ -f "$_avail_node" ]; then
+    # tcp_congestion_control berprioritas (bbr > cubic > aktif).
+    # available_* mode 0444 itu normal: baca saja, bukan target tulis.
+    if [ -r "$_avail_node" ] && [ -r "$_tcp_node" ]; then
+        local _avail _act _pick
+        _avail=$(cat "$_avail_node" 2>/dev/null | tr '\n' ' ')
+        _act=$(cat "$_tcp_node" 2>/dev/null | tr -d '[:space:]')
+        _pick=$(_gb_cc_pick "$_avail" "$_act") || _pick=""
+        if [ -z "$_pick" ]; then
+            _gb_log "INFO" "NET no cc available, keeping current"
+        elif [ "$_pick" = "$_act" ]; then
+            _gb_log "INFO" "NET cc already $_act, skip write"
+        else
+            _gb_write "$_tcp_node" "$_pick" "NET"
+        fi
+    elif [ -f "$_avail_node" ]; then
         local _avail
         _avail=$(cat "$_avail_node" 2>/dev/null)
         case " $_avail " in
@@ -744,6 +809,26 @@ _gb_apply_net() {
             *)         _gb_log "INFO" "NET bbr unavailable, keeping current" ;;
         esac
     fi
+
+    # Socket buffer (GLOBAL): extreme = 2x snapshot, cap 8MB.
+    # performance = biarkan snapshot (log saja).
+    case "$_level" in
+        extreme)
+            local _k _nat _dbl
+            for _k in rmem_max wmem_max; do
+                _nat=$(_gb_read_native "net_core_$_k" "")
+                case "$_nat" in ''|*[!0-9]*) continue ;; esac
+                _dbl=$((_nat * 2))
+                [ "$_dbl" -gt 8388608 ] 2>/dev/null && _dbl=8388608
+                _gb_write "$PROC_SYS_PREFIX/net/core/$_k" "$_dbl" "NET"
+            done
+            # tcp_low_latency best-effort (obsolete; absen = SKIP)
+            _gb_write "$PROC_SYS_PREFIX/net/ipv4/tcp_low_latency" "1" "NET"
+            ;;
+        performance)
+            _gb_log "INFO" "NET socket buffer kept native (performance)"
+            ;;
+    esac
 
     # tcp_fastopen = 3
     _gb_write "$_tfo_node" "3" "NET"
@@ -753,6 +838,49 @@ _gb_apply_net() {
 
     # tcp_ecn = 1
     _gb_write "$_ecn_node" "1" "NET"
+}
+
+# ============================================================
+# ZRAM Apply (v2) — comp_algorithm SEKALI tulis + readback-verify.
+# Sering read-only saat runtime (zram aktif): nilai tak berubah =
+# SKIP jelas, JANGAN reset zram (swap hilang = app crash).
+# ============================================================
+_gb_apply_zram() {
+    local _level="$1"
+    [ "$_level" = "balanced" ] && return 0
+    local _node="$SYSFS_BLOCK_PREFIX/zram0/comp_algorithm"
+    [ -e "$_node" ] || { _gb_log "SKIPPED" "ZRAM node=$_node (not found)"; return 0; }
+    [ -r "$_node" ] || { _gb_log "SKIPPED" "ZRAM node=$_node (not readable)"; return 0; }
+    local _raw _opts _act _want _t
+    _raw=$(cat "$_node" 2>/dev/null | tr '\n' ' ')
+    # opsi = semua token tanpa kurung; aktif = token [..]
+    _opts=$(printf '%s' "$_raw" | tr ' ' '\n' | tr -d '[]' | grep -v '^$' | tr '\n' ' ')
+    _act=$(printf '%s' "$_raw" | tr ' ' '\n' | grep -E '^\[.*\]$' | tr -d '[]' | head -1)
+    [ -z "$_act" ] && _act=$(printf '%s' "$_opts" | tr ' ' '\n' | head -1)
+    # prioritas tercepat yang TERSEDIA (pola snap-to-available CPU)
+    _want=""
+    for _t in lz4 lzo-rle lzo zstd; do
+        case " $_opts " in
+            *" $_t "*) _want="$_t"; break ;;
+        esac
+    done
+    [ -z "$_want" ] && _want="$_act"
+    [ -z "$_want" ] && { _gb_log "SKIPPED" "ZRAM no algorithm detected"; return 0; }
+    if [ "$_want" = "$_act" ]; then
+        _gb_log "INFO" "ZRAM comp already $_act, skip write"
+        return 0
+    fi
+    [ -w "$_node" ] || { _gb_log "SKIPPED" "ZRAM node=$_node (not writable, runtime-locked?)"; return 0; }
+    printf '%s' "$_want" > "$_node" 2>/dev/null
+    local _rb
+    _rb=$(cat "$_node" 2>/dev/null | tr ' ' '\n' | grep -E '^\[.*\]$' | tr -d '[]' | head -1)
+    [ -z "$_rb" ] && _rb=$(cat "$_node" 2>/dev/null | tr -d '[:space:]')
+    if [ "$_rb" = "$_want" ] || _gb_equiv "$_want" "$_rb"; then
+        _gb_log "APPLIED" "ZRAM node=$_node value=$_want"
+        return 0
+    fi
+    _gb_log "SKIPPED" "ZRAM comp_algorithm runtime-locked (wanted=$_want got=$_rb, no zram reset)"
+    return 0
 }
 
 # ============================================================
@@ -804,6 +932,8 @@ gb_apply() {
     # 6. Memori (skip bila sakelar)
     if [ ! -f "$CONF_DIR/GAMEBOOST_NO_VM" ]; then
         _gb_apply_vm "$_level"
+        # 6b. ZRAM comp_algorithm (v2; runtime-locked = SKIP, bukan gagal)
+        _gb_apply_zram "$_level"
     else
         _gb_log "SKIPPED" "GAMEBOOST_NO_VM exists, skip VM tuning"
     fi
@@ -927,16 +1057,16 @@ gb_restore() {
         [ -n "$_old_gov" ] && _gb_write "$_df/governor" "$_old_gov" "GPU_RESTORE"
     done
 
-    # VM
+    # VM (+ v2 dirty_expire_centisecs; dirty_* hanya di sini, bukan jalur IO)
     local _proc="$PROC_SYS_PREFIX"
     local _vmkey _v
-    for _vmkey in vm/swappiness vm/vfs_cache_pressure vm/dirty_ratio vm/dirty_background_ratio vm/page-cluster; do
+    for _vmkey in vm/swappiness vm/vfs_cache_pressure vm/dirty_ratio vm/dirty_background_ratio vm/page-cluster vm/dirty_expire_centisecs; do
         _v=$(_gb_read_native "$_vmkey" "")
         [ -z "$_v" ] && continue
         _gb_write "$_proc/$_vmkey" "$_v" "VM_RESTORE"
     done
 
-    # Network
+    # Network (+ v2 rmem/wmem/low_latency)
     local _netbase="$PROC_SYS_PREFIX/net/ipv4"
     _v=$(_gb_read_native "tcp_congestion_control" "")
     [ -n "$_v" ] && _gb_write "$_netbase/tcp_congestion_control" "$_v" "NET_RESTORE"
@@ -944,8 +1074,14 @@ gb_restore() {
     [ -n "$_v" ] && _gb_write "$_netbase/tcp_fastopen" "$_v" "NET_RESTORE"
     _v=$(_gb_read_native "tcp_ecn" "")
     [ -n "$_v" ] && _gb_write "$_netbase/tcp_ecn" "$_v" "NET_RESTORE"
+    _v=$(_gb_read_native "tcp_low_latency" "")
+    [ -n "$_v" ] && _gb_write "$_netbase/tcp_low_latency" "$_v" "NET_RESTORE"
     _v=$(_gb_read_native "netdev_max_backlog" "")
     [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/net/core/netdev_max_backlog" "$_v" "NET_RESTORE"
+    _v=$(_gb_read_native "net_core_rmem_max" "")
+    [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/net/core/rmem_max" "$_v" "NET_RESTORE"
+    _v=$(_gb_read_native "net_core_wmem_max" "")
+    [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/net/core/wmem_max" "$_v" "NET_RESTORE"
 
     # kbase (Mali)
     local _kbp="${SYSFS_MODULE_PREFIX:-/sys/module}/mali_kbase/parameters"
@@ -969,6 +1105,22 @@ gb_restore() {
         _v=$(_gb_read_native "io_${_bname}_scheduler" "")
         [ -n "$_v" ] && _gb_write "$_bdev/queue/scheduler" "$_v" "IO_RESTORE"
     done
+
+    # ZRAM comp_algorithm TERAKHIR (paling mungkin gagal runtime;
+    # best-effort WARN, jangan blokir restore lain yang sudah sukses)
+    _v=$(_gb_read_native "zram_comp_algorithm" "")
+    if [ -n "$_v" ]; then
+        local _znode="$SYSFS_BLOCK_PREFIX/zram0/comp_algorithm"
+        if [ -e "$_znode" ]; then
+            _gb_write "$_znode" "$_v" "ZRAM_RESTORE" || \
+                _gb_log "WARN" "ZRAM restore skipped (runtime-locked?) wanted=$_v"
+            local _zrb
+            _zrb=$(cat "$_znode" 2>/dev/null | tr ' ' '\n' | grep -E '^\[.*\]$' | tr -d '[]' | head -1)
+            [ -z "$_zrb" ] && _zrb=$(cat "$_znode" 2>/dev/null | tr -d '[:space:]')
+            [ "$_zrb" != "$_v" ] && \
+                _gb_log "WARN" "ZRAM restore drift: wanted=$_v got=$_zrb"
+        fi
+    fi
 
     _gb_log "INFO" "gb_restore complete"
     rm -f "$CONF_DIR/boost_level" 2>/dev/null
