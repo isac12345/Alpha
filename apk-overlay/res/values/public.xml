@@ -274,6 +274,23 @@
     <public type="id" name="btnAppBackgroundDefault" id="0x7f06009a" />
     <public type="id" name="seekAppBackgroundAlpha" id="0x7f06009b" />
     <public type="id" name="btnBatteryLab" id="0x7f06009c" />
+    <public type="id" name="tabDashboard" id="0x7f06009d" />
+    <public type="id" name="tabGames" id="0x7f06009e" />
+    <public type="id" name="tabCustomize" id="0x7f06009f" />
+    <public type="id" name="detailBg" id="0x7f0600a0" />
+    <public type="id" name="detailIcon" id="0x7f0600a1" />
+    <public type="id" name="detailHud" id="0x7f0600a2" />
+    <public type="id" name="tabTools" id="0x7f0600a3" />
+    <public type="id" name="navDash" id="0x7f0600a4" />
+    <public type="id" name="navGames" id="0x7f0600a5" />
+    <public type="id" name="navCustomize" id="0x7f0600a6" />
+    <public type="id" name="navTools" id="0x7f0600a7" />
+    <public type="id" name="btnCusBg" id="0x7f0600a8" />
+    <public type="id" name="btnCusIcon" id="0x7f0600a9" />
+    <public type="id" name="btnCusHud" id="0x7f0600aa" />
+    <public type="id" name="btnBackBg" id="0x7f0600ab" />
+    <public type="id" name="btnBackIcon" id="0x7f0600ac" />
+    <public type="id" name="btnBackHud" id="0x7f0600ad" />
     <public type="integer" name="status_bar_notification_info_maxnum" id="0x7f070000" />
     <public type="layout" name="activity_main" id="0x7f080000" />
     <public type="layout" name="custom_dialog" id="0x7f080001" />

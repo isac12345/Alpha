@@ -142,6 +142,13 @@ jobs:
           sed -f apk-patches/b16c-bubble-refresh.sed -i "$F"
           test "$(grep -c 'BUBBLE_STYLE_REFRESH' "$F")" = "1" || { echo "hook bubble refresh gagal"; exit 1; }
           echo "hook b16 BubbleService OK"
+      - name: Apply b28 hook (bottom nav attach)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          sed -f apk-patches/b28-nav.sed -i "$F"
+          test "$(grep -c 'NavTabs;->attach' "$F")" = "1" || { echo "hook nav gagal"; exit 1; }
+          echo "hook nav OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
