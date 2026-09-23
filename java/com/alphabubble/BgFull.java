@@ -42,7 +42,10 @@ public final class BgFull {
         int[] wh = screenSize(a);
         int dw = wh != null ? wh[0] : bmp.getWidth();
         int dh = wh != null ? wh[1] : bmp.getHeight();
-        Bitmap full = scaleFill(bmp, dw, dh);
+        // b26: hormati pilihan Fill/Fit user (disimpan BgEditor). Tanpa ini
+        // Fit ikut ke-crop FILL dan letterbox hilang (laporan: abu-abu).
+        boolean fit = "fit".equals(sp.getString("app_bg_mode", "fill"));
+        Bitmap full = fit ? scaleFit(bmp, dw, dh) : scaleFill(bmp, dw, dh);
         if (full != bmp) {
             try { bmp.recycle(); } catch (Throwable t) { Log.w(TAG, "recycle: " + t); }
         }
@@ -172,6 +175,31 @@ public final class BgFull {
             return out;
         } catch (Throwable t) {
             Log.w(TAG, "scaleFill gagal: " + t);
+            return src;
+        }
+    }
+
+    // Scale proporsional tampil utuh (FIT): gambar utuh di tengah kanvas
+    // dw x dh berlatar HITAM solid (letterbox; bukan abu tema).
+    private static Bitmap scaleFit(Bitmap src, int dw, int dh) {
+        try {
+            if (dw <= 0 || dh <= 0) return src;
+            int sw = src.getWidth(), sh = src.getHeight();
+            if (sw <= 0 || sh <= 0) return src;
+            float s = Math.min((float) dw / sw, (float) dh / sh);
+            int dstW = Math.max(1, Math.round(sw * s));
+            int dstH = Math.max(1, Math.round(sh * s));
+            Bitmap scaled = Bitmap.createScaledBitmap(src, dstW, dstH, true);
+            Bitmap out = Bitmap.createBitmap(dw, dh, Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas cv = new android.graphics.Canvas(out);
+            cv.drawColor(0xFF000000);
+            cv.drawBitmap(scaled, (dw - dstW) / 2f, (dh - dstH) / 2f, null);
+            if (scaled != src) {
+                try { scaled.recycle(); } catch (Throwable t) { Log.w(TAG, "recycle: " + t); }
+            }
+            return out;
+        } catch (Throwable t) {
+            Log.w(TAG, "scaleFit gagal: " + t);
             return src;
         }
     }

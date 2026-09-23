@@ -145,6 +145,13 @@ jobs:
           sed -f apk-patches/b16c-bubble-refresh.sed -i "$F"
           test "$(grep -c 'BUBBLE_STYLE_REFRESH' "$F")" = "1" || { echo "hook bubble refresh gagal"; exit 1; }
           echo "hook b16 BubbleService OK"
+      - name: Apply b26 hook (bg refresh onResume)
+        run: |
+          set -e
+          F=work/decode/smali_classes3/com/alphabubble/MainActivity.smali
+          sed -f apk-patches/b26-bgrefresh.sed -i "$F"
+          test "$(grep -c 'BgFull;->apply' "$F")" = "2" || { echo "hook bgrefresh gagal"; exit 1; }
+          echo "hook bgrefresh OK"
       - name: Patch versionCode from version.txt
         run: |
           set -e
@@ -237,7 +244,7 @@ jobs:
           echo "9 kelas di classes5.dex OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/CardAlpha;" \
             || { echo "CardAlpha tidak ada di classes5.dex"; exit 1; }
-          echo "9 kelas di classes5.dex OK"
+          echo "10 kelas di classes5.dex OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/aapt" dump xmltree work/AlphaBubble-signed.apk AndroidManifest.xml | grep -q "BubbleSettingsActivity" \
             || { echo "BubbleSettingsActivity tidak ada di manifest"; exit 1; }
           echo "activity di manifest OK"

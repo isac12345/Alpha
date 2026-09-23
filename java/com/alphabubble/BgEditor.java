@@ -153,11 +153,15 @@ public final class BgEditor {
                     Log.w(TAG, "persist perm gagal: " + t);
                 }
                 sp.edit().putString("app_bg_crop",
-                        Uri.fromFile(f).toString()).apply();
+                        Uri.fromFile(f).toString())
+                        .putString("app_bg_mode", fill ? "fill" : "fit").apply();
                 try { box[0].dismiss(); } catch (Throwable t) {
                     Log.w(TAG, "dismiss gagal: " + t);
                 }
                 Toast.makeText(a, "Latar disimpan", Toast.LENGTH_SHORT).show();
+                // b26: refresh instan tanpa force-close (dialog = window
+                // terpisah; Activity utama tak lewat onCreate lagi).
+                BgFull.apply(a);
             } catch (Throwable t) {
                 Log.w(TAG, "save gagal: " + t);
             }
@@ -299,6 +303,10 @@ public final class BgEditor {
                 float s = base * scale;
                 Bitmap out = Bitmap.createBitmap(vw, vh, Bitmap.Config.ARGB_8888);
                 android.graphics.Canvas cv = new android.graphics.Canvas(out);
+                // b26: Fit = letterbox HITAM solid (0xFF000000, sama konvensi
+                // BubbleStyle FIT). Tanpa ini kanvas transparan -> tembus ke
+                // abu tema dan dikira bug lama belum kelar.
+                if (!fill) cv.drawColor(0xFF000000);
                 Matrix m = new Matrix();
                 m.postTranslate(-src.getWidth() / 2f, -src.getHeight() / 2f);
                 m.postScale(s, s);
