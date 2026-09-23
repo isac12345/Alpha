@@ -562,3 +562,25 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Sourcing copy gameboost.sh dari /sdcard dgn env override
   (ALPHA_CONF_DIR, CPU_POLICIES) = cara uji fungsi modul di HP tanpa
   ubah file modul.
+
+## b27 — grace-defer + oom-guard (2026-09-23, leader langsung; TANPA push)
+- Bukti live (leader eksekusi, user pegang HP saja): PGR EN
+  (com.kurogame.gplay.punishing.grayraven.en, BUKAN .tw) APPLIED extreme;
+  HOME+3s -> GRACE started TAPI APPLY-POLL battery instan (bug #2
+  terkonfirmasi); balik -> CANCEL + performance; HOME+20s -> DAILY
+  RESTORED 12s tepat + balik -> APPLIED lagi. Monitor POLLING (7s).
+  OOM: monitor.bin/watchdog.bin adj=-1000 (warisan induk Magisk, BUKAN
+  kode kita), fas-rs adj=0. B-window: LMK bunuh 8 proses app
+  (signal 9, uid app), NOL sentuh 351/3818/3827; watch 32 siklus penuh.
+- Fix (23547b5, 5 file, +52/-2): (1) grace-defer di handle_event:
+  boost aktif + non-game + pending ADA -> return sebelum apply_now
+  (revert via check_grace saat habis); manual tanpa boost tetap instan.
+  (2) _oom_guard (service.sh) + inline di watchdog/game_add/
+  engine_manager: echo -1000 ke /proc pid + log; 6 titik (monitor,
+  watchdog, fas-rs x3 path). Launcher-side -> berlaku .sh maupun .bin.
+- Verifikasi: sh -n 5/5 OK; sandbox harness (fungsi asli + stub)
+  16/16 PASS (S1 apply, S2 defer, S3 cancel, S4 expiry-revert,
+  S5 manual-instan). Harness di /usr/tmp/opencode/test-b27-grace.sh
+  (tidak di-commit, anti-polusi). CI BELUM. Status: TUNGGU.
+- Follow-up: "PAKAI BANNER DEFAULT" tak hapus crop (b28 kandidat);
+  guardian untuk watchdog sendiri ( перезапуск silang) BELUM.

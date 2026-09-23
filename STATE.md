@@ -274,3 +274,7 @@
   dan dicek: module.prop v20, APK v20 (CN=Alpha Control),
   update-binary/service.sh/customize/uninstall ada, sintaks
   gameboost+monitor OK, md5 rilis = sdcard (a2346d6a).
+
+- B27 OOM-GRACE (2026-09-23, TUNGGU): work/b27-oom-grace (23547b5).
+  Tanpa push (tunggu "oke build"). L2 = reboot cek adj -1000 x3 +
+  skenario HOME 3s/20s tanpa switch instan.
