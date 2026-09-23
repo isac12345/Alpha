@@ -98,14 +98,17 @@ public final class NavTabs {
         View v = find(a, id);
         if (!(v instanceof Button)) return;
         Button b = (Button) v;
+        // b30: glow teal (nav_glow layer-list) + elevation, tanpa ubah listener.
         try {
             if (on) {
-                b.setBackground(a.getResources().getDrawable(
-                        a.getResources().getIdentifier("pill_solid", "drawable", a.getPackageName())));
+                int glow = a.getResources().getIdentifier("nav_glow", "drawable", a.getPackageName());
+                if (glow != 0) b.setBackground(a.getResources().getDrawable(glow));
                 b.setTextColor(Color.parseColor("#0a0a0a"));
+                b.setElevation(4f * a.getResources().getDisplayMetrics().density);
             } else {
                 b.setBackgroundColor(Color.parseColor("#00000000"));
-                b.setTextColor(Color.parseColor("#f4f2ee"));
+                b.setTextColor(Color.parseColor("#87878a"));
+                b.setElevation(0f);
             }
         } catch (Throwable t) {
             Log.w(TAG, "paint gagal: " + t);
