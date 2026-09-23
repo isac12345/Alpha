@@ -589,3 +589,9 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - BUTUH L1-live + L2: user jalankan docs/PROBE_V2.md di HP Unisoc +
   tester MTK, isi tabel node|default|extreme|daily|status; tes koneksi
   umum (browsing/chat) saat Extreme aktif; revert verifikasi persis.
+- LIVE Unisoc itel P671L (2026-09-23, izin su user): BEFORE→apply(extreme,
+  jalur v2+IO saja, isolasi /data/local/tmp/gbv2test)→AFTER→user tes
+  browsing/WA NORMAL→gb_restore→diff BEFORE vs RESTORED = IDENTIK PERSIS.
+  Bukti: docs/before.txt, after.txt, restored.txt, test.log (commit
+  83b6be7). Sisa: data tester MTK (tugas user) — kode tahan-absen jadi
+  tidak blocker.
