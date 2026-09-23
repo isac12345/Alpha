@@ -1,5 +1,19 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- PERF-AGRO (2026-09-23, leader langsung, dev-modul masih down):
+  user minta performance galak dikit + balanced naik aman + thermal
+  jangan cepat step-down. Cabang work/perf-agro → merge --no-ff
+  588df8a ke fusion-v2. Isi: floor perf 35→40% + uclamp 15→25
+  (gameboost.sh), engine perf min 15→20 + ra 256→512, balanced
+  max/GPU 85→90 (profiles.sh), step-down 75→78C di 2 titik +
+  log (monitor.sh; recovery <70 + 85/95 utuh). Bump modul 22
+  (version.txt/APK tetap 20). Bukti L1: bash -n 3/3 OK,
+  shellcheck 0 error, sandbox sysfs palsu (40%→360000 vs
+  35%→300000, mekanisme snap-down terbukti). JUJUR: floor 40%
+  di T615 kemungkinan nempel rung sama (644800 vs 564200,
+  snap-down ke 614400 bila rung-2 >644800) — minta OPP asli
+  user untuk hitung pas. MENUNGGU: push/CI + tes HP (L2).
+
 - FLOOR-75 (2026-09-23): dispatch dev-modul GAGAL — model
   `opencode/mimo-v2.5-free` retired ("Model not found:
   opencode/mimo-v2.5-free. Did you mean: mimo-v2.6-flash-free,

@@ -1,5 +1,24 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Perf agresif ringan + thermal 78C (2026-09-23, leader langsung, modul 22)
+
+- Minta user: performance galak dikit (anti-stutter), balanced naik
+  tapi aman, threshold suhu naik biar tak cepat step-down.
+- Perubahan (13+/13-, 4 file, merge 588df8a): gameboost floor
+  perf 35→40% + uclamp 15→25; profiles perf min 15→20 + ra
+  256→512, balanced max/GPU 85→90; monitor step-down 75→78C
+  (game-open + periodik + log; recovery <70, 85/95 utuh).
+  Bump module.prop 21→22 modul-only.
+- Verifikasi: bash -n 3/3, shellcheck 0, sandbox sysfs palsu
+  membuktikan 40% aktif (360000 vs 35%→300000).
+- PELAJARAN OPP: snap-down = rung terbesar ≤ target; 40%×1612000
+  =644800 vs 35%=564200 — bila rung-2 p0 T615 >644800 maka
+  floor tetap 614400 (NO-OP di p0). Nilai % tanpa tabel OPP
+  = tebak-tebakan; wajib minta scaling_available_frequencies
+  asli sebelum klaim gain floor. Uclamp/thermal/balanced-% =
+  tulis langsung, pasti efektif.
+- Status: L1 sandbox saja. MENUNGGU push/CI + tes HP (L2).
+
 ## Build 20 — fix radio Fill/Fit + cropRatio fallback (2026-09-22, leader + dev-apk 2 tugas)
 
 Akar penyebab masing-masing:
