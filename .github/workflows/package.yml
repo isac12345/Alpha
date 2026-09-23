@@ -127,6 +127,9 @@ jobs:
           sed -f apk-patches/b11b-bggravity.sed -i "$F"
           test "$(grep -c 'setGravity(I)V' "$F")" = "1" || { echo "hook gravity gagal"; exit 1; }
           echo "hook gravity OK"
+          sed -f apk-patches/b25-bgfull.sed -i "$F"
+          test "$(grep -c 'BgFull;->apply' "$F")" = "1" || { echo "hook bgfull gagal"; exit 1; }
+          echo "hook bgfull OK"
       - name: Apply b16 hooks (card alpha x2 + bubble refresh + dexopt style)
         run: |
           set -e
@@ -170,6 +173,7 @@ jobs:
           test -f work/hf-classes/com/alphabubble/HideFeedback.class || { echo "javac HideFeedback gagal"; exit 1; }
           test -f work/hf-classes/com/alphabubble/BubbleSettingsActivity.class || { echo "javac BubbleSettingsActivity gagal"; exit 1; }
           test -f work/hf-classes/com/alphabubble/BgEditor.class || { echo "javac BgEditor gagal"; exit 1; }
+          test -f work/hf-classes/com/alphabubble/BgFull.class || { echo "javac BgFull gagal"; exit 1; }
           ls work/hf-classes/com/alphabubble/*.class
           mkdir -p work/hf-dex
           "$ANDROID_SDK_ROOT/build-tools/$BT/d8" --min-api 26 --output work/hf-dex/ $(find work/hf-classes -name '*.class')
@@ -228,6 +232,9 @@ jobs:
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/BgEditor;" \
             || { echo "BgEditor tidak ada di classes5.dex"; exit 1; }
           echo "8 kelas di classes5.dex OK"
+          "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/BgFull;" \
+            || { echo "BgFull tidak ada di classes5.dex"; exit 1; }
+          echo "9 kelas di classes5.dex OK"
           "$ANDROID_SDK_ROOT/build-tools/$BT/dexdump" -d /tmp/hf5.dex 2>/dev/null | grep -q "Lcom/alphabubble/CardAlpha;" \
             || { echo "CardAlpha tidak ada di classes5.dex"; exit 1; }
           echo "9 kelas di classes5.dex OK"
