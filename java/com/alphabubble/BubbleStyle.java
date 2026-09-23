@@ -24,6 +24,8 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import java.io.InputStream;
+
 // Batch 3: C1 kustom bubble, crop background. Semua via HelperGuard.
 public final class BubbleStyle {
     private static final String TAG = "BubbleStyle";
