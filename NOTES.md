@@ -562,3 +562,17 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Sourcing copy gameboost.sh dari /sdcard dgn env override
   (ALPHA_CONF_DIR, CPU_POLICIES) = cara uji fungsi modul di HP tanpa
   ubah file modul.
+
+## b24 — Redesign Atur latar (Fill/Fit) + CI (2026-09-23, leader + dev-apk 2 putaran)
+- minSdk=26 (d8 --min-api 26, package.yml:175) < 30 → getCurrentWindowMetrics WAJIB guard
+  SDK_INT>=30 + fallback 4 lapis; desain dokumen sudah benar, kode implementasi ikut.
+- Akar lama: targetRatio ZoomView tak terpakai (onDraw/render pakai viewport dialog).
+- Implementasi: getRealScreenSize helper API30-native+fallback; ZoomView screenW/H;
+  preview onDraw ikut radio (setFill+invalidate); render clamp cx/cy ke screenW/H
+  (lokal, tanpa mutasi dx/dy global) + drawColor hitam saat Fit; cropRatio dua-pass
+  inSampleSize maxSide 1600; cropSquare dihapus (0 pemanggil).
+- Koreksi leader putaran 2: preview tak ikut radio + render tanpa clamp screenW/H.
+- CI merah putaran 1: 3 error import (Resources, InputStream x2) → fix import dd9a465.
+- CI HIJAU: run 35810357906 success (hooks OK, javac, d8 min-api 26, sign, enforce v20).
+- BELUM merge fusion-v2, BELUM release — tunggu user tes HP 5 skenario (a-e dokumen
+  BG-REDESIGN.md §3) + radio visual.
