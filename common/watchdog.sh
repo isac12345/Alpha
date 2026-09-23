@@ -70,6 +70,15 @@ while [ "$WD_STOP" -eq 0 ]; do
         nohup sh "$WATCHDIR/monitor.sh" >> "$WD_LOG" 2>&1 &
         wd_new=$!
         printf '%s\n' "$wd_new" > "$MON_PID_FILE"
+        # B27 OOM-GUARD: hasil restart ikut dilindungi (launcher-side,
+        # berlaku untuk .sh maupun .bin karena operasi pada pid).
+        if [ -n "$wd_new" ] && [ -w "/proc/$wd_new/oom_score_adj" ]; then
+            if echo -1000 > "/proc/$wd_new/oom_score_adj" 2>/dev/null; then
+                wd_log "OOM-GUARD" "monitor.sh pid=$wd_new adj=-1000"
+            else
+                wd_log "OOM-GUARD" "WARN: monitor.sh pid=$wd_new gagal"
+            fi
+        fi
         wd_log "RESTART" "monitor.sh started pid=$wd_new"
     fi
 done

@@ -79,6 +79,14 @@ do_live_merge() {
             RUST_BACKTRACE=1 nohup "$_fasrs_bin" run "$_fasrs_toml" >> "$FASRS_DIR/fas_log.txt" 2>&1 &
             _new_pid=$!
             if [ -n "$_new_pid" ]; then
+                # B27 OOM-GUARD: hasil restart live-merge ikut dilindungi.
+                if [ -w "/proc/$_new_pid/oom_score_adj" ]; then
+                    if echo -1000 > "/proc/$_new_pid/oom_score_adj" 2>/dev/null; then
+                        _log "live merge: oom_guard fas-rs pid=$_new_pid adj=-1000"
+                    else
+                        _log "WARN: live merge: oom_guard fas-rs pid=$_new_pid gagal"
+                    fi
+                fi
                 _log "live merge: fas-rs restarted old_pid=${_old_pid:-?} new_pid=$_new_pid"
             else
                 _log "WARN: live merge: relaunch fas-rs gagal, operasi add/remove tetap sukses"

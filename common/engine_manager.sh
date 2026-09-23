@@ -71,6 +71,11 @@ apply_and_restart() {
         killall fas-rs 2>/dev/null
         FASRS_DIR="/sdcard/Android/fas-rs"
         RUST_BACKTRACE=1 nohup "$MODDIR/fasrs/fas-rs" run "$FASRS_TOML" >> "$FASRS_DIR/fas_log.txt" 2>&1 &
+        _em_fasrs_pid=$!
+        # B27 OOM-GUARD: hasil restart ikut dilindungi.
+        if [ -n "$_em_fasrs_pid" ] && [ -w "/proc/$_em_fasrs_pid/oom_score_adj" ]; then
+            echo -1000 > "/proc/$_em_fasrs_pid/oom_score_adj" 2>/dev/null
+        fi
     fi
 
     # Restart backend uperf supaya exclusion rule yang baru langsung terbaca
