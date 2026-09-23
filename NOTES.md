@@ -745,3 +745,20 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   panggil (idempotent); memori currentTab/currentDetail; refresh()
   tiap onResume via b32 (anchor maybeOnboard b8, unik 1x). Simulasi:
   attach/showDash/refresh/maybeOnboard = 1/1/1/1; brace 0/0.
+
+## b33 — clear-crop + guardian + touch BUBBLE (2026-09-23, leader)
+- Sela audit: BgPick FANTOM? Dikonfirmasi TIDAK ADA — b26 memanggil
+  BgFull.apply (catatan lama salah label). Bukti: 0 kemunculan
+  "BgPick" di semua classes*.dex final3; BgFull/NavTabs/HomeCards
+  hadir di classes3+5. Tak ada crash path. PELAJARAN: label catatan
+  harus cocok dgn isi .sed (cek ulang sebelum tulis).
+- b33: BgFull.clearCrop (hapus kunci app_bg_crop + file crop via pref
+  URI file:// DAN filesDir/app_bg_crop.png) + sed range terbatas ke
+  method clearAppBackground (simulasi: clearCrop=1, di clear ✓,
+  choose TAK kena ✓). Workflow step + assert.
+- Guardian: guard_watchdog() di monitor.sh (cek watchdog.pid +
+  cmdline tiap 300s, restart via nohup; tanpa `local` agar lolos
+  pola shell proyek; dipanggil di loop event + polling). sh -n OK;
+  shellcheck warnings = pola `local` lama semua, bukan baris baru.
+- Touch BUBBLE: UiAnim.pressAll(a, card) di attachInner (kartu
+  injeksi belakangan, tak kena wiring NavTabs.attach).

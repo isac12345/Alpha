@@ -297,3 +297,6 @@
   L2 = 3x cold-start (force-stop -> launcher) cuma Dashboard.
 
 - B32 HARDENING (2026-09-23): di work/b30-navglow. Ikut build final.
+
+- B33 (2026-09-23): clear-crop + guardian watchdog + touch BUBBLE.
+  Simulasi OK. CI + artefak + bersih /sdcard berikut.
