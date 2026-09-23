@@ -584,3 +584,9 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   (tidak di-commit, anti-polusi). CI BELUM. Status: TUNGGU.
 - Follow-up: "PAKAI BANNER DEFAULT" tak hapus crop (b28 kandidat);
   guardian untuk watchdog sendiri (restart silang) BELUM.
+
+## b27 + warning render (UX, 2026-09-23, perintah user)
+- Render backend = perilaku normal Android (force-close wajib).
+  Fix UX saja: 1 TextView statis di kartu RENDER (activity_main.xml):
+  "Catatan: ganti render perlu tutup aplikasi yang sedang berjalan
+  agar berlaku." (4f1561d). XML valid. Tanpa tombol/logika tambahan.
