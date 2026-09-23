@@ -286,3 +286,6 @@
 - B27 OOM-GRACE (2026-09-23, L1): work/b27-oom-grace (23547b5).
   CI HIJAU run 35827491773. L2 = reboot cek adj -1000 x3 +
   skenario HOME 3s/20s tanpa switch instan + warning render tampil.
+=======
+- B28 NAV (2026-09-23, TUNGGU review): work/b28-nav. Tanpa build/CI.
+  Lanjut setelah user approve desain + "oke build".
