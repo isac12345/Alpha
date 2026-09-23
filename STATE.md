@@ -274,3 +274,8 @@
   dan dicek: module.prop v20, APK v20 (CN=Alpha Control),
   update-binary/service.sh/customize/uninstall ada, sintaks
   gameboost+monitor OK, md5 rilis = sdcard (a2346d6a).
+
+- B25 BG-FULL (2026-09-23, TUNGGU): cabang work/b25-bgfull (10b9719,
+  dari fusion-v2 e895170). dev-apk 2x "Task cancelled" -> leader ambil
+  alih. CI belum (tunggu "oke build", tanpa push); L2 = screenshot
+  Dashboard + Games full-height oleh user.

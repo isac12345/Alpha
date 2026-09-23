@@ -562,3 +562,27 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Sourcing copy gameboost.sh dari /sdcard dgn env override
   (ALPHA_CONF_DIR, CPU_POLICIES) = cara uji fungsi modul di HP tanpa
   ubah file modul.
+
+## b25 — background full-height (2026-09-23, leader ambil alih; dev-apk 2x "Task cancelled")
+- Laporan user: background Fill tidak nutup full tinggi layar (bawah abu tema).
+  Hipotesis user (wrap_content/child container) GUGUR oleh bukti smali:
+  `applyAppBackground()` (MainActivity.smali:4064) set ke `scrollRoot` =
+  ROOT ScrollView match_parent (decode ~/work/decode). Akar sebenarnya:
+  b11b gravity CENTER (0x11) -> bitmap intrinsic di tengah, area terbuka
+  transparan tembus ke window abu. Plus `BgEditor.applyCrop` dead code
+  (tanpa pemanggil) sehingga crop tak pernah tampil.
+- Fix (cabang work/b25-bgfull dari fusion-v2 e895170, commit 10b9719,
+  TANPA sentuh work/b24-bgredesign, tanpa bump versi):
+  b11b CENTER->FILL (0x77); `BgFull.java` baru (crop-file else URI +
+  inSampleSize 1600, scale FILL ke layar API30->decorView->system,
+  gravity FILL, set ke scrollRoot DAN decorView; 2 drawable instance);
+  `b25-bgfull.sed` hook 1 baris sesudah setBackground (p0 saja, tanpa
+  .locals); workflow +3 assert (hook, javac BgFull, dexdump BgFull=9 kelas).
+- Verifikasi leader (simulasi sed di copy decode): setGravity=1,
+  BgFull->apply=1, urutan benar dalam try; brace balance 0/0/0; status
+  hanya 4 file izin. CI BELUM (tunggu "oke build"); screenshot
+  Dashboard+Games = L2 user. Status: TUNGGU.
+- PELAJARAN: dispatch dev-apk "Task cancelled" 2x beruntun (jaringan).
+  Cabang+worktree sempat dibuat worker (kosong) -> leader ambil alih
+  implementasi sendiri + verifikasi simulasi. Pola cancel-tapi-jalan
+  (b16) TIDAK terjadi di sini (diff kosong saat dicek).
