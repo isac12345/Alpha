@@ -300,3 +300,7 @@
 
 - B33 (2026-09-23): clear-crop + guardian watchdog + touch BUBBLE.
   Simulasi OK. CI + artefak + bersih /sdcard berikut.
+
+- B34 FLOOR-75 (2026-09-24, opsi A user): port aff3cf9 ke b30
+  (d665f2d, gameboost.sh identik + module.prop 21). L1 HIJAU run
+  `35909746528` SUCCESS 37 dtk. L2 ikut paket b30 sekali jadi.

@@ -762,3 +762,16 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   shellcheck warnings = pola `local` lama semua, bukan baris baru.
 - Touch BUBBLE: UiAnim.pressAll(a, card) di attachInner (kartu
   injeksi belakangan, tak kena wiring NavTabs.attach).
+
+## b34 — port floor-75 ke b30 (2026-09-24, leader; opsi A user)
+- Sumber: `aff3cf9` (fusion-v2): extreme lantai 65→75%
+  (`_hw_max*75/100`, `_floor65`→`_floor`) + uclamp.min fg 60→70;
+  performance 35%/15, balanced, thermal: NOL ubah. Modul-only:
+  module.prop 20→21, version.txt/APK tetap 20 (preseden b19).
+- Port (d665f2d, 2 file, +11/-11): diff gameboost.sh vs aff3cf9 KOSONG
+  (identik); sisa `lantai 65`/`_floor65`/`"60" "UCLAMP"` = NOL;
+  sh -n OK; shellcheck hanya SC3043 pre-existing (delta 0).
+  dev-modul tidak di-dispatch (model mimo retired, lih. STATE FLOOR-75)
+  → leader kerjakan langsung (≤20 baris).
+- L1 HIJAU: run `35909746528` SUCCESS 37 dtk (push d665f2d).
+  L2 = ikut paket tes b30 sekali jadi (ZIP run ini).
