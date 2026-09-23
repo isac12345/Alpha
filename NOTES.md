@@ -735,3 +735,13 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   (anchor {p0,v3} unik 1x; 2 lambda tombol-lama tak tersentuh) +
   method baru + workflow assert. Simulasi: attach=1, showDashboard=1,
   v3=0, lambda=2, brace 0/0. CI BELUM. Status: TUNGGU.
+
+## b32 — hardening stacking defensif (2026-09-23, leader; TANPA repro live)
+- Audit ulang (jujur): ID DUPLIKAT = NOL (semua id tepat 1x); parent
+  ScrollView/Linear TAK recycling/caching (cuma 2 RecyclerView isi);
+  show() sinkron UI-thread (race mustahil). Penyebab konkret tak
+  ketemu — repro live terkontaminasi (2x SwipeUpClean + instance basi).
+- Defensive: GROUPS array tunggal + applyState tulis-ulang SEMUA tiap
+  panggil (idempotent); memori currentTab/currentDetail; refresh()
+  tiap onResume via b32 (anchor maybeOnboard b8, unik 1x). Simulasi:
+  attach/showDash/refresh/maybeOnboard = 1/1/1/1; brace 0/0.
