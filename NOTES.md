@@ -694,3 +694,25 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - CI HIJAU: run 35810357906 success (hooks OK, javac, d8 min-api 26, sign, enforce v20).
 - BELUM merge fusion-v2, BELUM release — tunggu user tes HP 5 skenario (a-e dokumen
   BG-REDESIGN.md §3) + radio visual.
+
+## b29 — cropmerge b24 ke base combo (2026-09-23, leader; TANPA build/CI)
+- KONFLIK PERSIS (hanya 1, di render): b24 tulis-ulang render()
+  (screen-size + clamp + hitam) vs b26 tambah `if (!fill) drawColor`
+  di fungsi SAMA. Isi setara -> resolve pakai bentuk b24 + 1 baris
+  komentar. Sisanya auto-merge: imports/getRealScreenSize/metrics/
+  ZoomView/screenW-H/listener/onDraw (b24) + save mode+BgFull.apply
+  (b26) + BubbleStyle 2-pass+API30+cropSquare-hapus (b24, tanpa
+  saingan). cropSquare: 0 pemanggil pasca-merge.
+- Verifikasi 5 skenario (oracle BG-REDESIGN.md §3, layar 720x1600):
+  harness matematika Java-round 27/27 PASS (a potret, b lanskap,
+  c persegi, d panorama, e kecil; Fill crop + Fit dst + letterbox
+  semua cocok). Brace 0/0. Harness: /usr/tmp/opencode/test-b29-crop.py
+  (tidak di-commit).
+- Preview-hilang: kode HP saat ini (pra-b24) TAK PUNYA listener radio
+  (cek baris 107-122 base) + ZoomView tanpa state fill -> toggle =
+  kontrol mati, preview beku; save-Fit keluarkan viewport+transparan
+  -> BgFull FILL-crop = "Fit jadi kotak"; upscale = "burik". Ketiganya
+  jalur pra-b24, BUKAN regresi. Pasca-merge: listener setFill+
+  invalidate -> onDraw hitung ulang live. Uji toggle UI live (tap
+  galeri) butuh jari user — satu-satunya langkah tak bisa via command.
+- Status: TUNGGU review. Tanpa push/build.
