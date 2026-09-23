@@ -378,7 +378,7 @@ public final class BgEditor {
                 float s = base * scale;
                 Bitmap out = Bitmap.createBitmap(screenW, screenH, Bitmap.Config.ARGB_8888);
                 android.graphics.Canvas cv = new android.graphics.Canvas(out);
-<                // Fit = letterbox HITAM solid (b24+b26 sama): tanpa ini
+                // Fit = letterbox HITAM solid (b24+b26 sama): tanpa ini
                 // kanvas transparan -> tembus abu tema.
                 if (!fill) {
                     cv.drawColor(0xFF000000);
