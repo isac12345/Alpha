@@ -2,7 +2,7 @@
 # Alpha Fusion - Game Boost Engine (Extreme / Balanced / Performance)
 # Paritas HSIN extreme + performance; generic untuk semua device + game.
 # Balanced = restore native (pendinginan), extreme = lantai 75%,
-# performance = lantai 35%. POSIX sh; semua tulis = dua kali
+# performance = lantai 40%. POSIX sh; semua tulis = dua kali
 # tulis-baca-verifikasi.
 # Sakelar: DISABLE_GAMEBOOST, NO_CPUSET, GAMEBOOST_NO_VM, GAMEBOOST_LEVEL
 
@@ -463,8 +463,8 @@ _gb_apply_cpu() {
         [ -z "$_hw_max" ] && continue
 
         if [ "$_level" = "performance" ]; then
-            # Performance: lantai 35%
-            _floor=$((_hw_max * 35 / 100))
+            # Performance: lantai 40% (agresif ringan anti-stutter, 2026-09-23)
+            _floor=$((_hw_max * 40 / 100))
         else
             # Extreme: lantai 75%
             _floor=$((_hw_max * 75 / 100))
@@ -503,7 +503,7 @@ _gb_apply_cpu() {
         case "$_level" in
             extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "70" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
-            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "15" "UCLAMP"
+            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "25" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
         esac
     fi
