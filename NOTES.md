@@ -583,4 +583,4 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   S5 manual-instan). Harness di /usr/tmp/opencode/test-b27-grace.sh
   (tidak di-commit, anti-polusi). CI BELUM. Status: TUNGGU.
 - Follow-up: "PAKAI BANNER DEFAULT" tak hapus crop (b28 kandidat);
-  guardian untuk watchdog sendiri ( перезапуск silang) BELUM.
+  guardian untuk watchdog sendiri (restart silang) BELUM.
