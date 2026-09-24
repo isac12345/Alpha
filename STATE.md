@@ -13,6 +13,12 @@
   sandbox T615 → perf 1040000/1228800/uclamp70/VM40-200, alias
   extreme identik (boost=performance), balanced restore-only,
   USCFREQ 0. MENUNGGU: push/CI + tes HP (L2).
+- ZIP-SDCARD modul 26 (2026-09-24, leader): /sdcard/alpha dibersihkan
+  (zip utama v23-kresek + lama/b34-floor75 + lama/modul22 dihapus atas
+  perintah user) → hanya Alpha-Fusion-v1.zip (5641358 byte,
+  md5 e1bf4f4dee56a95eabba50f218d24c04, versionCode=26, run
+  35945175894, isi terverifikasi: alias performance|extreme 1 baris,
+  floor75, monitor target performance). MENUNGGU tes HP (L2).
 
 - REVERT-USCFREQ modul 25 (2026-09-24, leader langsung, konfirmasi user:
   "sebelum uscfreq enak, sesudah uscfreq ga enak banget"): tuning enak
