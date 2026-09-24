@@ -186,11 +186,12 @@ _gb_topo_detect() {
         case "$_mx" in ''|*[!0-9]*) continue ;; esac
         [ "$_mx" -gt "$_max_all" ] 2>/dev/null && _max_all="$_mx"
     done
-    [ "$_max_all" -eq 0 ] 2>/dev/null && return 1
     for _p in "$SYSFS_CPU_PREFIX"/cpufreq/policy*; do
         [ -d "$_p" ] || continue
         _mx=$(cat "$_p/cpuinfo_max_freq" 2>/dev/null | tr -d '[:space:]')
-        case "$_mx" in ''|*[!0-9]*) continue ;; esac
+        case "$_mx" in
+            ''|*[!0-9]*) [ "$_max_all" -eq 0 ] 2>/dev/null || continue ;;
+        esac
         _cpus=""
         if [ -f "$_p/related_cpus" ]; then
             _cpus=$(cat "$_p/related_cpus" 2>/dev/null | tr '\n' ' ')
@@ -198,7 +199,7 @@ _gb_topo_detect() {
             _cpus=$(cat "$_p/affinity_cpus" 2>/dev/null | tr '\n' ' ')
         fi
         [ -z "$_cpus" ] && continue
-        if [ "$_mx" -ge "$_max_all" ] 2>/dev/null; then
+        if [ "$_max_all" -eq 0 ] 2>/dev/null || [ "$_mx" -ge "$_max_all" ] 2>/dev/null; then
             GB_CPU_BIG="${GB_CPU_BIG} $_cpus"
         else
             GB_CPU_LITTLE="${GB_CPU_LITTLE} $_cpus"
@@ -206,7 +207,7 @@ _gb_topo_detect() {
     done
     GB_CPU_BIG=$(echo "$GB_CPU_BIG" | sed 's/^ *//;s/  */ /g;s/ *$//')
     GB_CPU_LITTLE=$(echo "$GB_CPU_LITTLE" | sed 's/^ *//;s/  */ /g;s/ *$//')
-    [ -n "$GB_CPU_BIG" ] && [ -n "$GB_CPU_LITTLE" ] || { GB_CPU_BIG="" GB_CPU_LITTLE=""; return 1; }
+    [ -n "$GB_CPU_BIG" ] || { GB_CPU_BIG="" GB_CPU_LITTLE=""; return 1; }
     return 0
 }
 
@@ -513,16 +514,25 @@ _gb_apply_cpu() {
     if [ ! -f "$CONF_DIR/NO_CPUSET" ]; then
         if [ -d "${DEV_CPUSET_PREFIX:-/dev/cpuset}" ]; then
             _gb_topo_detect
-            if [ -n "$GB_CPU_BIG" ] && [ -n "$GB_CPU_LITTLE" ]; then
-                local _grp
-                for _grp in top-app foreground; do
-                    [ -w "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" ] && \
-                        _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" "$GB_CPU_BIG" "CPUSET"
-                done
-                for _grp in background system-background; do
-                    [ -w "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" ] && \
-                        _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" "$GB_CPU_LITTLE" "CPUSET"
-                done
+            if [ -n "$GB_CPU_BIG" ]; then
+                local _grp _top_app_cpus
+                _top_app_cpus=$(_gb_cpuset_norm "$GB_CPU_LITTLE")
+                case "$_top_app_cpus" in
+                    *,*,*) _top_app_cpus="$GB_CPU_BIG $(printf '%s' "$_top_app_cpus" | cut -d, -f1,2)" ;;
+                    *)      _top_app_cpus="$GB_CPU_BIG" ;;
+                esac
+                _top_app_cpus=$(_gb_cpuset_norm "$_top_app_cpus")
+                _top_app_cpus="${_top_app_cpus%,}"
+                [ -w "${DEV_CPUSET_PREFIX:-/dev/cpuset}/top-app/cpus" ] && \
+                    _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/top-app/cpus" "$_top_app_cpus" "CPUSET"
+                [ -w "${DEV_CPUSET_PREFIX:-/dev/cpuset}/foreground/cpus" ] && \
+                    _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/foreground/cpus" "$GB_CPU_BIG" "CPUSET"
+                if [ -n "$GB_CPU_LITTLE" ]; then
+                    for _grp in background system-background; do
+                        [ -w "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" ] && \
+                            _gb_write "${DEV_CPUSET_PREFIX:-/dev/cpuset}/$_grp/cpus" "$GB_CPU_LITTLE" "CPUSET"
+                    done
+                fi
             fi
         fi
     else
