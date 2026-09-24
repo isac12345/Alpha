@@ -66,7 +66,24 @@ else
 fi
 # Restore monitor.sh LOG_FILE (gameboost.sh redefines it).
 LOG_FILE="$_gb_monitor_save_log"
+# CPU_POLICIES untuk gb_apply: service.sh tidak mengekspornya ke proses
+# ini; tanpa ini lantai CPU diam-diam skip (for kosong, tanpa log).
+# detected.conf murni assignment (dari detect.sh sendiri) jadi aman.
+if [ -z "$CPU_POLICIES" ] && [ -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/detected.conf" ]; then
+    . "${ALPHA_CONF_DIR:-/data/adb/alpha}/detected.conf" 2>/dev/null
+    LOG_FILE="$_gb_monitor_save_log"
+fi
+if [ -z "$CPU_POLICIES" ]; then
+    for _gb_pol_dir in "${SYSFS_CPU_PREFIX:-/sys/devices/system/cpu}"/cpufreq/policy*; do
+        [ -d "$_gb_pol_dir" ] || continue
+        CPU_POLICIES="$CPU_POLICIES ${_gb_pol_dir##*/}"
+    done
+    CPU_POLICIES=$(printf '%s' "$CPU_POLICIES" | sed 's/^ *//;s/  */ /g;s/ *$//')
+    unset _gb_pol_dir
+fi
+export CPU_POLICIES
 unset _gb_monitor_save_log
+monitor_log "GAMEBOOST" "INIT CPU_POLICIES=$CPU_POLICIES"
 
 monitor_cleanup() {
     if [ -f "$PID_FILE" ] && [ "$(cat "$PID_FILE" 2>/dev/null)" = "$$" ]; then
