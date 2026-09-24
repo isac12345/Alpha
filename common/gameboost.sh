@@ -186,12 +186,11 @@ _gb_topo_detect() {
         case "$_mx" in ''|*[!0-9]*) continue ;; esac
         [ "$_mx" -gt "$_max_all" ] 2>/dev/null && _max_all="$_mx"
     done
+    [ "$_max_all" -eq 0 ] 2>/dev/null && return 1
     for _p in "$SYSFS_CPU_PREFIX"/cpufreq/policy*; do
         [ -d "$_p" ] || continue
         _mx=$(cat "$_p/cpuinfo_max_freq" 2>/dev/null | tr -d '[:space:]')
-        case "$_mx" in
-            ''|*[!0-9]*) [ "$_max_all" -eq 0 ] 2>/dev/null || continue ;;
-        esac
+        case "$_mx" in ''|*[!0-9]*) continue ;; esac
         _cpus=""
         if [ -f "$_p/related_cpus" ]; then
             _cpus=$(cat "$_p/related_cpus" 2>/dev/null | tr '\n' ' ')
@@ -199,7 +198,7 @@ _gb_topo_detect() {
             _cpus=$(cat "$_p/affinity_cpus" 2>/dev/null | tr '\n' ' ')
         fi
         [ -z "$_cpus" ] && continue
-        if [ "$_max_all" -eq 0 ] 2>/dev/null || [ "$_mx" -ge "$_max_all" ] 2>/dev/null; then
+        if [ "$_mx" -ge "$_max_all" ] 2>/dev/null; then
             GB_CPU_BIG="${GB_CPU_BIG} $_cpus"
         else
             GB_CPU_LITTLE="${GB_CPU_LITTLE} $_cpus"
@@ -207,7 +206,7 @@ _gb_topo_detect() {
     done
     GB_CPU_BIG=$(echo "$GB_CPU_BIG" | sed 's/^ *//;s/  */ /g;s/ *$//')
     GB_CPU_LITTLE=$(echo "$GB_CPU_LITTLE" | sed 's/^ *//;s/  */ /g;s/ *$//')
-    [ -n "$GB_CPU_BIG" ] || { GB_CPU_BIG="" GB_CPU_LITTLE=""; return 1; }
+    [ -n "$GB_CPU_BIG" ] && [ -n "$GB_CPU_LITTLE" ] || { GB_CPU_BIG="" GB_CPU_LITTLE=""; return 1; }
     return 0
 }
 
