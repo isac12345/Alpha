@@ -1,5 +1,19 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- MODUL30-STABIL-RILIS (2026-09-24, leader langsung, keluhan "garapan ga
+  stabil + rilis pun kresek"): audit 4f73ed7..HEAD = gameboost rasa-v20
+  sudah sama (65/35/uclamp60-15/sched40-70/VM/IO/fas-rs/cpuset/thermal
+  75-85-95); tweak nyangkut = profiles.sh 85→90/15→20/256→512 (modul22
+  perf-agro tak ke-revert) + native_boost.conf sekali-tulis (snapshot
+  modul23/26 ikut kebawa flash) + transient boost_level/.gb_active.
+  Fix: profiles 4 angka revert v20; NATIVE_VERSION=30 paksa refresh
+  snapshot basi; service.sh boot hapus transient. Floor asimetris
+  modul29 dipertahankan. Bump 29→30 modul-only (APK 20).
+  L1: sh-n 3/3, shellcheck 0, sandbox refresh (basi→30, rerun md5 sama).
+  DISPATCH-GAGAL dev-modul: `Model not found:
+  opencode/mimo-v2.5-free` (sama kayak b28) → leader ambil alih, tanpa
+  ganti model (AGENTS p6). MENUNGGU: push/CI + tes HP WuWa (L2).
+
 - ISOLASI-KRESEK (2026-09-24, tugas user, leader): Q1 = merge 2-level
   modul26 DISENGAJA (minta user, 69bcb9d). Angka user TERVERIFIKASI
   + 3 delta tambahan (sched/VM/fas-rs); koreksi GPU 85→90 = jalur

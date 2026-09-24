@@ -281,9 +281,17 @@ _gb_sched_apply_level() {
 
 # ============================================================
 # Backup Originals (sekali, ke native_boost.conf)
+# NATIVE_VERSION bump = paksa refresh snapshot basi (modul23 uscfreq
+# 5000/3000 + modul26 floor75 yang nyangkut di /data/adb/alpha dan
+# ikut kebawa saat flash rilis/garapan). Tanpa ini restore memulihkan
+# nilai boost lama, bukan native asli = kresek + ga stabil.
 # ============================================================
 _gb_backup_native() {
-    [ -f "$NATIVE_CONF" ] && return 0
+    if [ -f "$NATIVE_CONF" ]; then
+        _nv=$(grep "^NATIVE_VERSION=" "$NATIVE_CONF" 2>/dev/null | head -n 1 | cut -d= -f2)
+        [ "$_nv" = "30" ] && return 0
+        rm -f "$NATIVE_CONF" 2>/dev/null
+    fi
     mkdir -p "$CONF_DIR" 2>/dev/null
     : > "$NATIVE_CONF.tmp" 2>/dev/null || return 1
     local _pol _gov _mn _mx _avail _mx_val _v
@@ -427,6 +435,7 @@ _gb_backup_native() {
             [ -n "$_sq" ] && echo "io_${_bname}_scheduler=$_sq" >> "$NATIVE_CONF.tmp"
         }
     done
+    echo "NATIVE_VERSION=30" >> "$NATIVE_CONF.tmp"
     mv "$NATIVE_CONF.tmp" "$NATIVE_CONF" 2>/dev/null
     chmod 0644 "$NATIVE_CONF" 2>/dev/null
     [ -f "$NATIVE_CONF" ] || { _gb_log "FAILED" "backup write failed"; return 1; }

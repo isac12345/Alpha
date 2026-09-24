@@ -20,6 +20,13 @@ export ALPHA_CONF_DIR="$WORK_DIR"
 echo "=== Alpha + Uperf Fusion Starting Boot Service: $(date) ===" >> "$LOG_FILE"
 echo "[BOOT] boot service dimulai (MODDIR=$MODDIR WORK_DIR=$WORK_DIR)" >> "$LOG_FILE"
 
+# modul30: bersihkan state transient boost basi dari modul23/26 yang
+# nyangkut di /data/adb/alpha dan ikut kebawa saat flash rilis/garapan
+# (boost_level/.gb_active/cooldown/GAMEBOOST_LEVEL basi = boost salah
+# level + restore ke nilai boost lama = kresek + ga stabil).
+rm -f "$WORK_DIR/boost_level" "$WORK_DIR/.gb_active" "$WORK_DIR/.gb_cooldown_count" "$WORK_DIR/GAMEBOOST_LEVEL" 2>/dev/null
+echo "[BOOT] transient boost state dibersihkan (modul30)" >> "$LOG_FILE"
+
 BOOT_COMPLETED_OK=0
 # M8: counter boot gagal 2x berturut-turut (file .boot_fail_count).
 # Sukses (boot_completed=1) mereset counter ke 0.

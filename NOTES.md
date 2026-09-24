@@ -796,3 +796,22 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   fix sudah dikirim leader (3b1d268, CI hijau, live). Worktree + branch
   dihapus paksa, repo utama bersih. PELAJARAN: dispatch gagal-model =
   cek `git worktree list` berkala; anggap gagal dispatch bisa hidup latar.
+
+## Modul30 stabil rasa rilis — tweak nyangkut dibersihkan (2026-09-24, leader langsung)
+
+- Keluhan user: garapan ga stabil + rilis pun kresek. Audit 4f73ed7..HEAD:
+  gameboost HEAD sudah rasa-v20 (floor/uclamp/sched/VM/IO/fas-rs/cpuset/
+  thermal 75-85-95 sama). Tweak nyangkut: (1) profiles.sh 85→90, 15→20,
+  256→512 (sisa perf-agro modul22); (2) native_boost.conf tulis-sekali
+  (snapshot boost modul23 uscfreq5000 / modul26 floor75 kebawa flash,
+  restore pulihkan nilai boost bukan native); (3) transient boost_level/
+  .gb_active/GAMEBOOST_LEVEL basi di /data/adb/alpha.
+- Fix (+20/-6, 4 file): profiles 4 angka revert v20; NATIVE_VERSION=30
+  (refresh sekali saat boot modul30); service.sh hapus transient tiap
+  boot. Floor asimetris modul29 dipertahankan (big65/little35 anti-panas).
+- L1: sh-n 3/3 OK, shellcheck -S error 0, sandbox refresh OK (snapshot
+  basi tanpa version → ditulis ulang NATIVE_VERSION=30; panggil kedua
+  md5 sama). Bump module.prop 29→30 modul-only (APK tetap 20).
+- Status: MENUNGGU push/CI + tes HP WuWa 10-15 mnt (L2). Cara tes: flash
+  modul30 (reboot, main scene sama), dengar kresek + cek alpha.log
+  (APPLIED extreme, INIT CPU_POLICIES, transient dibersihkan).
