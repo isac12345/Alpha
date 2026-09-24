@@ -42,6 +42,21 @@
   = game jalan TANPA lantai CPU (governor kejar-kejaran) + cpuset
   6-7 + uclamp70; butuh tes WuWa ulang pasca-fix (L2 user).
 
+## Banding v20-rilis vs modul27 (2026-09-24, leader, statis penuh)
+
+- Perintah user: bandingkan rilis public vs tuning sekarang.
+  Basis: 4f73ed7 (bump v20) vs HEAD. APK identik (version.txt 20).
+  File perilaku: detect +168, engine +69, gameboost ±128,
+  monitor ±105, profiles 4 angka, customize .bin dormant.
+- Hasil live sesi WuWa v20 vs now: CPU floor nol→1040000/1228800,
+  uclamp 60→70; cpuset/GPU-lock/sched/VM/fas-rs IDENTIK;
+  engine timpa mild VM/IO di kedua versi; warm 75-mild → 78-nol.
+  detect/engine baru = hasil sama di T615 (unisoc/p0-p6/MALI/zone7).
+- Kesimpulan jujur: tuning now = v20 + lantai-beneran + uclamp70 +
+  ayun-78. Bila equally-or-worse, kandidat = panas kernel-throttle
+  di luar sensor monitor / ayunan max-nol. Opsi: A rasa-v20
+  (extreme65/uclamp60 + tangga mild 75C). Menunggu pilihan user.
+
 ## Probe Unisoc: HP user sendiri ums9230 P671L (2026-09-24)
 
 - KOREKSI: ini HP user, bukan tester-2. /dev/cpuctl ADA
