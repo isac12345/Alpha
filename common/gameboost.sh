@@ -1,8 +1,8 @@
 #!/system/bin/sh
-# Alpha Fusion - Game Boost Engine (Extreme / Balanced / Performance)
-# Paritas HSIN extreme + performance; generic untuk semua device + game.
-# Balanced = restore native (pendinginan), extreme = lantai 75%,
-# performance = lantai 50% (enak modul22; uscfreq-hold OFF 2026-09-24).
+# Alpha Fusion - Game Boost Engine (Performance-max + Balanced)
+# 2 level saja (modul26): performance = tuning max ex-extreme,
+# balanced = restore native (pendinginan). Generic semua device + game.
+# performance = lantai 75% (enak modul22; uscfreq-hold OFF).
 # POSIX sh; semua tulis = dua kali
 # tulis-baca-verifikasi.
 # Sakelar: DISABLE_GAMEBOOST, NO_CPUSET, GAMEBOOST_NO_VM, GAMEBOOST_LEVEL
@@ -129,9 +129,10 @@ _gb_write() {
 # ============================================================
 # Level Detection
 # _gb_level membaca GAMEBOOST_LEVEL dan mengembalikan salah satu
-# dari: "performance", "balanced", "extreme". Default fail-safe
-# (file absen / isi tak dikenal) = "balanced" supaya thermal
-# safety tidak pernah jatuh ke mode paling kencang.
+# dari: "performance", "balanced". "extreme" lama = alias performance
+# (kompat file lama + monitor lama; tanpa cabang tuning sendiri).
+# Default fail-safe (file absen / isi tak dikenal) = "balanced" supaya
+# thermal safety tidak pernah jatuh ke mode paling kencang.
 # ============================================================
 _gb_level() {
     if [ -f "$CONF_DIR/GAMEBOOST_LEVEL" ]; then
@@ -139,9 +140,8 @@ _gb_level() {
         _lv=$(cat "$CONF_DIR/GAMEBOOST_LEVEL" 2>/dev/null \
               | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
         case "$_lv" in
-            performance) echo "performance"; return 0 ;;
+            performance|extreme) echo "performance"; return 0 ;;
             balanced)    echo "balanced";    return 0 ;;
-            extreme)     echo "extreme";     return 0 ;;
         esac
     fi
     echo "balanced"
@@ -468,14 +468,9 @@ _gb_apply_cpu() {
         fi
         [ -z "$_hw_max" ] && continue
 
-        if [ "$_level" = "performance" ]; then
-            # Performance: lantai 50% enak modul22 (OPP T615: p0 768000
-            # +1 rung, p6 tetap; tanpa uscfreq-hold)
-            _floor=$((_hw_max * 50 / 100))
-        else
-            # Extreme: lantai 75% enak modul22 (tanpa uscfreq-hold)
-            _floor=$((_hw_max * 75 / 100))
-        fi
+        # Performance-max (ex-extreme, modul26): lantai 75% OPP
+        # tertinggi (T615: p0 1040000/p6 1228800; tanpa uscfreq-hold)
+        _floor=$((_hw_max * 75 / 100))
 
         if [ -n "$_opp_list" ]; then
             _target_min=$(_alpha_opp_cap_pick "$_floor" "$_opp_list")
@@ -505,31 +500,27 @@ _gb_apply_cpu() {
         _gb_log "SKIPPED" "NO_CPUSET exists, skip cpuset"
     fi
 
-    # --- uclamp ---
+    # --- uclamp (2 level: performance-max 70, balanced via restore) ---
     if [ -d "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}" ]; then
         case "$_level" in
-            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "70" "UCLAMP"
-                         _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
-            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "25" "UCLAMP"
+            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "70" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
         esac
     fi
 
-    # --- stune ---
+    # --- stune (hanya performance-max 100) ---
     if [ -d "${DEV_STUNE_PREFIX:-/dev/stune}" ]; then
         case "$_level" in
-            extreme)     _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "100" "STUNE" ;;
-            performance) _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "40" "STUNE" ;;
+            performance) _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "100" "STUNE" ;;
         esac
     fi
 
     # --- sched_child_runs_first ---
     _gb_write "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" "1" "SCHED"
 
-    # --- Scheduler latency (hanya bila node resolve — tidak dipaksa di device tanpa node) ---
+    # --- Scheduler latency (performance-max; hanya bila node resolve) ---
     case "$_level" in
-        extreme)     _gb_sched_apply_level 40 40 30 1000 ;;
-        performance) _gb_sched_apply_level 70 70 60 400 ;;
+        performance) _gb_sched_apply_level 40 40 30 1000 ;;
     esac
     # NOTE 2026-09-24 modul25: uscfreq down_rate hold (5000/3000) TETAP
     # DIMATIKAN (biang kresek/patah konfirmasi user: sebelum-uscfreq enak,
@@ -684,20 +675,13 @@ _gb_apply_vm() {
     local _level="$1"
     local _proc="$PROC_SYS_PREFIX"
     case "$_level" in
-        extreme)
-            # HSIN VM: swappiness=40, vfs=200, dirty=10, dirty_bg=1, page-cluster=0
+        performance)
+            # Performance-max (ex-extreme HSIN): swappiness=40, vfs=200,
+            # dirty=10, dirty_bg=1, page-cluster=0
             _gb_write "$_proc/vm/swappiness" "40" "VM"
             _gb_write "$_proc/vm/vfs_cache_pressure" "200" "VM"
             _gb_write "$_proc/vm/dirty_ratio" "10" "VM"
             _gb_write "$_proc/vm/dirty_background_ratio" "1" "VM"
-            _gb_write "$_proc/vm/page-cluster" "0" "VM"
-            ;;
-        performance)
-            # Performance: swappiness=60, vfs=50, dirty=15, dirty_bg=5, page-cluster=0
-            _gb_write "$_proc/vm/swappiness" "60" "VM"
-            _gb_write "$_proc/vm/vfs_cache_pressure" "50" "VM"
-            _gb_write "$_proc/vm/dirty_ratio" "15" "VM"
-            _gb_write "$_proc/vm/dirty_background_ratio" "5" "VM"
             _gb_write "$_proc/vm/page-cluster" "0" "VM"
             ;;
     esac
@@ -728,10 +712,9 @@ _gb_apply_io() {
             esac
         fi
 
-        # read_ahead_kb
+        # read_ahead_kb (performance-max 4096)
         case "$_level" in
-            extreme)     _gb_write "$_dev/queue/read_ahead_kb" "4096" "IO" ;;
-            performance) _gb_write "$_dev/queue/read_ahead_kb" "2048" "IO" ;;
+            performance) _gb_write "$_dev/queue/read_ahead_kb" "4096" "IO" ;;
         esac
     done
 }
@@ -795,7 +778,7 @@ gb_apply() {
     # (restore CPU floor → native, GPU lock → native, cpuset → native,
     #  stune/uclamp → native), set fas-rs ke balance, selesai.
     # TIDAK panggil _gb_apply_cpu/gpu/vm/io/net supaya tidak
-    # meninggalkan floor/lantai extreme.
+    # meninggalkan floor/lantai performance-max.
     if [ "$_level" = "balanced" ]; then
         _gb_log "INFO" "balanced: restoring native snapshot (pendinginan)"
         gb_restore
@@ -832,13 +815,12 @@ gb_apply() {
 }
 
 # Mode fas-rs mengikuti boost (tidak kill apa pun):
-# extreme → fast, balanced → balance, performance → performance.
+# performance-max → fast, balanced → balance.
 _gb_set_fasrs_mode() {
     local _want=""
     case "$1" in
-        extreme)     _want="fast" ;;
+        performance) _want="fast" ;;
         balanced)    _want="balance" ;;
-        performance) _want="performance" ;;
         *) return 0 ;;
     esac
     [ -r "/dev/fas_rs/mode" ] || return 0

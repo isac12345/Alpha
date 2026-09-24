@@ -1,5 +1,19 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- MERGE-2LEVEL modul 26 (2026-09-24, leader langsung, minta user:
+  extreme ga ada di aplikasi → tuning max pindah ke performance saja):
+  gameboost kini 2 level — performance = ex-extreme (floor 75%
+  1040000/1228800, uclamp70, stune100, sched 40/40/30/1000, VM
+  40/200/10/1, IO 4096, fas-rs fast); balanced = restore-only.
+  "extreme" lama jadi alias performance di _gb_level (kompat file
+  lama). Monitor: target game default performance; step-down
+  hangat 78C → balanced-soft (active tetap 1, cooldown <70C apply
+  ulang max); 85C tetap hard-exit + apply_now balanced. uscfreq
+  hold TETAP OFF. Bukti L1: bash -n 2/2, shellcheck -S error 0,
+  sandbox T615 → perf 1040000/1228800/uclamp70/VM40-200, alias
+  extreme identik (boost=performance), balanced restore-only,
+  USCFREQ 0. MENUNGGU: push/CI + tes HP (L2).
+
 - REVERT-USCFREQ modul 25 (2026-09-24, leader langsung, konfirmasi user:
   "sebelum uscfreq enak, sesudah uscfreq ga enak banget"): tuning enak
   modul22 dikembalikan TANPA hold — extreme 75% (p0 1040000/p6 1228800)
