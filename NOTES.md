@@ -1,5 +1,22 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Keluhan WuWa kresek modul26 vs v1 public (2026-09-24, leader investigasi statis)
+
+- Laporan user: modul26 masih kureng + suara kresek di WuWa;
+  v1 public (v20) lancar. Tanya: apa karena belum keluar-masuk game.
+- Jawaban sementara: YA, wajib tutup total + buka lagi (boost hanya
+  apply saat event foreground + grace; game yg sudah terbuka saat
+  flash = boost belum aktif).
+- Hipotesis (diff 4f73ed7 vs HEAD, belum L2): v20 default extreme
+  floor 65% (p0/p6=1040000) + uclamp60 + tangga tengah warm75→
+  performance (tetap boost); modul26 performance-max floor 75%
+  (1040000/1228800) + uclamp70 + warm78→balanced restore-nol.
+  Max lebih panas → lebih cepat 78C → drop ke nol → dingin →
+  apply max lagi = flapping → kresek + kerasa drop. Perlu log
+  HP (alpha.log GAMEBOOST, boost_level, scaling_min, uclamp,
+  thermal) sebelum vonis. Opsi: A stabil rasa v1 (65/uclamp60 +
+  tangga tengah), B max-halus (tangga 65 di warm78).
+
 ## Probe Unisoc: HP user sendiri ums9230 P671L (2026-09-24)
 
 - KOREKSI: ini HP user, bukan tester-2. /dev/cpuctl ADA
