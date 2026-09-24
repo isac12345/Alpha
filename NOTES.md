@@ -729,3 +729,11 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   p6 768000/uclamp15). bash -n OK, shellcheck SC3043 76=76 (delta 0).
 - Bump module.prop 20→21 modul-only (version.txt/APK tetap 20, preseden b19).
 - Status: commit fusion-v2, BELUM CI/build, BELUM tes HP (L1 sandbox saja).
+
+## Insiden worker-latar b28 (2026-09-24, leader)
+- Dispatch dev-modul lapor "Model not found" TAPI agen tetap jalan diam-diam
+  di worktree work-b28-rasav20 (preseden b16 terulang). Temuan: 1 file diubah
+  (monitor.sh: bungkam INIT log + ubah kata log) — arah salah & basi karena
+  fix sudah dikirim leader (3b1d268, CI hijau, live). Worktree + branch
+  dihapus paksa, repo utama bersih. PELAJARAN: dispatch gagal-model =
+  cek `git worktree list` berkala; anggap gagal dispatch bisa hidup latar.
