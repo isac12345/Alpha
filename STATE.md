@@ -9,8 +9,11 @@
   uscfreq = 0 baris log (D7300-sugov_ext auto-skip).
   Audit MTK D7300: gov sudah performance (tak perlu sentuh),
   GPU/IO/floor sudah ke-cover; fpsgo-fbt + set_ux_uclamp =
-  wilayah fas-rs → SENGAJA tak disentuh. Terbuka: /dev/cpuctl
+  wilayah fas-rs → SENGAJA tak disentuh.   Terbuka: /dev/cpuctl
   di D7300 (minta `ls` ke tester).
+  ZIP: run 35941796110 SUCCESS → /sdcard/alpha/Alpha-Fusion-v1.zip
+  (5641290 byte, md5 404075d6859e9bf4a4c9687832f54a28,
+  versionCode=23, USCFREQ 2 hook). Lama di-rename modul22.
   MENUNGGU: push/CI + zip + tes HP (L2).
 
 - PERF-AGRO (2026-09-23, leader langsung, dev-modul masih down):
