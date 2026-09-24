@@ -1,7 +1,7 @@
 #!/system/bin/sh
 # Alpha Fusion - Game Boost Engine (Extreme / Performance / Balanced)
-# Rasa v20 rilis-public (modul28): extreme = game (lantai 65%),
-# performance = mild (lantai 35%, tangga panas 75C), balanced =
+# Rasa v20 + PGR-kenceng (modul32): extreme = game (lantai big 75%,
+# little 35%), performance = mild (lantai 35%, tangga panas 75C),
 # restore native (pendinginan). Generic semua device + game.
 # uscfreq-hold OFF (biang kresek modul23). POSIX sh; semua tulis =
 # dua kali tulis-baca-verifikasi.
@@ -453,9 +453,9 @@ _gb_read_native() {
 # ============================================================
 # CPU Apply — Lantai asimetris + uclamp + cpuset (TANPA governor)
 # CPU_OWNER dicatat di log, lantai TETAP JALAN walau fas-rs aktif.
-# Extreme: cluster big 65%, cluster little 35% (modul29: little
-# 65% = panas doang — game dipin ke big via cpuset — lalu SoC
-# throttle/flapping 75C = kresek + ngelag di WuWa).
+# Extreme: cluster big 75% (PGR-kenceng modul32), cluster little 35%
+# (modul29: little 65% = panas doang — game dipin ke big via cpuset —
+# lalu SoC throttle/flapping 75C = kresek + ngelag di WuWa).
 # ============================================================
 _gb_apply_cpu() {
     local _level="$1"
@@ -470,7 +470,7 @@ _gb_apply_cpu() {
         [ "$_mx" -gt "$_max_all" ] 2>/dev/null && _max_all="$_mx"
     done
 
-    # --- Frequency Floor (extreme: big 65% / little 35%; performance 35%) ---
+    # --- Frequency Floor (extreme: big 75% / little 35%; performance 35%) ---
     for _pol in $CPU_POLICIES; do
         _pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$_pol"
         [ -d "$_pol_dir" ] || continue
@@ -488,9 +488,9 @@ _gb_apply_cpu() {
         fi
         [ -z "$_hw_max" ] && continue
 
-        # T615: extreme big p6=1040000, little p0=614400 (native);
+        # T615: extreme big p6=snap(1365000)=rung ≤1365000, little p0=614400;
         # performance p0/p6=614400/768000; tanpa uscfreq-hold)
-        _floor=$((_hw_max * 65 / 100))
+        _floor=$((_hw_max * 75 / 100))
         if [ "$_level" = "performance" ]; then
             _floor=$((_hw_max * 35 / 100))
         fi
