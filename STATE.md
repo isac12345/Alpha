@@ -1,5 +1,17 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- REVERT-USCFREQ modul 25 (2026-09-24, leader langsung, konfirmasi user:
+  "sebelum uscfreq enak, sesudah uscfreq ga enak banget"): tuning enak
+  modul22 dikembalikan TANPA hold — extreme 75% (p0 1040000/p6 1228800)
+  + uclamp70, performance 50% (768000/768000) + uclamp25, balanced
+  90/90, perf min 20, ra 512, thermal 78C; uscfreq 5000/3000 TETAP OFF
+  (backup/restore dipertahankan agar HP modul23 pulih native 1000µs).
+  Bukti L1: bash -n 3/3, shellcheck -S error 0, sandbox OPP T615 →
+  extreme 1040000/1228800/uclamp70 + perf 768000/768000/uclamp25 +
+  USCFREQ 0 baris (restore CPU skip di sandbox minimal tanpa
+  scaling_max_freq — wajar; restore on-device terbukti RC2-SYNC).
+  CI modul24 SUCCESS (35944541189). MENUNGGU: push/CI modul25 + tes HP (L2).
+
 - REVERT-STABIL modul 24 (2026-09-24, leader langsung, keluhan Unisoc
   kresek+patah): kembali ke rasa v20 stabil. gameboost extreme 75→65%
   + uclamp 70→60, performance 50→35% + uclamp 25→15; uscfreq hold
