@@ -4,8 +4,8 @@
   "masih ngeleg + kresek" pasca-modul28): extreme big 65% / little
   35% (T615 p6=1040000 boost utuh, p0=614400 adem); perf/balanced/
   fallback tak berubah. L1: bash-n OK, shellcheck -S error 0,
-  sandbox 4/4 (extreme/perf/balanced/fallback). MENUNGGU: push/CI +
-  tes HP WuWa (L2).
+  sandbox 4/4 (extreme/perf/balanced/fallback). CI SUCCESS 35953811436.
+  MENUNGGU: tes HP WuWa (L2).
 - RASA-V20 modul 28 (2026-09-24, leader ambil alih): 3-tier v20 kembali
 
 - RASA-V20 modul 28 (2026-09-24, leader ambil alih): 3-tier v20 kembali
