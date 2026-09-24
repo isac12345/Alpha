@@ -1,5 +1,22 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Probe Unisoc tester-2: T615 ums9230 P671L (2026-09-24)
+
+- Chip SAMA kayak HP user (ums9230, p0 614400-1612000, p6
+  768000-1820000, uscfreq) → tuning modul 22 berlaku 1:1.
+  /dev/cpuset/asopt ADA → detect=unisoc. Mali-G57
+  23100000.gpu (sama). sda/sdb/c SUDAH [mq-deadline].
+- Beda: kernel Aetherium 3.2 + grup cpuset tambahan
+  (top-app-high-perf, anibooster) + node high_level_freq_*
+  (tak disentuh modul). Thermal: 2 zone read-error
+  (Invalid argument → cat kosong → di-skip aman),
+  pa-thmzone=-39742 lolos filter tapi dingin (aman).
+- Tanda tanya: /dev/cpuctl TAK ADA di probe → uclamp 25
+  kemungkinan SKIP di device ini (guard file, aman tapi
+  tak ngefek). Tabel OPP juga belum dikirim (asumsi sama
+  kayak T615 user, perlu konfirmasi).
+- BUTUH tester-2: cat OPP p0+p6 + `ls /dev/cpuctl`.
+
 ## Probe MTK tester: Dimensity 7300 mt6878 (2026-09-23)
 
 - Kernel custom Aetherium 6.1 + KernelSU, governor aktif
