@@ -1,5 +1,10 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- ZIP-SDCARD modul32 (2026-09-24): Alpha-Fusion-v32-pgr.zip (5643922
+  byte, md5 49c323ab61ca9ecb8590e924d973bc49) di /sdcard/alpha/.
+  Verified: versionCode=32 + floor 75% di dalam zip.
+  Zip lama dibersihkan, sisa 1 file.
+
 - MODUL32-PGR-KENCENG (2026-09-24, leader langsung, minta user: PGR
   kurang smooth, mau lebih kenceng): extreme big floor 65→75% SATU
   variabel (little 35% + uclamp60/15 + sched + VM + IO + GPU + cpuset
