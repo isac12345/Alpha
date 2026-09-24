@@ -18,6 +18,13 @@
   450000/400000 → PASTI ngefek); extreme75% → 1425000/1800000.
 - BUTUH: scaling_available_frequencies policy0+policy4
   untuk snap rung pasti.
+- HASIL OPP (tester kirim, sandbox tabel asli): p0 17 rung
+  (450000..2000000), p4 22 rung (400000..2500000). hw_max
+  diambil dari ekor tabel (2000000/2500000). performance 50%
+  → p0=1000000 (rung pas, 2.2x min native), p4=1200000
+  (3x min native). extreme 75% → p0=1500000, p4=1800000.
+  Tabel rapat → gain D7300 JAUH lebih besar dari T615.
+  Status: rumus generik VALID di 2 chipset (T615 + D7300).
 
 ## Perf agresif ringan + thermal 78C (2026-09-23, leader langsung, modul 22)
 
