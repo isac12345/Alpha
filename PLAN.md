@@ -91,3 +91,9 @@ Decode APK `AlphaBubble.apk` (run `35436973720`, `/usr/tmp/opencode/decode`, jan
 - B1 resolusi: `activeDisplayInfo()` (bukan `displayInfo()`) yang bermasalah — `find()` dari kiri selalu match `Physical size:` (baris pertama output `wm size`). Patch v3 = regex-only Override-FIRST (tanpa instruksi/label baru, grup 1-2 unchanged). `displayInfo()` tetap Physical murni = baseline persen anti-stacking.
 - BatteryLab: `openBatteryLab` explicit intent (`MainActivity.smali:5004`) + try/catch fallback Settings (`:5030-5037`), tanpa guard `resolveActivity`, tombol tanpa id → **B3 DILEWATI** (butuh patch menengah).
 - Root: tanpa `withTimeout` (`RootShell$exec$2.smali`, `BubbleService.su` waitFor) → **B2 DITUNDA**.
+
+## Modul30/31 — stabil rasa rilis + timpa-bersih (2026-09-24, L1 DONE, L2 TUNGGU HP)
+- [x] Modul30: profiles 4 angka revert v20 + NATIVE_VERSION=30 refresh snapshot + service hapus transient (CI 35957462703).
+- [x] Modul31: guard set_perm .bin + cleanup state saat timpa + uninstall bersih (kill watchdog/restore/timeout) (CI 35959277271).
+- [x] Zip modul31 (vCode 31, md5 45a4a55) di /sdcard/alpha, sisa 1 file.
+- [ ] L2: tes HP flash-timpa + WuWa 2-3 mnt (TUNGGU user, tanpa desak).
