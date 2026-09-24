@@ -1,5 +1,18 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- USCFREQ-HOLD modul 23 (2026-09-24, leader, "komboin" user):
+  tahan turun governor Unisoc: extreme down_rate 1000→5000µs,
+  performance →3000µs, restore native (snapshot key
+  <pol>_uscfreq_down_rate). work/uscfreq-hold → merge --no-ff.
+  Bukti L1: bash -n OK, shellcheck 0, sandbox roundtrip
+  1000→3000→1000 (perf) + 5000 (extreme) + policy tanpa
+  uscfreq = 0 baris log (D7300-sugov_ext auto-skip).
+  Audit MTK D7300: gov sudah performance (tak perlu sentuh),
+  GPU/IO/floor sudah ke-cover; fpsgo-fbt + set_ux_uclamp =
+  wilayah fas-rs → SENGAJA tak disentuh. Terbuka: /dev/cpuctl
+  di D7300 (minta `ls` ke tester).
+  MENUNGGU: push/CI + zip + tes HP (L2).
+
 - PERF-AGRO (2026-09-23, leader langsung, dev-modul masih down):
   user minta performance galak dikit + balanced naik aman + thermal
   jangan cepat step-down. Cabang work/perf-agro → merge --no-ff
