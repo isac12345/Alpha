@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 // - timeout default 20 detik (rentang 15-30 dtk per perintah)
 // - waitFor dengan timeout, anggap gagal bila timeout
 // - catat exit code via Log.w
-// - quoting aman via quoteArg/buildCommand (tanpa拼接 string mentah dari input user)
+// - quoting aman via quoteArg/buildCommand (tanpa gabung string mentah dari input user)
 public final class RootExecutor {
     private static final String TAG = "RootExecutor";
     public static final long DEFAULT_TIMEOUT_MS = 20000L;
