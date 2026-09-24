@@ -1,5 +1,31 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Floor asimetris modul29 — kresek+ngelag persisten pasca-rasa-v20 (2026-09-24, leader langsung)
+
+- Keluhan: "masih sama ngeleg + suara rusak kresek" setelah modul28
+  (rasa-v20 3-tier). Investigasi diff 4f73ed7 vs HEAD menemukan
+  diferensiator yang terlewat di banding modul27:
+  - v20 "lancar" = lantai CPU TAK PERNAH apply (bug CPU_POLICIES
+    kosong, 0 baris CPU_FREQ di log) — bukan karena angka 65% enak.
+    cpuset 6-7 + uclamp60 + GPU lock + VM/IO v20 SAMA dengan sekarang
+    (sudah aktif di v20, bukan biang).
+  - modul27 fix bug → lantai 1040000 apply di SEMUA core termasuk
+    6 little A55 → panas sia-sia (game dipin ke big 6-7 via cpuset,
+    floor little = 0 guna) → SoC throttle + flapping 75C
+    extreme↔performance (rewrite ~30 node tiap 15 dtk) = kresek + drop.
+- Fix (modul29, +23/-5, 2 file): `_gb_apply_cpu()` extreme = big 65%,
+  little 35% (=614400 native di T615); performance tetap 35% semua;
+  topologi tak dikenal = fallback perilaku lama (65% semua).
+  T615 sandbox: extreme p0=614400/p6=1040000 (boost game utuh, little
+  adem); perf 614400/768000 (tak berubah); balanced restore-only;
+  fallback no-cpuinfo p0=1000000/p4=1200000 (lama lestari).
+  bash -n OK, shellcheck -S error 0. Bump module.prop 28→29 modul-only.
+- Status: L1 sandbox. MENUNGGU push/CI + tes HP WuWa 10-15 mnt (L2).
+  Bila masih kresek: kandidat berikut = cpuset 2-core terlalu sempit
+  (audio callback adu dengan render di 6-7) → opsi lebarkan top-app
+  ke 0-1+6-7; atau uperf/fas-rs adu min_freq (cek alpha.log).
+  JANGAN ubah VM/IO/cpuset dulu (satu variabel per iterasi).
+
 ## Keluhan WuWa kresek modul26 vs v1 public (2026-09-24, leader investigasi statis)
 
 - Laporan user: modul26 masih kureng + suara kresek di WuWa;
