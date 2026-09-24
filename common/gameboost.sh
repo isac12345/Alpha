@@ -442,14 +442,26 @@ _gb_read_native() {
 }
 
 # ============================================================
-# CPU Apply — Lantai 65/35% + uclamp + cpuset (TANPA governor)
+# CPU Apply — Lantai asimetris + uclamp + cpuset (TANPA governor)
 # CPU_OWNER dicatat di log, lantai TETAP JALAN walau fas-rs aktif.
+# Extreme: cluster big 65%, cluster little 35% (modul29: little
+# 65% = panas doang — game dipin ke big via cpuset — lalu SoC
+# throttle/flapping 75C = kresek + ngelag di WuWa).
 # ============================================================
 _gb_apply_cpu() {
     local _level="$1"
     local _pol _pol_dir _avail_list _opp_list _hw_max _floor _target_min
+    local _max_all=0 _mx
 
-    # --- Frequency Floor (rasa v20: extreme 65%, performance 35%) ---
+    # Cluster tercepat = big (metode sama kayak _gb_topo_detect).
+    # Tak dikenal (_max_all=0) = semua dianggap big (perilaku lama).
+    for _pol in $CPU_POLICIES; do
+        _mx=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/cpuinfo_max_freq" 2>/dev/null | tr -d '[:space:]')
+        case "$_mx" in ''|*[!0-9]*) continue ;; esac
+        [ "$_mx" -gt "$_max_all" ] 2>/dev/null && _max_all="$_mx"
+    done
+
+    # --- Frequency Floor (extreme: big 65% / little 35%; performance 35%) ---
     for _pol in $CPU_POLICIES; do
         _pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$_pol"
         [ -d "$_pol_dir" ] || continue
@@ -467,10 +479,16 @@ _gb_apply_cpu() {
         fi
         [ -z "$_hw_max" ] && continue
 
-        # Rasa v20 (T615: extreme p0/p6=1040000; performance
-        # p0/p6=614400/768000; tanpa uscfreq-hold)
+        # T615: extreme big p6=1040000, little p0=614400 (native);
+        # performance p0/p6=614400/768000; tanpa uscfreq-hold)
         _floor=$((_hw_max * 65 / 100))
         if [ "$_level" = "performance" ]; then
+            _floor=$((_hw_max * 35 / 100))
+        fi
+        # Extreme + topologi dikenal + cluster kecil: turun ke 35%
+        # (game dipin ke big; little dikunci tinggi = setrika).
+        if [ "$_level" = "extreme" ] && [ "$_max_all" -gt 0 ] 2>/dev/null \
+                && [ "$_hw_max" -lt "$_max_all" ] 2>/dev/null; then
             _floor=$((_hw_max * 35 / 100))
         fi
 
