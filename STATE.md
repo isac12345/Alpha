@@ -1,5 +1,13 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- ISOLASI-KRESEK (2026-09-24, tugas user, leader): Q1 = merge 2-level
+  modul26 DISENGAJA (minta user, 69bcb9d). Angka user TERVERIFIKASI
+  + 3 delta tambahan (sched/VM/fas-rs); koreksi GPU 85→90 = jalur
+  engine bukan gameboost. HEAD sudah 3-tier lagi (sedang vs max
+  terpisah). HP user masih modul26 (live versionCode=26); stune ABSEN
+  = no-op. Skrip /sdcard/alpha/isolasi-kresek.sh siap. MENUNGGU: uji
+  live S0-S5 dengan user (reproduksi scene + dengar kresek).
+
 - FLOOR-ASIMETRIS modul 29 (2026-09-24, leader langsung, keluhan
   "masih ngeleg + kresek" pasca-modul28): extreme big 65% / little
   35% (T615 p6=1040000 boost utuh, p0=614400 adem); perf/balanced/

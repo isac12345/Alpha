@@ -1,5 +1,38 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Isolasi kresek: 2-level modul26 disengaja + skrip satu-variabel (2026-09-24, tugas user)
+
+- Q1 DISENGAJA, bukan kecelakaan: commit 69bcb9d "merge 2-level modul26"
+  atas permintaan user ("extreme ga ada di aplikasi → tuning max pindah
+  ke performance saja"). performance = ex-extreme (floor 75%
+  1040000/1228800, uclamp70, stune100, sched 40/40/30/1000, VM HSIN,
+  IO 4096, fas-rs fast); extreme = alias. Bukti: pesan commit + STATE.
+- Verifikasi angka user (diff 4f73ed7 vs 69bcb9d): floor 35→75 BENAR
+  (catatan: 65→75 terjadi duluan di modul22-23, modul26 hanya pindah
+  tier); uclamp 15→70 BENAR; stune 40→100 BENAR; IO 2048→4096 BENAR;
+  TAMBAHAN tak disebut user: sched 70/70/60/400→40/40/30/1000, VM
+  mild→HSIN, fas-rs performance→fast. KOREKSI: "GPU 85→90" user =
+  profiles.sh jalur engine (tap profil APK, modul22), BUKAN jalur
+  gameboost (lock GPU identik di kedua build).
+- Q2: tier "sedang vs maksimal" SUDAH terpisah lagi di HEAD (modul28
+  revert 3-tier + modul29 asimetris): extreme = big65/uclamp60/
+  stune100/IO4096/fast; performance = 35/uclamp15/stune40/IO2048/
+  fas-rs performance; balanced = restore. Angka 75/70 modul26 SUDAH
+  TIDAK ADA di kode. Yang terpasang di HP user = modul26 (cek live
+  versionCode=26) → user menguji kode basi; ZIP modul29 ada di
+  /sdcard tapi BELUM di-flash (konfirmasi user diperlukan).
+- Temuan probe read-only live: /dev/stune ABSEN di HP ini → stune100
+  modul26 = NO-OP di sini (coret dari daftar tersangka); uclamp node
+  ADA (kini 0.00 native, boost tak aktif); floor kini native
+  614400/768000. Tersangka tersisa: floor75, uclamp70, sched, VM,
+  IO4096, fas-rs fast.
+- Skrip isolasi: /sdcard/alpha/isolasi-kresek.sh (sh -n + shellcheck
+  OK): save/s0(baseline)/s1(full)/s2(floor)/s3(uclamp)/s4(stune)/
+  s5(restore)/status(suhu max + state). Matriks jalan S0→S1→S2→S3→
+  S4→S5, tiap langkah main scene SAMA 2-3 mnt + catat suhu. S4
+  diprediksi SKIP (node absen) = bukti no-op. Tanpa fix tuning sampai
+  hasil isolasi keluar (perintah user).
+
 ## Floor asimetris modul29 — kresek+ngelag persisten pasca-rasa-v20 (2026-09-24, leader langsung)
 
 - Keluhan: "masih sama ngeleg + suara rusak kresek" setelah modul28
