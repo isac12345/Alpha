@@ -6,8 +6,9 @@
   tetap big; background tetap little. Koreksi leader: topologi tak
   dikenal kembali ke perilaku lama (skip cpuset), bukan all-big.
 - Bukti L1: sh-n OK, shellcheck -S error 0, sandbox (normal/little<2/
-  unknown-topologi). Merge 72dfb81, tanpa bump versi.
-- BELUM: push + CI + tes HP (PGR + WuWa).
+  unknown-topologi). Merge 72dfb81, tanpa bump versi. Push DONE +
+  CI SUCCESS `36042556279` (46s).
+- BELUM: tes HP (PGR + WuWa).
 
 ## PGR-kenceng modul32: extreme big 75% satu variabel (2026-09-24)
 

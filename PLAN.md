@@ -6,7 +6,8 @@
   skip cpuset (merge 72dfb81, tanpa bump versi).
 - [x] L1: sh-n OK, shellcheck 0, sandbox 3 skenario (normal, little<2,
   topologi-unknown).
-- [ ] Push + CI (TUNGGU perintah user). [ ] L2: tes HP PGR + WuWa.
+- [x] Push + CI SUCCESS `36042556279` (46s).
+- [ ] L2: tes HP PGR + WuWa (TUNGGU user).
 
 ## Selesai dan lolos tes HP
 - [x] v1 build 3 (run 35445291496, tag `v3-tested`): B1 Override-first + manifest POST_NOTIFICATIONS/debuggable=false. Tes: label resolusi benar.
