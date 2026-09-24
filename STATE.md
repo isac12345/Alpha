@@ -10,6 +10,7 @@
   snapshot basi; service.sh boot hapus transient. Floor asimetris
   modul29 dipertahankan. Bump 29→30 modul-only (APK 20).
   L1: sh-n 3/3, shellcheck 0, sandbox refresh (basi→30, rerun md5 sama).
+  CI SUCCESS 35957462703.
   DISPATCH-GAGAL dev-modul: `Model not found:
   opencode/mimo-v2.5-free` (sama kayak b28) → leader ambil alih, tanpa
   ganti model (AGENTS p6). MENUNGGU: push/CI + tes HP WuWa (L2).
