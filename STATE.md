@@ -24,6 +24,12 @@
   OK + sandbox TABEL ASLI → p0=768000 p6=768000. Live snapshot:
   min_freq masih native (boost tidak aktif saat dicek).
   MENUNGGU: push/CI + tes HP (L2).
+- ZIP-SDCARD (2026-09-23): run 35914538728 SUCCESS (kode
+  perf50+modul22). Artefak Alpha-Fusion-v1 diunduh ke
+  /sdcard/alpha/Alpha-Fusion-v1.zip (5640296 byte,
+  md5 9cfcfa979b95c6896a440ecb9419dce) — isi terverifikasi:
+  versionCode=22, floor 50%, uclamp 25. L1 LENGKAP (sandbox
+  + CI hijau). MENUNGGU L2: tes HP user + tester D7300.
 
 - FLOOR-75 (2026-09-23): dispatch dev-modul GAGAL — model
   `opencode/mimo-v2.5-free` retired ("Model not found:
