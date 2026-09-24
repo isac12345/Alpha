@@ -1,5 +1,17 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## PGR-kenceng modul32: extreme big 75% satu variabel (2026-09-24)
+
+- Minta user: PGR kurang smooth, mau lebih kenceng jelas (WuWa
+  dilupakan dulu, user cari tahu sendiri nanti).
+- Perubahan (5ad155d, 2 file): lantai big extreme 65→75% saja.
+  T615 sandbox: p6 1040000→1228800, p0 tetap 614400, performance
+  tetap. Tangga thermal 75→performance (masih boost, bukan nol)
+  jadi ayunan max-nol ala modul26 tidak terulang.
+- PELAJARAN: dispatch dev-modul GAGAL ke-4x (mimo-v2.5-free retired)
+  → untuk edit modul kecil (<20 baris) leader langsung kerjakan
+  tanpa dispatch (hemat 1 putaran).
+
 ## Isolasi kresek: 2-level modul26 disengaja + skrip satu-variabel (2026-09-24, tugas user)
 
 - Q1 DISENGAJA, bukan kecelakaan: commit 69bcb9d "merge 2-level modul26"

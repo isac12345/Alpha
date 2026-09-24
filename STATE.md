@@ -1,5 +1,15 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- MODUL32-PGR-KENCENG (2026-09-24, leader langsung, minta user: PGR
+  kurang smooth, mau lebih kenceng): extreme big floor 65→75% SATU
+  variabel (little 35% + uclamp60/15 + sched + VM + IO + GPU + cpuset
+  + thermal 75-85-95 TAK berubah). T615 sandbox: p6 1040000→1228800
+  (+2 rung), p0 tetap 614400, performance tetap 614400/768000.
+  L1: bash-n OK, shellcheck -S error 0, sandbox OPP, diff 2 file
+  (gameboost 8+/8- + module.prop 31→32 modul-only, APK tetap 20).
+  Commit 5ad155d, push fusion-v2 DONE, CI SUCCESS 36016623318.
+  DISPATCH-GAGAL dev-modul (Model not found: mimo-v2.5-free, ke-4x)
+  → leader ambil alih (AGENTS p6). MENUNGGU L2: flash-timpa + PGR.
 - MODUL31-TIMPA-BERSIH (2026-09-24, leader langsung, minta user: flash
   timpa tanpa uninstall, uninstall bersih juga): biang error tiap flash
   = 8x set_perm .bin yang TAK ADA di zip (hanya di zip tahap rilis) ->

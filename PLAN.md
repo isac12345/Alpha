@@ -92,6 +92,10 @@ Decode APK `AlphaBubble.apk` (run `35436973720`, `/usr/tmp/opencode/decode`, jan
 - BatteryLab: `openBatteryLab` explicit intent (`MainActivity.smali:5004`) + try/catch fallback Settings (`:5030-5037`), tanpa guard `resolveActivity`, tombol tanpa id → **B3 DILEWATI** (butuh patch menengah).
 - Root: tanpa `withTimeout` (`RootShell$exec$2.smali`, `BubbleService.su` waitFor) → **B2 DITUNDA**.
 
+## Modul32 — PGR-kenceng (2026-09-24, L1 DONE, L2 TUNGGU HP)
+- [x] Extreme big floor 65→75% (satu variabel; little 35% + uclamp/sched/VM/IO/GPU/cpuset/thermal tetap). T615: p6 1040000→1228800, p0 tetap 614400, performance tetap (CI 36016623318, commit 5ad155d).
+- [ ] L2: tes HP flash-timpa + PGR 2-3 stage (TUNGGU user). Bila panas/kresek: kandidat revert = floor kembali 65%.
+
 ## Modul30/31 — stabil rasa rilis + timpa-bersih (2026-09-24, L1 DONE, L2 TUNGGU HP)
 - [x] Modul30: profiles 4 angka revert v20 + NATIVE_VERSION=30 refresh snapshot + service hapus transient (CI 35957462703).
 - [x] Modul31: guard set_perm .bin + cleanup state saat timpa + uninstall bersih (kill watchdog/restore/timeout) (CI 35959277271).
