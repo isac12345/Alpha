@@ -1,5 +1,10 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- RASA-V20 modul 28 (2026-09-24, leader ambil alih): 3-tier v20 kembali
+  (extreme65/uclamp60 game + mild35/15 tangga 75C + balanced restore).
+  L1: bash-n OK, shellcheck 0, sandbox 3/3, CI SUCCESS 35948936810,
+  live extreme+restore persis, monitor pid 14630 INIT OK.
+  MENUNGGU L2: tes WuWa user.
 - DISPATCH-GAGAL dev-modul b28 (2026-09-24, leader): Task revert rasa-v20
   gagal dispatch — error persis: `Model not found: opencode/mimo-v2.5-free.
   Did you mean: mimo-v2.6-flash-free, ...`. Sesuai AGENTS p6: tanpa ganti

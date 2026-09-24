@@ -42,6 +42,20 @@
   = game jalan TANPA lantai CPU (governor kejar-kejaran) + cpuset
   6-7 + uclamp70; butuh tes WuWa ulang pasca-fix (L2 user).
 
+## Rasa-v20 modul28 (2026-09-24, leader ambil alih — dev-modul 429)
+
+- Dispatch dev-modul GAGAL (mimo-v2.5-free retired) → leader langsung.
+- Isi (3b1d268): gameboost 3-tier v20 (extreme65/uclamp60/stune100/
+  sched40s/VM-HSIN/IO4096/fast; performance35/uclamp15/stune40/
+  sched70s/VM-mild/IO2048; balanced restore-only) + monitor target
+  extreme + warm75-mild + force-performance. Dipertahankan: fail-safe
+  balanced, CPU_POLICIES+INIT, range-filter, explicit-write, uscfreq
+  backup-only, GPU-gov fallback.
+- L1: bash-n OK, shellcheck 0, sandbox 3/3 (1040000/1040000+60;
+  614400/768000+15; restore-only), CI SUCCESS 35948936810,
+  live extreme 1040000/1040000+60.00→restore persis, monitor pid
+  14630 INIT OK. MENUNGGU L2: tes WuWa user.
+
 ## Banding v20-rilis vs modul27 (2026-09-24, leader, statis penuh)
 
 - Perintah user: bandingkan rilis public vs tuning sekarang.
