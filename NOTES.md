@@ -11,6 +11,7 @@
 - PELAJARAN: dispatch dev-modul GAGAL ke-4x (mimo-v2.5-free retired)
   → untuk edit modul kecil (<20 baris) leader langsung kerjakan
   tanpa dispatch (hemat 1 putaran).
+- L2-PGR: user 2026-09-25 lapor gacor/OK; WuWa belum dites.
 
 ## Isolasi kresek: 2-level modul26 disengaja + skrip satu-variabel (2026-09-24, tugas user)
 

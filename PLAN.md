@@ -94,7 +94,8 @@ Decode APK `AlphaBubble.apk` (run `35436973720`, `/usr/tmp/opencode/decode`, jan
 
 ## Modul32 — PGR-kenceng (2026-09-24, L1 DONE, L2 TUNGGU HP)
 - [x] Extreme big floor 65→75% (satu variabel; little 35% + uclamp/sched/VM/IO/GPU/cpuset/thermal tetap). T615: p6 1040000→1228800, p0 tetap 614400, performance tetap (CI 36016623318, commit 5ad155d).
-- [ ] L2: tes HP flash-timpa + PGR 2-3 stage (TUNGGU user). Bila panas/kresek: kandidat revert = floor kembali 65%.
+- [x] L2-PGR: user 2026-09-25 lapor gacor/OK.
+- [ ] L2-WuWa: tes HP WuWa (TUNGGU user). Bila panas/kresek: kandidat revert = floor kembali 65%.
 
 ## Modul30/31 — stabil rasa rilis + timpa-bersih (2026-09-24, L1 DONE, L2 TUNGGU HP)
 - [x] Modul30: profiles 4 angka revert v20 + NATIVE_VERSION=30 refresh snapshot + service hapus transient (CI 35957462703).

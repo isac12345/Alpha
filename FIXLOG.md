@@ -21,6 +21,12 @@ Bahasa sederhana biar gampang diingat.
   (perangkat setara RC2 penuh).
 - Arsip: modul di rilis `v1.0.0` + `/sdcard/alpha/Alpha-Fusion-v1.zip`.
 
+## 2026-09-25 — Modul32 PGR-kenceng
+- L1: CI `36016623318` SUCCESS; T615 sandbox p6 1040000→1228800,
+  p0 tetap 614400; zip `Alpha-Fusion-v32-pgr.zip` md5 `49c323ab`.
+- L2: user 2026-09-25 lapor PGR gacor/OK; WuWa belum dites.
+- Arsip: BELUM push ke `arsip`.
+
 ## 2026-09-19 — Build 7: 1 ikon + shortcut + notifikasi monokrom
 - L1: pipeline SUCCESS saat itu (ID run sudah kedaluwarsa di GitHub,
   tidak bisa dicek ulang; tag lokal `v7-tested` ada).
