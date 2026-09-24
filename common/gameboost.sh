@@ -1,8 +1,8 @@
 #!/system/bin/sh
 # Alpha Fusion - Game Boost Engine (Extreme / Balanced / Performance)
 # Paritas HSIN extreme + performance; generic untuk semua device + game.
-# Balanced = restore native (pendinginan), extreme = lantai 75%,
-# performance = lantai 50%. POSIX sh; semua tulis = dua kali
+# Balanced = restore native (pendinginan), extreme = lantai 65%,
+# performance = lantai 35%. POSIX sh; semua tulis = dua kali
 # tulis-baca-verifikasi.
 # Sakelar: DISABLE_GAMEBOOST, NO_CPUSET, GAMEBOOST_NO_VM, GAMEBOOST_LEVEL
 
@@ -442,14 +442,14 @@ _gb_read_native() {
 }
 
 # ============================================================
-# CPU Apply — Lantai 75% + uclamp + cpuset (TANPA governor)
+# CPU Apply — Lantai 65% + uclamp + cpuset (TANPA governor)
 # CPU_OWNER dicatat di log, lantai TETAP JALAN walau fas-rs aktif.
 # ============================================================
 _gb_apply_cpu() {
     local _level="$1"
     local _pol _pol_dir _avail_list _opp_list _hw_max _floor _target_min
 
-    # --- Frequency Floor (75% OPP tertinggi) ---
+    # --- Frequency Floor (65% OPP tertinggi) ---
     for _pol in $CPU_POLICIES; do
         _pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$_pol"
         [ -d "$_pol_dir" ] || continue
@@ -468,12 +468,13 @@ _gb_apply_cpu() {
         [ -z "$_hw_max" ] && continue
 
         if [ "$_level" = "performance" ]; then
-            # Performance: lantai 50% (OPP asli T615: p0 806000->768000
-            # naik 1 rung; p6 910000->768000 tetap; 2026-09-23)
-            _floor=$((_hw_max * 50 / 100))
+            # Performance: lantai 35% stabil v20 (2026-09-24 revert:
+            # 50% hanya +1 rung p0 tapi panas + kresek di T615)
+            _floor=$((_hw_max * 35 / 100))
         else
-            # Extreme: lantai 75%
-            _floor=$((_hw_max * 75 / 100))
+            # Extreme: lantai 65% stabil v20 (75% hanya +1 rung p6,
+            # biaya +9C/5dtk + ayunan thermal → patah-patah)
+            _floor=$((_hw_max * 65 / 100))
         fi
 
         if [ -n "$_opp_list" ]; then
@@ -507,9 +508,9 @@ _gb_apply_cpu() {
     # --- uclamp ---
     if [ -d "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}" ]; then
         case "$_level" in
-            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "70" "UCLAMP"
+            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "60" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
-            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "25" "UCLAMP"
+            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "15" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
         esac
     fi
@@ -530,20 +531,11 @@ _gb_apply_cpu() {
         extreme)     _gb_sched_apply_level 40 40 30 1000 ;;
         performance) _gb_sched_apply_level 70 70 60 400 ;;
     esac
-
-    # --- uscfreq down_rate hold (Unisoc; tahan freq nangkring anti-stutter.
-    # Hanya bila dir uscfreq ada — governor lain seperti sugov_ext auto-skip) ---
-    local _down_us=""
-    case "$_level" in
-        extreme)     _down_us="5000" ;;
-        performance) _down_us="3000" ;;
-    esac
-    if [ -n "$_down_us" ]; then
-        for _pol in $CPU_POLICIES; do
-            [ -f "$SYSFS_CPU_PREFIX/cpufreq/$_pol/uscfreq/down_rate_limit_us" ] || continue
-            _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/uscfreq/down_rate_limit_us" "$_down_us" "USCFREQ"
-        done
-    fi
+    # NOTE 2026-09-24 revert: uscfreq down_rate hold (5000/3000) DIMATIKAN.
+    # Di T615 menahan freq tinggi → panas menumpuk → throttle ayun
+    # extreme↔balanced → suara kresek + gameplay patah. Kembali native
+    # (1000µs). Blok backup/restore di bawah SENGAJA dipertahankan agar
+    # HP yang sudah kena modul23 bisa pulih ke native saat gb_restore.
 }
 
 # ============================================================

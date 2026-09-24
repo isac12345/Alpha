@@ -1,5 +1,16 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- REVERT-STABIL modul 24 (2026-09-24, leader langsung, keluhan Unisoc
+  kresek+patah): kembali ke rasa v20 stabil. gameboost extreme 75→65%
+  + uclamp 70→60, performance 50→35% + uclamp 25→15; uscfreq hold
+  5000/3000 DIMATIKAN (backup/restore dipertahankan agar HP modul23
+  pulih native); profiles balanced 90→85 (CPU+GPU), perf min 20→15,
+  ra 512→256; monitor thermal 78→75C (2 titik + log). Bump 23→24
+  modul-only (APK tetap 20). Bukti L1: bash -n 3/3, shellcheck -S
+  error 0, sandbox OPP T615 asli → extreme p0/p6=1040000/uclamp60,
+  performance 614400/768000/uclamp15, USCFREQ 0 baris, restore native.
+  MENUNGGU: push/CI + zip + tes HP (L2).
+
 - USCFREQ-HOLD modul 23 (2026-09-24, leader, "komboin" user):
   tahan turun governor Unisoc: extreme down_rate 1000→5000µs,
   performance →3000µs, restore native (snapshot key

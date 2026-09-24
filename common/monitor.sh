@@ -428,8 +428,8 @@ handle_foreground_event() {
                     elif [ "$current_temp" -ge 85000 ] 2>/dev/null; then
                         monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 85000, forcing balanced"
                         GB_FORCED_LEVEL="balanced"
-                    elif [ "$current_temp" -ge 78000 ] 2>/dev/null; then
-                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 78000, forcing performance"
+                    elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
+                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 75000, forcing performance"
                         GB_FORCED_LEVEL="performance"
                     else
                         GB_FORCED_LEVEL=""
@@ -708,7 +708,7 @@ check_gb_grace_period() {
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
                 rm -f "$GB_PENDING_FILE"
                 monitor_log "GAMEBOOST" "HIGH TEMP: ${current_temp}mC >= 85000, forced balanced"
-            elif [ "$current_temp" -ge 78000 ] 2>/dev/null; then
+            elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
                 # Warm: step down ke resep performance SEKARANG (bukan cuma var)
                 if [ -z "$GB_FORCED_LEVEL" ]; then
                     GB_FORCED_LEVEL="performance"
@@ -719,7 +719,7 @@ check_gb_grace_period() {
                         monitor_log "GAMEBOOST" "WARN: gb_apply unavailable during warm temp step-down"
                     fi
                     rm -f "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
-                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 78000, stepped down to performance"
+                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 75000, stepped down to performance"
                 fi
             elif [ "$current_temp" -lt 70000 ] 2>/dev/null; then
                 # Cool down: check if we were forced
