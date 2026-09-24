@@ -44,6 +44,31 @@ printf '%s\n' "1" > "$WORK_DIR/.alpha_installed" 2>/dev/null
 rm -f "$WORK_DIR/detected.conf"
 rm -f "$WORK_DIR/alpha.log"
 
+# modul31: bersih state basi saat flash-timpa (tanpa uninstall dulu).
+# rm -f tidak pernah gagal, jadi aman dijalankan ulang berapa kali pun.
+# Yang DIHAPUS (transient/snapshot): boost_level, GAMEBOOST_LEVEL,
+# .gb_active, .gb_cooldown_count, .gb_level_orig, .gb_pending, pids,
+# native_boost.conf BASI (tanpa NATIVE_VERSION=30 -> backup ulang fresh
+# saat boot, bukan restore nilai boost lama), log + cache monitor.
+# Yang DIPERTAHANKAN (data user): game_profile_map.conf (daftar game),
+# active_profile/current_state, SF_LATCH_UNSIGNALED, .disable_tweaks,
+# .alpha/.companion/.asoulopt_installed.
+rm -f "$WORK_DIR/boost_level" "$WORK_DIR/GAMEBOOST_LEVEL" \
+    "$WORK_DIR/.gb_active" "$WORK_DIR/.gb_cooldown_count" \
+    "$WORK_DIR/.gb_level_orig" "$WORK_DIR/.gb_pending" \
+    "$WORK_DIR/monitor.pid" "$WORK_DIR/watchdog.pid" \
+    "$WORK_DIR/apply.lock" "$WORK_DIR/.profile_transitions.log" \
+    "$WORK_DIR/.daily_loadbalanced" "$WORK_DIR/.daily_loadhigh_count" \
+    "$WORK_DIR/.foreground-events" "$WORK_DIR/.foreground_last_pkg" \
+    "$WORK_DIR/.hud_foreground_pkg" 2>/dev/null
+rm -f "$WORK_DIR"/.monitor-dumpsys.* 2>/dev/null
+if [ -f "$WORK_DIR/native_boost.conf" ]; then
+    if ! grep -q "^NATIVE_VERSION=30" "$WORK_DIR/native_boost.conf" 2>/dev/null; then
+        rm -f "$WORK_DIR/native_boost.conf" 2>/dev/null
+        ui_print "- Snapshot native basi dibuang, backup ulang fresh saat boot."
+    fi
+fi
+
 # ---------------------------------------------------------
 # 3. Pilih config Uperf sesuai chipset (subsistem thread/cgroup classifier saja)
 # ---------------------------------------------------------
@@ -209,14 +234,19 @@ set_perm "$MODPATH/common/sync_uperf_exclusion.sh" 0 0 0755
 set_perm "$MODPATH/common/engine_manager.sh" 0 0 0755
 set_perm "$MODPATH/common/game_add.sh" 0 0 0755
 set_perm "$MODPATH/common/render_manager.sh" 0 0 0755
-set_perm "$MODPATH/common/monitor.bin" 0 0 0755
-set_perm "$MODPATH/common/watchdog.bin" 0 0 0755
-set_perm "$MODPATH/common/apply_now.bin" 0 0 0755
-set_perm "$MODPATH/common/game_add.bin" 0 0 0755
-set_perm "$MODPATH/common/engine_manager.bin" 0 0 0755
-set_perm "$MODPATH/common/game_manager.bin" 0 0 0755
-set_perm "$MODPATH/common/sync_uperf_exclusion.bin" 0 0 0755
-set_perm "$MODPATH/bin/pgr-log.bin" 0 0 0755
+# modul31: .bin hanya ada di zip tahap rilis (encode shc), tidak ada di
+# zip git. Guard [ -f ] supaya tidak error "stat failed" saat file absen
+# (biang error tiap flash, bersih maupun timpa). Tak ada yang mengeksekusi
+# .bin (service.sh selalu pakai .sh), jadi skip = aman.
+for _alpha_bin in "$MODPATH/common/monitor.bin" "$MODPATH/common/watchdog.bin" \
+    "$MODPATH/common/apply_now.bin" "$MODPATH/common/game_add.bin" \
+    "$MODPATH/common/engine_manager.bin" "$MODPATH/common/game_manager.bin" \
+    "$MODPATH/common/sync_uperf_exclusion.bin" "$MODPATH/bin/pgr-log.bin"; do
+    if [ -f "$_alpha_bin" ]; then
+        set_perm "$_alpha_bin" 0 0 0755
+    fi
+done
+unset _alpha_bin
 set_perm "$MODPATH/common/asoulopt_install.sh" 0 0 0644
 set_perm "$MODPATH/common/companion_install.sh" 0 0 0644
 set_perm "$MODPATH/common/profiles.sh" 0 0 0644

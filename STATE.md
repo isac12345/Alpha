@@ -1,5 +1,17 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- MODUL31-TIMPA-BERSIH (2026-09-24, leader langsung, minta user: flash
+  timpa tanpa uninstall, uninstall bersih juga): biang error tiap flash
+  = 8x set_perm .bin yang TAK ADA di zip (hanya di zip tahap rilis) ->
+  guard [ -f ]; customize bersihkan state basi saat timpa (transient +
+  snapshot tanpa NATIVE_VERSION=30, game list dipertahankan); uninstall
+  kill monitor+watchdog+pgr-log via cmdline + gb_restore best-effort +
+  bersih total (game list dipertahankan) + wait bounded 60 dtk.
+  L1: sh-n 3/3, shellcheck 0, sandbox 3/3 (cleanup, bin-guard 2a/2b,
+  uninstall penuh exit 0). Bump 30->31 modul-only. DISPATCH-GAGAL
+  dev-modul (mimo retired) -> leader ambil alih (AGENTS p6). MENUNGGU:
+  push/CI + tes HP timpa langsung (L2).
+
 - MODUL30-STABIL-RILIS (2026-09-24, leader langsung, keluhan "garapan ga
   stabil + rilis pun kresek"): audit 4f73ed7..HEAD = gameboost rasa-v20
   sudah sama (65/35/uclamp60-15/sched40-70/VM/IO/fas-rs/cpuset/thermal

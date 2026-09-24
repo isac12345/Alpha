@@ -815,3 +815,26 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - Status: MENUNGGU push/CI + tes HP WuWa 10-15 mnt (L2). Cara tes: flash
   modul30 (reboot, main scene sama), dengar kresek + cek alpha.log
   (APPLIED extreme, INIT CPU_POLICIES, transient dibersihkan).
+
+## Modul31 timpa-bersih — flash tanpa uninstall + uninstall bersih (2026-09-24, leader langsung, minta user)
+
+- Keluhan: tiap flash ada error/gagal; malas uninstall dulu (= 2x kerja).
+- Biang error: customize.sh panggil `set_perm` ke 8 file `.bin` yang TIDAK
+  ADA di zip git (hanya muncul di zip tahap rilis via shc) -> tiap flash
+  (bersih maupun timpa) log installer penuh "stat failed". Fix: loop guard
+  `[ -f ]` (ada->set_perm, absen->skip diam). .bin tak pernah dieksekusi
+  (service.sh selalu .sh) jadi skip = aman. Bukti sandbox: absen = 0 call
+  exit 0; ada 1 = 1 call.
+- Flash-timpa: Magisk tidak wipe dir modul + /data/adb/alpha lestari, jadi
+  customize kini rm -f transient (boost_level/GAMEBOOST_LEVEL/.gb_* /pids/
+  log/cache) + snapshot basi (tanpa NATIVE_VERSION=30). Data user
+  dipertahankan: game_profile_map.conf, active_profile/current_state,
+  SF_LATCH, .disable_tweaks, penanda install. rm -f = idempoten.
+- Uninstall bersih: kill monitor+watchdog+pgr-log via cmdline (anti-PID-
+  reuse), gb_restore best-effort (lepas kunci boost sekarang; reboot
+  pulihkan sisanya via kernel default), hapus semua state kecuali daftar
+  game, wait latar dibatasi 60 dtk (sebelumnya loop selamanya bila
+  /sdcard tak mount). Bukti sandbox: exit 0 cepat, sisa hanya game list.
+- L1: sh -n 3/3 OK, shellcheck -S error 0 (SC2148 shebang di customize =
+  konvensi Magisk, pre-existing), sandbox 3/3. Bump 30->31 modul-only.
+- Status: MENUNGGU push/CI + tes HP flash-timpa langsung (L2).
