@@ -301,6 +301,11 @@ _gb_backup_native() {
             _mx=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_max_freq" 2>/dev/null | tr -d '[:space:]')
             [ -n "$_mx" ] && echo "${_pol}_scaling_max_freq=$_mx" >> "$NATIVE_CONF.tmp"
         }
+        # uscfreq down_rate_limit_us asli (Unisoc; absen di governor lain → skip)
+        if [ -f "$SYSFS_CPU_PREFIX/cpufreq/$_pol/uscfreq/down_rate_limit_us" ]; then
+            _v=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/uscfreq/down_rate_limit_us" 2>/dev/null | tr -d '[:space:]')
+            case "$_v" in ''|*[!0-9]*) ;; *) echo "${_pol}_uscfreq_down_rate=$_v" >> "$NATIVE_CONF.tmp" ;; esac
+        fi
         # OPP table
         _avail=""
         if [ -f "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_available_frequencies" ]; then
@@ -525,6 +530,20 @@ _gb_apply_cpu() {
         extreme)     _gb_sched_apply_level 40 40 30 1000 ;;
         performance) _gb_sched_apply_level 70 70 60 400 ;;
     esac
+
+    # --- uscfreq down_rate hold (Unisoc; tahan freq nangkring anti-stutter.
+    # Hanya bila dir uscfreq ada — governor lain seperti sugov_ext auto-skip) ---
+    local _down_us=""
+    case "$_level" in
+        extreme)     _down_us="5000" ;;
+        performance) _down_us="3000" ;;
+    esac
+    if [ -n "$_down_us" ]; then
+        for _pol in $CPU_POLICIES; do
+            [ -f "$SYSFS_CPU_PREFIX/cpufreq/$_pol/uscfreq/down_rate_limit_us" ] || continue
+            _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_pol/uscfreq/down_rate_limit_us" "$_down_us" "USCFREQ"
+        done
+    fi
 }
 
 # ============================================================
@@ -903,6 +922,13 @@ gb_restore() {
     # sched_child_runs_first
     _v=$(_gb_read_native "sched_child_runs_first" "")
     [ -n "$_v" ] && _gb_write "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" "$_v" "SCHED_RESTORE"
+
+    # uscfreq down_rate hold (kembalikan native per policy; tanpa node → skip)
+    local _upol _uv
+    for _upol in $CPU_POLICIES; do
+        _uv=$(_gb_read_native "${_upol}_uscfreq_down_rate" "")
+        [ -n "$_uv" ] && _gb_write "$SYSFS_CPU_PREFIX/cpufreq/$_upol/uscfreq/down_rate_limit_us" "$_uv" "USCFREQ_RESTORE"
+    done
 
     # GPU
     local _df _gname _old_gov _old_mx _old_mn
