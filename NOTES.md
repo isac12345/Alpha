@@ -17,6 +17,31 @@
   thermal) sebelum vonis. Opsi: A stabil rasa v1 (65/uclamp60 +
   tangga tengah), B max-halus (tangga 65 di warm78).
 
+## Fix lantai CPU tak pernah apply (2026-09-24, leader live-test, izin user)
+
+- ROOT CAUSE (terbukti live, bukan tebakan): `monitor.sh` tidak pernah
+  mengisi `CPU_POLICIES` (service.sh tidak export, monitor tidak muat
+  detected.conf) → loop `for _pol in $CPU_POLICIES` di gameboost.sh
+  KOSONG tanpa log → `scaling_min_freq` tetap native saat game dibuka.
+  Bukti: log 09:07:36 APPLIED WuWa = 0 baris CPU_FREQ (hanya
+  cpuset/uclamp/GPU/VM/IO/NET); live p0=614400/p6=768000 saat boost.
+- Uji live (su, game tutup, restore sesudahnya): export
+  CPU_POLICIES="policy0 policy6" → _gb_apply_cpu = p0 1040000 /
+  p6 1228800 / uclamp 70.00 → gb_restore = 614400/768000/0.00 persis.
+- Fix (fca4333, 17 baris, modul27): monitor.sh muat detected.conf
+  (sekaligus SOC_VENDOR/GPU path) + fallback scan policy* + export +
+  log INIT CPU_POLICIES. L1: bash -n OK, shellcheck -S error 0,
+  sandbox 2/2 (conf-ada + fallback → floor 1040000/1228800).
+  Push fusion-v2 DONE; CI menyusul. Live-sync monitor.sh ke modul +
+  restart via watchdog (kill 3811, STOP 09:25:45) — verifikasi INIT
+  sesudah restart di bawah.
+- Sampingan (bukan root cause, dicatat jujur): event stream DEAF
+  (48s 0 parsed → polling permanen); render skiagl bawaan awal
+  (bukan regresi); thermal idle 42.5C; flapping 78C tak terlihat di
+  sesi 09:07-09:12 (restore normal via grace). Kresek: kandidat kuat
+  = game jalan TANPA lantai CPU (governor kejar-kejaran) + cpuset
+  6-7 + uclamp70; butuh tes WuWa ulang pasca-fix (L2 user).
+
 ## Probe Unisoc: HP user sendiri ums9230 P671L (2026-09-24)
 
 - KOREKSI: ini HP user, bukan tester-2. /dev/cpuctl ADA
