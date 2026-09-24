@@ -1,5 +1,12 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- FIX-CPUFLOOR modul 27 (2026-09-24, leader live-test izin user):
+  lantai CPU tak pernah apply via monitor (CPU_POLICIES kosong, 0
+  baris CPU_FREQ di log WuWa 09:07). Fix 17 baris di monitor.sh
+  (detected.conf + fallback + export + log INIT). L1: bash-n OK,
+  shellcheck 0, sandbox 2/2, live apply 1040000/1228800 + restore
+  persis, device INIT policy0 policy6 (pid 22699), CI SUCCESS run
+  35947188693. MENUNGGU L2: tes WuWa user.
 - MERGE-2LEVEL modul 26 (2026-09-24, leader langsung, minta user:
   extreme ga ada di aplikasi → tuning max pindah ke performance saja):
   gameboost kini 2 level — performance = ex-extreme (floor 75%
