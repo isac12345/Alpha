@@ -419,7 +419,7 @@ handle_foreground_event() {
         is_game_perf=1
     fi
     
-    # GameBoost logic (2 level: performance-max untuk game, balanced pendingin)
+    # GameBoost logic (rasa v20: extreme untuk game, performance = tangga mild panas)
     if [ "$is_game_perf" -eq 1 ]; then
         # Game with performance profile detected
         if [ "$gb_active" != "1" ]; then
@@ -445,9 +445,9 @@ handle_foreground_event() {
                     elif [ "$current_temp" -ge 85000 ] 2>/dev/null; then
                         monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 85000, forcing balanced"
                         GB_FORCED_LEVEL="balanced"
-                    elif [ "$current_temp" -ge 78000 ] 2>/dev/null; then
-                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 78000, forcing balanced (soft)"
-                        GB_FORCED_LEVEL="balanced"
+                    elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
+                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 75000, forcing performance"
+                        GB_FORCED_LEVEL="performance"
                     else
                         GB_FORCED_LEVEL=""
                     fi
@@ -456,11 +456,11 @@ handle_foreground_event() {
                     if command -v gb_apply >/dev/null 2>&1; then
                         # Simpan orig_level, tulis level target, apply,
                         # kembalikan orig_level. Berlaku untuk forced
-                        # DAN non-forced (performance eksplisit supaya
+                        # DAN non-forced (extreme eksplisit supaya
                         # _gb_level tidak jatuh ke fail-safe balanced).
                         local orig_level
                         orig_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null)
-                        local _target_level="${GB_FORCED_LEVEL:-performance}"
+                        local _target_level="${GB_FORCED_LEVEL:-extreme}"
                         printf '%s\n' "$_target_level" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
                         gb_apply
                         if [ -n "$orig_level" ]; then
@@ -621,7 +621,7 @@ check_daily_loadavg_guard() {
 }
 
 # Forced-level bookkeeping (safety step-down): simpan level user,
-# tulis balanced sementara, kembalikan saat cooldown/restore.
+# tulis performance sementara, kembalikan saat cooldown/restore.
 _gb_force_level() {
     [ -f "$STATE_DIR/.gb_level_orig" ] || {
         if [ -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" ]; then
@@ -631,7 +631,7 @@ _gb_force_level() {
             printf '%s\n' "__ABSENT__" > "$STATE_DIR/.gb_level_orig" 2>/dev/null
         fi
     }
-    printf '%s\n' "balanced" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+    printf '%s\n' "performance" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
 }
 
 _gb_unforce_level() {
@@ -725,12 +725,10 @@ check_gb_grace_period() {
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
                 rm -f "$GB_PENDING_FILE"
                 monitor_log "GAMEBOOST" "HIGH TEMP: ${current_temp}mC >= 85000, forced balanced"
-            elif [ "$current_temp" -ge 78000 ] 2>/dev/null; then
-                # Warm: step down ke balanced SEKARANG = restore native
-                # (2-level: performance sudah max, tak ada tangga tengah).
-                # Lunak: active tetap 1 → cooldown <70C apply ulang max.
+            elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
+                # Warm: step down ke resep performance SEKARANG (bukan cuma var)
                 if [ -z "$GB_FORCED_LEVEL" ]; then
-                    GB_FORCED_LEVEL="balanced"
+                    GB_FORCED_LEVEL="performance"
                     _gb_force_level
                     if command -v gb_apply >/dev/null 2>&1; then
                         gb_apply
@@ -738,7 +736,7 @@ check_gb_grace_period() {
                         monitor_log "GAMEBOOST" "WARN: gb_apply unavailable during warm temp step-down"
                     fi
                     rm -f "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
-                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 78000, stepped down to balanced (soft)"
+                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 75000, stepped down to performance"
                 fi
             elif [ "$current_temp" -lt 70000 ] 2>/dev/null; then
                 # Cool down: check if we were forced

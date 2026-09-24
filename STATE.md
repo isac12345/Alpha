@@ -1,5 +1,10 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- DISPATCH-GAGAL dev-modul b28 (2026-09-24, leader): Task revert rasa-v20
+  gagal dispatch — error persis: `Model not found: opencode/mimo-v2.5-free.
+  Did you mean: mimo-v2.6-flash-free, ...`. Sesuai AGENTS p6: tanpa ganti
+  model, leader ambil alih langsung. User perlu ganti model dev-modul +
+  restart bila mau delegasi lagi.
 - FIX-CPUFLOOR modul 27 (2026-09-24, leader live-test izin user):
   lantai CPU tak pernah apply via monitor (CPU_POLICIES kosong, 0
   baris CPU_FREQ di log WuWa 09:07). Fix 17 baris di monitor.sh
