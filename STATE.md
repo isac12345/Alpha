@@ -12,6 +12,12 @@
   dev-modul (mimo retired) -> leader ambil alih (AGENTS p6). MENUNGGU:
   push/CI + tes HP timpa langsung (L2).
   CI SUCCESS 35959277271.
+- ZIP-SDCARD modul31 (2026-09-24, minta user "1 file fix aja"):
+  Alpha-Fusion-v1.zip CI 35959277271 diunduh ke /sdcard/alpha
+  (5641290-an byte, md5 45a4a556cda79f1ab65377fb1af2aa44,
+  versionCode=31 terverifikasi + isi modul31 di dalam).
+  Lama dibersihkan: zip v29 + isolasi-kresek.sh + 3x pre-*.bak
+  dihapus -> sisa 1 file. (Isi .bak ada di git history bila perlu.)
 
 - MODUL30-STABIL-RILIS (2026-09-24, leader langsung, keluhan "garapan ga
   stabil + rilis pun kresek"): audit 4f73ed7..HEAD = gameboost rasa-v20
