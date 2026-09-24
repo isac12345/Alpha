@@ -1,5 +1,12 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## B34 RootExecutor timeout (2026-09-25, leader + dev-apk)
+
+- Backlog B2 DONE L1: wrapper timeout 20 dtk + exit code + `quoteArg`;
+  `ToolsKit.revert` toast hanya saat sukses. CI `36042954181` SUCCESS.
+  Koreksi leader: 1 baris komentar asing → Indonesia. Merge 822fadf.
+- BELUM: tes HP revert resolusi.
+
 ## B33 cpuset top-app (2026-09-25, leader + dev-modul)
 
 - Satu variabel: `top-app` ditulis big + 2 little pertama; `foreground`

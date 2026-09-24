@@ -1,5 +1,10 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
+## B34 — timeout perintah root (2026-09-25, L1 DONE, L2 TUNGGU HP)
+- [x] `RootExecutor` (timeout 20 dtk + exit code + quoting); `ToolsKit.revert`
+  pakai wrapper; CI SUCCESS `36042954181`; merge 822fadf.
+- [ ] L2: tes HP revert resolusi (TUNGGU user).
+
 ## B33 — cpuset top-app (2026-09-25, L1 DONE, L2 TUNGGU HP)
 - [x] `top-app` = big + 2 little pertama; `foreground` tetap big;
   `background`/`system-background` tetap little; topologi tak dikenal =

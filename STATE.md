@@ -1,5 +1,10 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- B34-ROOTEXECUTOR (2026-09-25, leader + dev-apk work/b34-roottimeout):
+  kelas baru `java/.../RootExecutor.java` (timeout 20 dtk, cek exit code,
+  quoting `quoteArg`); `ToolsKit.revert` pakai wrapper + toast hanya bila
+  sukses. L1: CI SUCCESS 36042954181 (54s) di branch; koreksi leader
+  1 baris komentar. Merge 822fadf. BELUM L2 HP.
 - B33-CPUSET-TOPAPP (2026-09-25, leader + dev-modul work/b33-cpuset-topapp):
   top-app = big + 2 little pertama; foreground tetap big; background tetap
   little; topologi tak dikenal = jangan sentuh cpuset (perilaku lama).
