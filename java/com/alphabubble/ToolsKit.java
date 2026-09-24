@@ -221,10 +221,12 @@ public final class ToolsKit {
     private static void revert(final Activity a) {
         HelperGuard.run(a, "revert", () -> {
             try {
-                Process p = Runtime.getRuntime().exec(
-                        new String[]{"su", "-c", "wm size reset; wm density reset"});
-                p.waitFor();
-                Toast.makeText(a, "Resolusi dikembalikan", Toast.LENGTH_LONG).show();
+                boolean ok = RootExecutor.exec("wm size reset; wm density reset", RootExecutor.DEFAULT_TIMEOUT_MS);
+                if (ok) {
+                    Toast.makeText(a, "Resolusi dikembalikan", Toast.LENGTH_LONG).show();
+                } else {
+                    Log.w(TAG, "revert gagal: timeout/exit non-zero");
+                }
             } catch (Throwable t) {
                 Log.w(TAG, "revert gagal: " + t);
             }
