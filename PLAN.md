@@ -1,5 +1,13 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
+## B33 — cpuset top-app (2026-09-25, L1 DONE, L2 TUNGGU HP)
+- [x] `top-app` = big + 2 little pertama; `foreground` tetap big;
+  `background`/`system-background` tetap little; topologi tak dikenal =
+  skip cpuset (merge 72dfb81, tanpa bump versi).
+- [x] L1: sh-n OK, shellcheck 0, sandbox 3 skenario (normal, little<2,
+  topologi-unknown).
+- [ ] Push + CI (TUNGGU perintah user). [ ] L2: tes HP PGR + WuWa.
+
 ## Selesai dan lolos tes HP
 - [x] v1 build 3 (run 35445291496, tag `v3-tested`): B1 Override-first + manifest POST_NOTIFICATIONS/debuggable=false. Tes: label resolusi benar.
 - [x] v1 build 6 (run 35453438021, tag `v6-tested`): F2 HideFeedback + BubbleSettingsActivity + VIBRATE. Tes: saklar bubble bekerja.

@@ -1,5 +1,11 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- B33-CPUSET-TOPAPP (2026-09-25, leader + dev-modul work/b33-cpuset-topapp):
+  top-app = big + 2 little pertama; foreground tetap big; background tetap
+  little; topologi tak dikenal = jangan sentuh cpuset (perilaku lama).
+  L1: sh-n OK, shellcheck 0, sandbox (top-app big+2 little, restore native,
+  fallback little<2 + topologi-unknown SKIP). Merge 72dfb81 (tanpa bump
+  versi). BELUM push/CI + BELUM L2 HP.
 - ZIP-SDCARD modul32 (2026-09-24): Alpha-Fusion-v32-pgr.zip (5643922
   byte, md5 49c323ab61ca9ecb8590e924d973bc49) di /sdcard/alpha/.
   Verified: versionCode=32 + floor 75% di dalam zip.
