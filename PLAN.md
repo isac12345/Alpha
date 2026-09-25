@@ -1,5 +1,18 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
+## Modul33 — stabil-otomatis universal (2026-09-25, L1 DONE, L2 TUNGGU HP)
+- [x] Extreme stabil: big 60% (was 75%), little 35%; uclamp 45 (was 60);
+  sched 60/60/50/600; GPU max saja (min tak dikunci); kbase upthr 60;
+  VM vfs 100; IO 2048; fas-rs performance (was fast). Gap ke tangga
+  mengecil = step-down 75C halus. Universal: % + snap OPP per-policy,
+  guard semua node, loop semua policy, scan GPU generik. Tanpa hardcode
+  angka/nama device (audit: T615 hanya di komentar contoh).
+- [x] L1: sh-n OK, shellcheck 0, sandbox OPP T615 (614400/1040000/45,
+  perf 614400/768000/15, balanced restore). Commit 54d103e + tweak komen.
+- [ ] L2: tes HP PGR + WuWa pacing-cepat (TUNGGU user).
+- Prinsip baru (minta user): Alpha = stabil-otomatis minim-stutter;
+  performa maximal via HSIN saja.
+
 ## B34 — timeout perintah root (2026-09-25, L1 DONE, L2 TUNGGU HP)
 - [x] `RootExecutor` (timeout 20 dtk + exit code + quoting); `ToolsKit.revert`
   pakai wrapper; CI SUCCESS `36042954181`; merge 822fadf.

@@ -1,5 +1,22 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- MODUL33-STABIL-OTOMATIS (2026-09-25, leader langsung, minta user:
+  PGR/WuWa pacing-cepat stutter + suhu >40C di mode perf; Alpha jadi
+  stabil-otomatis minim-stutter, maximal via HSIN saja):
+  UNIVERSAL tanpa hardcode angka device — lantai = % dari hw_max
+  per-policy + snap-down OPP per-policy (60% big / 35% little,
+  performance 35%); semua tulis guard node-ada (skip+log bila absen);
+  loop semua policy (1/2/3+ cluster); GPU scan generik
+  (*gpu*|*mali*|*kgsl*|*adreno*). Isi: floor 75→60% (p6 -1 rung),
+  uclamp 60→45, sched extreme 40s→60/60/50/600, GPU min TIDAK
+  dikunci (max saja + gov performance), kbase upthreshold 30→60,
+  VM vfs 200→100, IO 4096→2048, fas-rs fast→performance.
+  Gap extreme→performance mengecil = step-down 75C halus.
+  L1: sh-n OK, shellcheck -S error 0, sandbox OPP T615 asli →
+  extreme 614400/1040000/uclamp45/GPU-min-utuh, perf 614400/768000/
+  uclamp15, balanced restore-only. Bump 32→33 modul-only (APK 20).
+  Commit 54d103e. MENUNGGU: push/CI + tes HP PGR/WuWa (L2).
+
 - B34-ROOTEXECUTOR (2026-09-25, leader + dev-apk work/b34-roottimeout):
   kelas baru `java/.../RootExecutor.java` (timeout 20 dtk, cek exit code,
   quoting `quoteArg`); `ToolsKit.revert` pakai wrapper + toast hanya bila

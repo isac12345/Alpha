@@ -491,7 +491,8 @@ _gb_apply_cpu() {
         fi
         [ -z "$_hw_max" ] && continue
 
-        # T615 stabil: extreme big p6=snap(1092000)=1040000, little p0=614400;
+        # Contoh hasil di T615 (bukan patokan: tiap HP ikut OPP sendiri):
+        # extreme big p6=snap(1092000)=1040000, little p0=614400;
         # performance p0/p6=614400/768000; tanpa uscfreq-hold)
         _floor=$((_hw_max * 60 / 100))
         if [ "$_level" = "performance" ]; then

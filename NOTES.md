@@ -1,5 +1,24 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Modul33 stabil-otomatis universal (2026-09-25, leader langsung)
+- User: PGR/WuWa pacing-cepat stutter + >40C mode perf; Alpha dibuat
+  stabil-otomatis minim-stutter, maximal cukup HSIN; semua HP universal,
+  jangan hardcore.
+- Audit universal: logika floor berbasis % + OPP tiap policy (bukan
+  angka/policy tetap), semua CPU policy dinamis, cpuset topologi
+  max_freq, GPU scan generik, thermal zone wildcard, node absen skip.
+  Hardcode device yang tersisa hanya komentar contoh → ditandai.
+- Tuning: big 75→60%, little 35; uclamp 60→45; sched extreme
+  40/40/30/1000→60/60/50/600; GPU min=max → max saja; kbase
+  upthreshold 30→60; VM vfs 200→100; IO 4096→2048; fas-rs fast→perf.
+  Sustained > burst: kurangi floor/GPU lock agar tak throttle saat
+  >40C; step-down ke performance 35% jauh lebih halus.
+- L1: sh-n OK, shellcheck 0, sandbox OPP asli T615 → extreme
+  614400/1040000/uclamp45, GPU-min 384M utuh; performance 614400/
+  768000/uclamp15; balanced restore. Commit 54d103e + tweak komen.
+  PUSH/CI + tes HP menyusul. PELAJARAN: angka hasil T615 hanya contoh
+  verifikasi; jangan jadikan konstanta di source agar universal.
+
 ## B34 RootExecutor timeout (2026-09-25, leader + dev-apk)
 
 - Backlog B2 DONE L1: wrapper timeout 20 dtk + exit code + `quoteArg`;
