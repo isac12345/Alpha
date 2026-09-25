@@ -180,15 +180,26 @@ _alpha_opp_cap_pick() {
 # Cluster Topology (hsin_cpu_topo_detect)
 # ============================================================
 _gb_topo_detect() {
-    GB_CPU_BIG="" GB_CPU_LITTLE=""
-    local _max_all=0 _p _mx _cpus
+    GB_CPU_BIG="" GB_CPU_LITTLE="" GB_CPU_TOPO_UNKNOWN=0
+    local _max_all=0 _p _mx _cpus _levels="" _level_count=0
     for _p in "$SYSFS_CPU_PREFIX"/cpufreq/policy*; do
         [ -d "$_p" ] || continue
         _mx=$(cat "$_p/cpuinfo_max_freq" 2>/dev/null | tr -d '[:space:]')
         case "$_mx" in ''|*[!0-9]*) continue ;; esac
+        case " $_levels " in
+            *" $_mx "*) ;;
+            *)
+                _levels="$_levels $_mx"
+                _level_count=$((_level_count + 1))
+                ;;
+        esac
         [ "$_mx" -gt "$_max_all" ] 2>/dev/null && _max_all="$_mx"
     done
     [ "$_max_all" -eq 0 ] 2>/dev/null && return 1
+    if [ "$_level_count" -gt 2 ]; then
+        GB_CPU_TOPO_UNKNOWN=1
+        return 1
+    fi
     for _p in "$SYSFS_CPU_PREFIX"/cpufreq/policy*; do
         [ -d "$_p" ] || continue
         _mx=$(cat "$_p/cpuinfo_max_freq" 2>/dev/null | tr -d '[:space:]')
@@ -463,10 +474,12 @@ _gb_read_native() {
 _gb_apply_cpu() {
     local _level="$1"
     local _pol _pol_dir _avail_list _opp_list _hw_max _floor _target_min
-    local _max_all=0 _mx
+    local _max_all=0 _mx _topo_unknown=0
 
     # Cluster tercepat = big (metode sama kayak _gb_topo_detect).
-    # Tak dikenal (_max_all=0) = semua dianggap big (perilaku lama).
+    # >2 level = topologi unknown: cpuset dilewati dan lantai tetap 60%.
+    _gb_topo_detect
+    _topo_unknown="$GB_CPU_TOPO_UNKNOWN"
     for _pol in $CPU_POLICIES; do
         _mx=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/cpuinfo_max_freq" 2>/dev/null | tr -d '[:space:]')
         case "$_mx" in ''|*[!0-9]*) continue ;; esac
@@ -500,7 +513,8 @@ _gb_apply_cpu() {
         fi
         # Extreme + topologi dikenal + cluster kecil: turun ke 35%
         # (game dipin ke big; little dikunci tinggi = setrika).
-        if [ "$_level" = "extreme" ] && [ "$_max_all" -gt 0 ] 2>/dev/null \
+        if [ "$_level" = "extreme" ] && [ "$_topo_unknown" -eq 0 ] 2>/dev/null \
+                && [ "$_max_all" -gt 0 ] 2>/dev/null \
                 && [ "$_hw_max" -lt "$_max_all" ] 2>/dev/null; then
             _floor=$((_hw_max * 35 / 100))
         fi
@@ -516,7 +530,6 @@ _gb_apply_cpu() {
     # --- Cpuset (skip bila sakelar NO_CPUSET) ---
     if [ ! -f "$CONF_DIR/NO_CPUSET" ]; then
         if [ -d "${DEV_CPUSET_PREFIX:-/dev/cpuset}" ]; then
-            _gb_topo_detect
             if [ -n "$GB_CPU_BIG" ]; then
                 local _grp _top_app_cpus
                 _top_app_cpus=$(_gb_cpuset_norm "$GB_CPU_LITTLE")
@@ -619,10 +632,12 @@ _gb_apply_gpu() {
                         | tr ' ' '\n' | grep -E '^[0-9]+$' | sort -n)
             _hw_max=$(echo "$_opp_list" | tail -n 1)
         fi
-        if [ -z "$_hw_max" ] && [ -f "$_df/cur_freq" ]; then
-            _hw_max=$(cat "$_df/cur_freq" 2>/dev/null | tr -d '[:space:]')
+        if [ -z "$_hw_max" ] && [ -f "$_df/max_freq" ]; then
+            _hw_max=$(cat "$_df/max_freq" 2>/dev/null | tr -d '[:space:]')
         fi
-        [ -z "$_hw_max" ] && continue
+        case "$_hw_max" in
+            ''|*[!0-9]*) continue ;;
+        esac
 
         local _cap="${GPU_MAX_FREQ:-0}"
         case "$_cap" in ''|*[!0-9]*) _cap=0 ;; esac
@@ -966,17 +981,21 @@ gb_restore() {
         case "$_gname" in *gpu*|*mali*|*kgsl*|*adreno*) ;; *) continue ;; esac
         _old_gov=$(_gb_read_native "gpu_${_gname}_governor" "")
         _old_mx=$(_gb_read_native "gpu_${_gname}_max_freq" "")
-        _old_mn=$(_gb_read_native "gpu_${_gname}_min_freq" "$_old_mx")
-        # Tulis min dulu bila max < current min
-        if [ -n "$_old_mx" ] && [ -w "$_df/min_freq" ]; then
-            local _cur_min
-            _cur_min=$(cat "$_df/min_freq" 2>/dev/null | tr -d '[:space:]')
-            if [ -n "$_cur_min" ] && [ "$_old_mx" -lt "$_cur_min" ] 2>/dev/null; then
-                _gb_write "$_df/min_freq" "$_old_mn" "GPU_RESTORE"
-                _gb_write "$_df/max_freq" "$_old_mx" "GPU_RESTORE"
+        _old_mn=$(_gb_read_native "gpu_${_gname}_min_freq" "")
+        # Tulis min dulu bila max < current min, hanya bila backup min ada.
+        if [ -n "$_old_mx" ] && [ -w "$_df/max_freq" ]; then
+            if [ -n "$_old_mn" ] && [ -w "$_df/min_freq" ]; then
+                local _cur_min
+                _cur_min=$(cat "$_df/min_freq" 2>/dev/null | tr -d '[:space:]')
+                if [ -n "$_cur_min" ] && [ "$_old_mx" -lt "$_cur_min" ] 2>/dev/null; then
+                    _gb_write "$_df/min_freq" "$_old_mn" "GPU_RESTORE"
+                    _gb_write "$_df/max_freq" "$_old_mx" "GPU_RESTORE"
+                else
+                    _gb_write "$_df/max_freq" "$_old_mx" "GPU_RESTORE"
+                    _gb_write "$_df/min_freq" "$_old_mn" "GPU_RESTORE"
+                fi
             else
                 _gb_write "$_df/max_freq" "$_old_mx" "GPU_RESTORE"
-                _gb_write "$_df/min_freq" "$_old_mn" "GPU_RESTORE" 2>/dev/null
             fi
         fi
         [ -n "$_old_gov" ] && _gb_write "$_df/governor" "$_old_gov" "GPU_RESTORE"

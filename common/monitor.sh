@@ -272,9 +272,12 @@ gb_safety_check() {
         done
     fi
 
-    # No valid thermal zones
+    # No valid thermal zones: warm sentinel memilih performance, bukan 0
+    # (yang akan terlihat sebagai extreme). Sensor valid <70C tetap
+    # diperlukan untuk cooldown/unforce.
     if [ "$valid_count" -eq 0 ]; then
-        echo "0"
+        monitor_log "GAMEBOOST" "UNKNOWN: thermal sensor-absen/invalid; forcing performance (sentinel=75000mC)"
+        echo "75000"
         return 0
     fi
 
