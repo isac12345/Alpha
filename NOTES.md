@@ -34,7 +34,22 @@
 - L1: sh-n OK, shellcheck 0, sandbox (2-cluster identik modul33;
   3-cluster 912000/1000000/1440000 + cpuset utuh; no-sensor→performance;
   GPU-tanpa-OPP→gov saja; restore-tanpa-min→min utuh). Merge 69f914d,
-  tanpa bump versi.
+  tanpa bump versi. CI SUCCESS 36111207684.
+- MATRIX 8 bentuk device (leader, sysfs palsu, semua extreme):
+  (A) homogen 1 cluster → 1200000, cpuset 0 tulis (aman);
+  (B) tanpa OPP table → big 1212000 / little 637000 (rasio, bukan
+  konstanta); (C) MTK D7300 OPP padat → 1400000/700000 (snap ≤60/35%);
+  (D) kernel laporkan Hz (bukan kHz) → 1228800000/1000000000, TANPA
+  overflow aritmetika 64-bit + snap ke rung terendah; (E) 2-cluster
+  T615 → 1040000/614400 (regresi nol vs modul33); (F) 3-cluster →
+  uniform 60% + cpuset skip; (G) thermal absen → performance, bukan
+  extreme; (H) GPU tanpa OPP → gov saja, max tak ditulis.
+- BATAS JUJU (belum L2): semua di atas sandbox, bukan device nyata.
+  (1) Tanpa OPP table, nilai floor bukan rung pasti — kernel yang
+  membulatkan; (2) device tanpa thermal zone terbaca YAKIN terkunci
+  di performance (35%) selama game jalan, bukan extreme — degradasi
+  aman, bukan bug; (3) angka 60/35/45 tervalidasi hanya di T615
+  (D7300 baru hitung matematika, belum rasa di tangan).
 - L2: tes HP (TUNGGU user).
 
 ## B34 RootExecutor timeout (2026-09-25, leader + dev-apk)
