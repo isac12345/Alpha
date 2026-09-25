@@ -555,3 +555,5 @@
   gameboost+monitor OK, md5 rilis = sdcard (a2346d6a).
 
 - PERF-MAX + BALANCED-ADEM (2026-09-25, leader + dev-modul work/perf-balanced 8f5eec1 + koreksi leader): performance raw-power (floor 50%/big75, uclamp60, sched40s, kbase30, adreno-up35, fast, gate software 95C, tangga monitor 85/90 saat manual=performance, kritis 95 tetap) + balanced adem-stabil (floor 25%, kbase 2/55, mild uclamp30/sched60s). L1: bash-n OK, shellcheck -S error 0, sandbox + uji tier 10/10. Merge --no-ff ba16cd7 ke fusion-v2, tanpa bump versi. L2: TUNGGU tes HP user.
+
+- HYBRID-V35-FLOORS (2026-09-25, leader langsung work/perf-hybrid 62d9abc): adopsi bagian bagus v35 (extreme big 80%/little 45%, mild 40%, tap 55%/balanced 30%) di atas basis perf-max (GPU galak kbase30, gate 95C, tangga sadar-profil, sched agresif, fas-rs fast). Yang TIDAK diambil: tangga flat 82, kbase 60, uclamp/sched kalem. L1: bash-n OK, shellcheck 0, hitung OPP valid. Merge --no-ff 6325238. L2: TUNGGU tes HP user.
