@@ -10,16 +10,25 @@ CURRENT_STATE_FILE="$STATE_DIR/current_state"
 LOG_FILE="${ALPHA_LOG_FILE:-$STATE_DIR/alpha.log}"
 SCREEN_ON_INTERVAL="${ALPHA_SCREEN_ON_INTERVAL:-7}"
 SCREEN_OFF_INTERVAL="${ALPHA_SCREEN_OFF_INTERVAL:-60}"
+GAME_POLL_INTERVAL_SECS="${ALPHA_GAME_POLL_INTERVAL_SECS:-2}"
+case "$GAME_POLL_INTERVAL_SECS" in
+    ''|*[!0-9]*) GAME_POLL_INTERVAL_SECS="$SCREEN_ON_INTERVAL" ;;
+    *) [ "$GAME_POLL_INTERVAL_SECS" -gt 0 ] 2>/dev/null || GAME_POLL_INTERVAL_SECS="$SCREEN_ON_INTERVAL" ;;
+esac
 MAX_CYCLES="${ALPHA_MONITOR_MAX_CYCLES:-0}"
 # Health-check event stream: kalau layar sudah nyala selama
 # EVENT_HEALTH_SECS tapi NOL event ter-parse jadi package, filter event
 # dianggap tidak cocok dengan ROM ini -> turun ke polling permanen
 # untuk sisa proses (satu keputusan per boot, hemat resource).
 EVENT_HEALTH_SECS="${ALPHA_EVENT_HEALTH_SECS:-45}"
+EVENT_PRECHECK_LINES="${ALPHA_EVENT_PRECHECK_LINES:-100}"
 EVENT_COUNT_FILE="$STATE_DIR/.foreground-events.$$.count"
 EVENT_ON_SECS=0
 EVENT_FALLBACK_DONE=0
 EVENT_HEALTH_LOGGED=0
+# Satu sumber tag untuk reader dan pre-check. Separator koma menjaga
+# tiap token bisa dipakai sebagai glob `case` sekaligus ERE `grep -E`.
+EVENT_TAG_PATTERN='wm_set_resumed_activity,wm_set_top_resumed_activity,wm_top_resumed,wm_resume_activity,wm_on_resume_called,wm_on_top_resumed_called,am_focused_activity,am_on_resume_called,minimalResumeActivityLocked,Focus[ ]entering'
 # MAX_CYCLES hanya berlaku di mode polling fallback (run_polling_loop).
 # Di mode event-driven variabel ini DIABAIKAN; untuk menghentikan monitor
 # saat testing mode event-driven, pakai kill <pid> langsung (trap akan
@@ -534,10 +543,15 @@ handle_foreground_event() {
 
 event_stream_reader() {
     while IFS= read -r event_line; do
-        case "$event_line" in
-            *wm_set_resumed_activity*|*wm_set_top_resumed_activity*|*wm_top_resumed*|*wm_resume_activity*|*wm_on_resume_called*|*wm_on_top_resumed_called*|*am_focused_activity*|*am_on_resume_called*|*minimalResumeActivityLocked*|*Focus\ entering*) ;;
-            *) continue ;;
-        esac
+        IFS=','
+        event_line_tag_matched=0
+        for event_tag in $EVENT_TAG_PATTERN; do
+            case "$event_line" in
+                *$event_tag*) event_line_tag_matched=1; break ;;
+            esac
+        done
+        unset IFS
+        [ "$event_line_tag_matched" -eq 1 ] || continue
         # CATATAN PERF: dumpsys power per-event dibuang - itu extra subprocess
         # spawn di SETIAP pergantian foreground app, padahal supervisor loop
         # di run_event_supervised_loop sudah matiin stream ini dalam <=2s
@@ -789,6 +803,8 @@ start_event_stream() {
     sleep 1
     kill -0 "$READER_PID" 2>/dev/null || return 1
     kill -0 "$LOGCAT_PID" 2>/dev/null || { stop_event_stream; return 1; }
+    EVENT_ON_SECS=0
+    printf '%s' "0" > "$EVENT_COUNT_FILE" 2>/dev/null
     return 0
 }
 
@@ -818,11 +834,11 @@ run_event_supervised_loop() {
                 continue
             fi
         fi
-        # Health-check REAL (bukan sekadar "process started"): akumulasi
-        # detik layar-nyala. Kalau jendela health sudah lewat tapi NOL
-        # event ter-parse, filter tidak cocok dengan ROM ini -> polling
-        # permanen sisa sesi (satu keputusan per boot, hemat resource).
-        # Layar-mati tidak dihitung, jadi "sepi karena idle" tidak
+        # Health window = detik layar-nyala sejak stream terakhir di-(re)start.
+        # Reset window + count di start_event_stream mencegah vonis "deaf"
+        # membandingkan detik basi dengan count fresh (false-positive live 446s).
+        # Jika jendela lewat tapi NOL event ter-parse, fallback polling permanen
+        # sisa sesi. Layar-mati tidak dihitung, jadi "sepi karena idle" tidak
         # disalahartikan sebagai "filter rusak".
         EVENT_ON_SECS=$((EVENT_ON_SECS + 2))
         if [ "$EVENT_FALLBACK_DONE" -eq 0 ] && [ "$EVENT_ON_SECS" -ge "$EVENT_HEALTH_SECS" ] 2>/dev/null; then
@@ -877,25 +893,45 @@ run_polling_loop() {
             continue
         fi
 
+        monitor_poll_interval="$SCREEN_ON_INTERVAL"
+        if [ -n "$(get_game_profile "$monitor_foreground_package")" ]; then
+            monitor_poll_interval="$GAME_POLL_INTERVAL_SECS"
+        fi
+
         handle_foreground_event "$monitor_foreground_package" "poll"
 
         # GameBoost: check grace period + thermal safety
         check_gb_grace_period
         # DAILY: anti-lag guard (loadavg)
         check_daily_loadavg_guard
-        sleep "$SCREEN_ON_INTERVAL"
+        sleep "$monitor_poll_interval"
     done
     return 0
 }
 
 check_notify_available
-if command -v logcat >/dev/null 2>&1 && command -v mkfifo >/dev/null 2>&1 && logcat -b events -v raw -d -t 3 >/dev/null 2>&1; then
+event_precheck_ok=0
+event_precheck_log=""
+event_precheck_reason="logcat-events-unavailable"
+if command -v logcat >/dev/null 2>&1 && command -v mkfifo >/dev/null 2>&1; then
+    event_precheck_log=$(logcat -b events -v raw -d -t "$EVENT_PRECHECK_LINES" 2>/dev/null)
+    event_precheck_regex=$(printf '%s' "$EVENT_TAG_PATTERN" | sed 's/,/|/g')
+    if printf '%s\n' "$event_precheck_log" | grep -Eq "$event_precheck_regex"; then
+        event_precheck_ok=1
+    else
+        event_precheck_reason="logcat-events-no-matching-tags"
+    fi
+fi
+# Pre-check isi bisa false-negative kalau histori kosong setelah user lama
+# tidak ganti app; diterima karena polling + interval game cepat menjadi jaring,
+# dan health check tetap backstop bila pre-check lolos tetapi stream mati.
+if [ "$event_precheck_ok" -eq 1 ]; then
     MONITOR_METHOD="event-driven"
     monitor_log "START" "monitor pid=$$ method=event-driven health=${EVENT_HEALTH_SECS}s interval_on=${SCREEN_ON_INTERVAL}s interval_off=${SCREEN_OFF_INTERVAL}s"
     run_event_supervised_loop
 else
     MONITOR_METHOD="polling"
-    monitor_log "START" "monitor pid=$$ method=polling reason=logcat-events-unavailable interval_on=${SCREEN_ON_INTERVAL}s interval_off=${SCREEN_OFF_INTERVAL}s"
+    monitor_log "START" "monitor pid=$$ method=polling reason=${event_precheck_reason} interval_on=${SCREEN_ON_INTERVAL}s interval_game=${GAME_POLL_INTERVAL_SECS}s interval_off=${SCREEN_OFF_INTERVAL}s"
     run_polling_loop
 fi
 
