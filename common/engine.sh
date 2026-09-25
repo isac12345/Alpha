@@ -9,6 +9,11 @@ SYSFS_DEVFREQ_PREFIX="${SYSFS_DEVFREQ_PREFIX:-/sys/class/devfreq}"
 SYSFS_THERMAL_PREFIX="${SYSFS_THERMAL_PREFIX:-/sys/devices/virtual/thermal}"
 PROC_SYS_PREFIX="${PROC_SYS_PREFIX:-/proc/sys}"
 SYSFS_MODULE_PREFIX="${SYSFS_MODULE_PREFIX:-/sys/module}"
+GPU_PERF_POLLING_MS="${ALPHA_GPU_POLLING_MS:-10}"
+case "$GPU_PERF_POLLING_MS" in
+    ''|*[!0-9]*) GPU_PERF_POLLING_MS=10 ;;
+esac
+[ "$GPU_PERF_POLLING_MS" -gt 0 ] 2>/dev/null || GPU_PERF_POLLING_MS=10
 
 # Inisialisasi counter summary
 APPLIED_COUNT=0
@@ -476,7 +481,8 @@ tune_gpu_mali_kbase() {
         balanced)
             boost=0; pollingtime=4; upthreshold=65 ;;
         performance)
-            boost=1; pollingtime=1; upthreshold=15 ;;
+            # upthreshold dinaikkan untuk kurangi osilasi; pollingtime=1 sudah batas bawah, jadi tidak diturunkan.
+            boost=1; pollingtime=1; upthreshold=45 ;;
         *)
             boost=0; pollingtime=4; upthreshold=75 ;;
     esac
@@ -567,6 +573,15 @@ tune_gpu_mali() {
     if [ -z "$mali_target" ]; then
         log_msg "SKIPPED" "$category" "Mali cap target invalid"
         return 0
+    fi
+    if [ "${ACTIVE_PROFILE:-balanced}" = "performance" ]; then
+        if gpu_thermal_is_hot 75000; then
+            log_msg "SKIPPED" "$category" "thermal panas, Mali polling tuning ditahan"
+        elif [ -w "$mali_dev/polling_interval" ]; then
+            apply_tweak "$category" "$mali_dev/polling_interval" "$GPU_PERF_POLLING_MS"
+        else
+            log_msg "SKIPPED" "$category" "polling_interval tidak writable/tidak ada, skip"
+        fi
     fi
     if [ "$mali_percent" -ge 100 ] && gpu_thermal_is_hot 75000; then
         log_msg "SKIPPED" "$category" "thermal sedang panas, performance cap ditahan"
