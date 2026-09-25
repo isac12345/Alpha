@@ -1,8 +1,10 @@
 #!/system/bin/sh
 # Alpha Fusion - Game Boost Engine (Extreme / Performance / Balanced)
-# Rasa v20 + PGR-kenceng (modul32): extreme = game (lantai big 75%,
+# Modul33 stabil-otomatis: extreme = game stabil (lantai big 60%,
 # little 35%), performance = mild (lantai 35%, tangga panas 75C),
 # restore native (pendinginan). Generic semua device + game.
+# Prinsip: pacing stabil > burst max (maximal via HSIN saja).
+# GPU min TIDAK dikunci (adem + pacing), fas-rs performance (sustained).
 # uscfreq-hold OFF (biang kresek modul23). POSIX sh; semua tulis =
 # dua kali tulis-baca-verifikasi.
 # Sakelar: DISABLE_GAMEBOOST, NO_CPUSET, GAMEBOOST_NO_VM, GAMEBOOST_LEVEL
@@ -453,9 +455,10 @@ _gb_read_native() {
 # ============================================================
 # CPU Apply — Lantai asimetris + uclamp + cpuset (TANPA governor)
 # CPU_OWNER dicatat di log, lantai TETAP JALAN walau fas-rs aktif.
-# Extreme: cluster big 75% (PGR-kenceng modul32), cluster little 35%
-# (modul29: little 65% = panas doang — game dipin ke big via cpuset —
-# lalu SoC throttle/flapping 75C = kresek + ngelag di WuWa).
+# Modul33 stabil: cluster big 60% (turun dari 75% modul32: p6 -1 rung,
+# adem + pacing; PGR/WuWa pacing-cepat butuh sustained bukan burst),
+# cluster little 35% (game dipin ke big via cpuset; little tinggi =
+# setrika → throttle/flapping 75C = stutter).
 # ============================================================
 _gb_apply_cpu() {
     local _level="$1"
@@ -488,9 +491,9 @@ _gb_apply_cpu() {
         fi
         [ -z "$_hw_max" ] && continue
 
-        # T615: extreme big p6=snap(1365000)=rung ≤1365000, little p0=614400;
+        # T615 stabil: extreme big p6=snap(1092000)=1040000, little p0=614400;
         # performance p0/p6=614400/768000; tanpa uscfreq-hold)
-        _floor=$((_hw_max * 75 / 100))
+        _floor=$((_hw_max * 60 / 100))
         if [ "$_level" = "performance" ]; then
             _floor=$((_hw_max * 35 / 100))
         fi
@@ -538,10 +541,10 @@ _gb_apply_cpu() {
         _gb_log "SKIPPED" "NO_CPUSET exists, skip cpuset"
     fi
 
-    # --- uclamp (rasa v20: extreme 60, performance 15) ---
+    # --- uclamp (modul33 stabil: extreme 45, performance 15) ---
     if [ -d "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}" ]; then
         case "$_level" in
-            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "60" "UCLAMP"
+            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "45" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
             performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "15" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
@@ -559,9 +562,9 @@ _gb_apply_cpu() {
     # --- sched_child_runs_first ---
     _gb_write "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" "1" "SCHED"
 
-    # --- Scheduler latency (rasa v20; hanya bila node resolve) ---
+    # --- Scheduler latency (modul33 stabil; hanya bila node resolve) ---
     case "$_level" in
-        extreme)     _gb_sched_apply_level 40 40 30 1000 ;;
+        extreme)     _gb_sched_apply_level 60 60 50 600 ;;
         performance) _gb_sched_apply_level 70 70 60 400 ;;
     esac
     # NOTE 2026-09-24 modul25: uscfreq down_rate hold (5000/3000) TETAP
@@ -641,10 +644,8 @@ _gb_apply_gpu() {
         fi
 
         _gb_write "$_df/max_freq" "$_target" "GPU"
-        # GPU min=max (kunci GPU saja)
-        if [ -w "$_df/min_freq" ]; then
-            _gb_write "$_df/min_freq" "$_target" "GPU"
-        fi
+        # Modul33 stabil: min TIDAK dikunci (biarkan governor turun saat
+        # idle → adem + pacing; kunci min=max = setrika + throttle).
     done
 
     # --- Mali ext nodes ---
@@ -687,7 +688,7 @@ _gb_apply_gpu() {
         [ -w "$_kbase/gpu_pollingtime" ] && \
             _gb_write "$_kbase/gpu_pollingtime" "1" "GPU_KBASE"
         [ -w "$_kbase/gpu_upthreshold" ] && \
-            _gb_write "$_kbase/gpu_upthreshold" "30" "GPU_KBASE"
+            _gb_write "$_kbase/gpu_upthreshold" "60" "GPU_KBASE"
     fi
 
     # --- MTK ged_dvfs_boost ---
@@ -718,9 +719,9 @@ _gb_apply_vm() {
     local _proc="$PROC_SYS_PREFIX"
     case "$_level" in
         extreme)
-            # HSIN VM rasa v20: swappiness=40, vfs=200, dirty=10, dirty_bg=1, page-cluster=0
+            # Modul33 stabil: swappiness=40, vfs=100 (cache awet, kurang IO-stutter), dirty=10, dirty_bg=1, page-cluster=0
             _gb_write "$_proc/vm/swappiness" "40" "VM"
-            _gb_write "$_proc/vm/vfs_cache_pressure" "200" "VM"
+            _gb_write "$_proc/vm/vfs_cache_pressure" "100" "VM"
             _gb_write "$_proc/vm/dirty_ratio" "10" "VM"
             _gb_write "$_proc/vm/dirty_background_ratio" "1" "VM"
             _gb_write "$_proc/vm/page-cluster" "0" "VM"
@@ -761,9 +762,9 @@ _gb_apply_io() {
             esac
         fi
 
-        # read_ahead_kb (rasa v20: extreme 4096, performance 2048)
+        # read_ahead_kb (modul33 stabil: extreme 2048, performance 2048)
         case "$_level" in
-            extreme)     _gb_write "$_dev/queue/read_ahead_kb" "4096" "IO" ;;
+            extreme)     _gb_write "$_dev/queue/read_ahead_kb" "2048" "IO" ;;
             performance) _gb_write "$_dev/queue/read_ahead_kb" "2048" "IO" ;;
         esac
     done
@@ -865,11 +866,12 @@ gb_apply() {
 }
 
 # Mode fas-rs mengikuti boost (tidak kill apa pun):
-# extreme → fast, performance → performance, balanced → balance.
+# modul33 stabil: extreme → performance (sustained; fast = burst HSIN saja),
+# performance → performance, balanced → balance.
 _gb_set_fasrs_mode() {
     local _want=""
     case "$1" in
-        extreme)     _want="fast" ;;
+        extreme)     _want="performance" ;;
         performance) _want="performance" ;;
         balanced)    _want="balance" ;;
         *) return 0 ;;
