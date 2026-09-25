@@ -1,5 +1,32 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- GPU-PERF-FLAPPING / OPSI-A (2026-09-25, leader + dev-modul
+  work/gpu-perf-tune): complaint user = FPS "kesendat mendadak" di profil
+  performance. Analisis (leader, live): satuan gpu_pollingtime TIDAK bisa
+  diverifikasi publik — param vendor Unisoc, tidak ada di upstream mali_kbase
+  (upstream punya DEFAULT_PM_DVFS_PERIOD 100ms, bukan gpu_pollingtime) →
+  jangan turunkan angkanya. Bukti live: devfreq node 23100000.gpu =
+  governor simple_ondemand, polling_interval 50 (ms), TIDAK ada node
+  up_threshold/down_threshold (default kernel 90/5), min_freq 384MHz TIDAK
+  pernah dikunci modul (hanya max_freq), trans_stat = 12.772x flapping
+  850<->384MHz. Tune polling_interval di repo hanya jalan Adreno
+  (tune_gpu_adreno_kgsl), jalur Mali tidak pernah menyentuhnya. Catatan
+  jujur: saat benchmark 19:48-20:21 gameboost extreme sudah memaksa
+  governor=performance, jadi drop saat itu BUKAN terutama karena downclock
+  GPU; kandidat ini memperbaiki jendela performance non-gameboost.
+  Opsi A (dipilih user): (1) kbase performance upthreshold 15->45
+  (pollingtime tetap 1 = batas bawah), (2) Mali performance menulis
+  polling_interval 10ms (GPU_PERF_POLLING_MS, default ALPHA_GPU_POLLING_MS)
+  dengan gate thermal + guard writable; profil lain TIDAK ditulis.
+  L1: sh -n 0, diff 16+/1- 1 file, shellcheck identik baseline (SC3043:118
+  SC2034:2), harness sysfs palsu 3 skenario PASS (performance poll=10
+  kbase 1/1/45; battery poll tetap 50 kbase 0/8/88; thermal gate poll
+  tetap 50 + log SKIPPED). Commit 572c7e8, belum merge/push.
+  TUNGGU: user apply + tes HP (L2). Kalau ramp jadi makin lambat, revert
+  angka upthreshold ke 15 (kbase) — polling_interval 10ms tetap.
+  PELAJARAN: harness wajib set GPU_ADRENO_SKIP=0 (profiles.sh yang mengaturnya
+  per profil); tanpa itu tune_gpu_mali return dini dan semua tes false-pass.
+
 - MONITOR-EVENT-POLL (2026-09-25, leader + dev-modul work/monitor-event-poll):
   Fix 3 bug event/polling di common/monitor.sh (48+/12-, hanya file itu).
   Temuan kunci: "deaf (446s on, 0 parsed)" adalah FALSE POSITIVE — log HP
