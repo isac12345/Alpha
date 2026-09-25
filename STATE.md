@@ -1,5 +1,23 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- MONITOR-EVENT-POLL (2026-09-25, leader + dev-modul work/monitor-event-poll):
+  Fix 3 bug event/polling di common/monitor.sh (48+/12-, hanya file itu).
+  Temuan kunci: "deaf (446s on, 0 parsed)" adalah FALSE POSITIVE — log HP
+  membuktikan tag event ADA di ROM ini ("healthy (10 parsed in 46s)" +
+  4x APPLY-EVENT); EVENT_ON_SECS tak pernah direset sementara count file
+  dihapus tiap stop_event_stream → vonis bandingkan detik basi vs count fresh.
+  (1) Pre-check isi: dump logcat -t ${ALPHA_EVENT_PRECHECK_LINES:-100} +
+  grep EVENT_TAG_PATTERN bersama reader; kosong → langsung polling
+  reason=no-matching-tags. (2) start_event_stream sukses → reset
+  EVENT_ON_SECS=0 + count=0 (window = sejak restart terakhir).
+  (3) GAME_POLL_INTERVAL_SECS ${ALPHA_GAME_POLL_INTERVAL_SECS:-2} untuk
+  paket di game map, selain itu 7 dtk biasa.
+  L1: sh -n exit 0, diff --check 0, shellcheck identik baseline (tanpa
+  warning baru), uji pola 10 token case+grep OK. Commit e0e3bb2 di cabang
+  work/monitor-event-poll (belum merge, tanpa push).
+  TUNGGU: user apply ke HP + tes (L2). PELAJARAN: klaim "ROM tak punya tag"
+  wajib dibuktikan via grep log dulu sebelum menyimpulkan.
+
 - MODUL33-STABIL-OTOMATIS (2026-09-25, leader langsung, minta user:
   PGR/WuWa pacing-cepat stutter + suhu >40C di mode perf; Alpha jadi
   stabil-otomatis minim-stutter, maximal via HSIN saja):
