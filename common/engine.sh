@@ -263,7 +263,7 @@ tune_gpu_adreno_kgsl() {
             case "${ACTIVE_PROFILE:-balanced}" in
                 battery) poll_target=100; up_target=90; down_target=3 ;;
                 balanced) poll_target=50; up_target=75; down_target=5 ;;
-                performance) poll_target=10; up_target=50; down_target=10 ;;
+                performance) poll_target=10; up_target=35; down_target=10 ;;
                 *) poll_target=50; up_target=75; down_target=5 ;;
             esac
             ;;
@@ -274,10 +274,11 @@ tune_gpu_adreno_kgsl() {
     esac
 
     # Thermal gate HANYA untuk tier agresif (performance) - filosofi sama
-    # seperti Mali (ceiling ditahan saat panas). Threshold Adreno tetap
-    # default 65000 (backward-compat, jangan diubah). Tier konservatif
-    # balanced/battery selalu diterapkan (aman secara termal).
-    if [ "${ACTIVE_PROFILE:-balanced}" = "performance" ] && gpu_thermal_is_hot; then
+    # seperti Mali (ceiling ditahan saat panas). Di performance SOFTWARE
+    # gate Alpha digeser ke 95C: user oke panas, proteksi thermal HARDWARE
+    # kernel tetap utuh. Tier konservatif balanced/battery selalu diterapkan
+    # (aman secara termal).
+    if [ "${ACTIVE_PROFILE:-balanced}" = "performance" ] && gpu_thermal_is_hot 95000; then
         log_msg "SKIPPED" "$category" "thermal panas, adreno ramp agresif ditahan"
         return 0
     fi
@@ -424,7 +425,7 @@ tune_gpu_adreno_cap() {
         log_msg "SKIPPED" "$category" "cap target invalid"
         return 0
     fi
-    if [ "$gpu_percent" -ge 100 ] && gpu_thermal_is_hot; then
+    if [ "$gpu_percent" -ge 100 ] && gpu_thermal_is_hot 95000; then
         log_msg "SKIPPED" "$category" "thermal sedang panas, performance cap ditahan"
         return 0
     fi
@@ -479,10 +480,10 @@ tune_gpu_mali_kbase() {
         battery)
             boost=0; pollingtime=8; upthreshold=88 ;;
         balanced)
-            boost=0; pollingtime=4; upthreshold=65 ;;
+            boost=0; pollingtime=2; upthreshold=55 ;;
         performance)
-            # upthreshold dinaikkan untuk kurangi osilasi; pollingtime=1 sudah batas bawah, jadi tidak diturunkan.
-            boost=1; pollingtime=1; upthreshold=45 ;;
+            # upthreshold rendah = ramp naik cepat (raw power); pollingtime=1 sudah batas bawah, jadi tidak diturunkan.
+            boost=1; pollingtime=1; upthreshold=30 ;;
         *)
             boost=0; pollingtime=4; upthreshold=75 ;;
     esac
@@ -575,7 +576,7 @@ tune_gpu_mali() {
         return 0
     fi
     if [ "${ACTIVE_PROFILE:-balanced}" = "performance" ]; then
-        if gpu_thermal_is_hot 75000; then
+        if gpu_thermal_is_hot 95000; then
             log_msg "SKIPPED" "$category" "thermal panas, Mali polling tuning ditahan"
         elif [ -w "$mali_dev/polling_interval" ]; then
             apply_tweak "$category" "$mali_dev/polling_interval" "$GPU_PERF_POLLING_MS"
@@ -583,7 +584,7 @@ tune_gpu_mali() {
             log_msg "SKIPPED" "$category" "polling_interval tidak writable/tidak ada, skip"
         fi
     fi
-    if [ "$mali_percent" -ge 100 ] && gpu_thermal_is_hot 75000; then
+    if [ "$mali_percent" -ge 100 ] && gpu_thermal_is_hot 95000; then
         log_msg "SKIPPED" "$category" "thermal sedang panas, performance cap ditahan"
         return 0
     fi

@@ -452,13 +452,23 @@ handle_foreground_event() {
                     # Run safety check before apply
                     local current_temp
                     current_temp=$(gb_safety_check)
+                    # Tangga termal sadar profil manual: profil performance
+                    # digeser (warm 85 / high 90) supaya raw power
+                    # bertahan; balanced/battery tetap 75/85. Batas kritis
+                    # 95C (forced battery) TIDAK pernah bergeser.
+                    local gb_warm_thr=75000 gb_high_thr=85000 gb_manual_prof
+                    gb_manual_prof=$(get_manual_profile)
+                    if [ "$gb_manual_prof" = "performance" ]; then
+                        gb_warm_thr=85000
+                        gb_high_thr=90000
+                    fi
                     if [ "$current_temp" -ge 95000 ] 2>/dev/null; then
-                        monitor_log "GAMEBOOST" "SKIPPED: temp ${current_temp}mC >= 95000, critical"
-                    elif [ "$current_temp" -ge 85000 ] 2>/dev/null; then
-                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 85000, forcing balanced"
+                        monitor_log "GAMEBOOST" "SKIPPED: temp ${current_temp}mC >= 95000, critical (manual=${gb_manual_prof})"
+                    elif [ "$current_temp" -ge "$gb_high_thr" ] 2>/dev/null; then
+                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= ${gb_high_thr}, forcing balanced (manual=${gb_manual_prof})"
                         GB_FORCED_LEVEL="balanced"
-                    elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
-                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= 75000, forcing performance"
+                    elif [ "$current_temp" -ge "$gb_warm_thr" ] 2>/dev/null; then
+                        monitor_log "GAMEBOOST" "TEMP WARNING: ${current_temp}mC >= ${gb_warm_thr}, forcing performance (manual=${gb_manual_prof})"
                         GB_FORCED_LEVEL="performance"
                     else
                         GB_FORCED_LEVEL=""
@@ -716,6 +726,15 @@ check_gb_grace_period() {
             GB_SAFETY_LAST=$now
             local current_temp
             current_temp=$(gb_safety_check)
+            # Tangga termal sadar profil manual (sama seperti gate apply
+            # game di atas): manual performance -> warm 85 / high 90,
+            # sisanya 75/85. Kritis 95C (forced battery) tetap.
+            local gb_warm_thr=75000 gb_high_thr=85000 gb_manual_prof
+            gb_manual_prof=$(get_manual_profile)
+            if [ "$gb_manual_prof" = "performance" ]; then
+                gb_warm_thr=85000
+                gb_high_thr=90000
+            fi
             
             # Check thermal thresholds
             if [ "$current_temp" -ge 95000 ] 2>/dev/null; then
@@ -729,8 +748,8 @@ check_gb_grace_period() {
                 sh "$MODDIR/apply_now.sh" battery monitor >> "$LOG_FILE" 2>&1
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
                 rm -f "$GB_PENDING_FILE"
-                monitor_log "GAMEBOOST" "CRITICAL TEMP: ${current_temp}mC >= 95000, forced battery"
-            elif [ "$current_temp" -ge 85000 ] 2>/dev/null; then
+                monitor_log "GAMEBOOST" "CRITICAL TEMP: ${current_temp}mC >= 95000, forced battery (manual=${gb_manual_prof})"
+            elif [ "$current_temp" -ge "$gb_high_thr" ] 2>/dev/null; then
                 # High: restore and apply balanced
                 if command -v gb_restore >/dev/null 2>&1; then
                     gb_restore
@@ -741,8 +760,8 @@ check_gb_grace_period() {
                 sh "$MODDIR/apply_now.sh" balanced monitor >> "$LOG_FILE" 2>&1
                 printf '%s\n' "0" > "$GB_ACTIVE_FILE" 2>/dev/null
                 rm -f "$GB_PENDING_FILE"
-                monitor_log "GAMEBOOST" "HIGH TEMP: ${current_temp}mC >= 85000, forced balanced"
-            elif [ "$current_temp" -ge 75000 ] 2>/dev/null; then
+                monitor_log "GAMEBOOST" "HIGH TEMP: ${current_temp}mC >= ${gb_high_thr}, forced balanced (manual=${gb_manual_prof})"
+            elif [ "$current_temp" -ge "$gb_warm_thr" ] 2>/dev/null; then
                 # Warm: step down ke resep performance SEKARANG (bukan cuma var)
                 if [ -z "$GB_FORCED_LEVEL" ]; then
                     GB_FORCED_LEVEL="performance"
@@ -753,7 +772,7 @@ check_gb_grace_period() {
                         monitor_log "GAMEBOOST" "WARN: gb_apply unavailable during warm temp step-down"
                     fi
                     rm -f "$GB_COOLDOWN_COUNT_FILE" 2>/dev/null
-                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= 75000, stepped down to performance"
+                    monitor_log "GAMEBOOST" "WARM TEMP: ${current_temp}mC >= ${gb_warm_thr}, stepped down to performance (manual=${gb_manual_prof})"
                 fi
             elif [ "$current_temp" -lt 70000 ] 2>/dev/null; then
                 # Cool down: check if we were forced

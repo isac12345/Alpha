@@ -1,10 +1,10 @@
 #!/system/bin/sh
 # Alpha Fusion - Game Boost Engine (Extreme / Performance / Balanced)
-# Modul33 stabil-otomatis: extreme = game stabil (lantai big 60%,
-# little 35%), performance = mild (lantai 35%, tangga panas 75C),
-# restore native (pendinginan). Generic semua device + game.
+# Modul33 stabil-otomatis: extreme = game stabil (lantai big 75%,
+# little 35%, uclamp 60), performance = mild (lantai 35%, uclamp 30,
+# tangga panas 75C), restore native (pendinginan). Generic semua device + game.
 # Prinsip: pacing stabil > burst max (maximal via HSIN saja).
-# GPU min TIDAK dikunci (adem + pacing), fas-rs performance (sustained).
+# GPU min TIDAK dikunci (adem + pacing), fas-rs fast di extreme (burst).
 # uscfreq-hold OFF (biang kresek modul23). POSIX sh; semua tulis =
 # dua kali tulis-baca-verifikasi.
 # Sakelar: DISABLE_GAMEBOOST, NO_CPUSET, GAMEBOOST_NO_VM, GAMEBOOST_LEVEL
@@ -513,10 +513,10 @@ _gb_apply_cpu() {
         fi
         [ -z "$_hw_max" ] && continue
 
-        # Contoh hasil di T615 (bukan patokan: tiap HP ikut OPP sendiri):
-        # extreme big p6=snap(1092000)=1040000, little p0=614400;
-        # performance p0/p6=614400/768000; tanpa uscfreq-hold)
-        _floor=$((_hw_max * 60 / 100))
+        # Tiap HP ikut OPP sendiri (contoh T615: 60% dulu = 1040000,
+        # kini 75% = satu rung di atasnya; little tetap 35%);
+        # performance 35% semua; tanpa uscfreq-hold)
+        _floor=$((_hw_max * 75 / 100))
         if [ "$_level" = "performance" ]; then
             _floor=$((_hw_max * 35 / 100))
         fi
@@ -564,12 +564,12 @@ _gb_apply_cpu() {
         _gb_log "SKIPPED" "NO_CPUSET exists, skip cpuset"
     fi
 
-    # --- uclamp (modul33 stabil: extreme 45, performance 15) ---
+    # --- uclamp (extreme 60, performance 30) ---
     if [ -d "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}" ]; then
         case "$_level" in
-            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "45" "UCLAMP"
+            extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "60" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
-            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "15" "UCLAMP"
+            performance) _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "30" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
         esac
     fi
@@ -585,10 +585,10 @@ _gb_apply_cpu() {
     # --- sched_child_runs_first ---
     _gb_write "$PROC_SYS_PREFIX/kernel/sched_child_runs_first" "1" "SCHED"
 
-    # --- Scheduler latency (modul33 stabil; hanya bila node resolve) ---
+    # --- Scheduler latency (extreme 40/40/30/1000, performance 60/60/50/600) ---
     case "$_level" in
-        extreme)     _gb_sched_apply_level 60 60 50 600 ;;
-        performance) _gb_sched_apply_level 70 70 60 400 ;;
+        extreme)     _gb_sched_apply_level 40 40 30 1000 ;;
+        performance) _gb_sched_apply_level 60 60 50 600 ;;
     esac
     # NOTE 2026-09-24 modul25: uscfreq down_rate hold (5000/3000) TETAP
     # DIMATIKAN (biang kresek/patah konfirmasi user: sebelum-uscfreq enak,
@@ -713,7 +713,7 @@ _gb_apply_gpu() {
         [ -w "$_kbase/gpu_pollingtime" ] && \
             _gb_write "$_kbase/gpu_pollingtime" "1" "GPU_KBASE"
         [ -w "$_kbase/gpu_upthreshold" ] && \
-            _gb_write "$_kbase/gpu_upthreshold" "60" "GPU_KBASE"
+            _gb_write "$_kbase/gpu_upthreshold" "30" "GPU_KBASE"
     fi
 
     # --- MTK ged_dvfs_boost ---
@@ -891,12 +891,12 @@ gb_apply() {
 }
 
 # Mode fas-rs mengikuti boost (tidak kill apa pun):
-# modul33 stabil: extreme → performance (sustained; fast = burst HSIN saja),
-# performance → performance, balanced → balance.
+# extreme → fast (burst agresif buat game berat), performance → performance,
+# balanced → balance.
 _gb_set_fasrs_mode() {
     local _want=""
     case "$1" in
-        extreme)     _want="performance" ;;
+        extreme)     _want="fast" ;;
         performance) _want="performance" ;;
         balanced)    _want="balance" ;;
         *) return 0 ;;
