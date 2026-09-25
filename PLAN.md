@@ -1,17 +1,26 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
 ## Modul33 — stabil-otomatis universal (2026-09-25, L1 DONE, L2 TUNGGU HP)
-- [x] Extreme stabil: big 60% (was 75%), little 35%; uclamp 45 (was 60);
-  sched 60/60/50/600; GPU max saja (min tak dikunci); kbase upthr 60;
-  VM vfs 100; IO 2048; fas-rs performance (was fast). Gap ke tangga
-  mengecil = step-down 75C halus. Universal: % + snap OPP per-policy,
-  guard semua node, loop semua policy, scan GPU generik. Tanpa hardcode
-  angka/nama device (audit: T615 hanya di komentar contoh).
-- [x] L1: sh-n OK, shellcheck 0, sandbox OPP T615 (614400/1040000/45,
-  perf 614400/768000/15, balanced restore). Commit 54d103e + tweak komen.
-- [ ] L2: tes HP PGR + WuWa pacing-cepat (TUNGGU user).
-- Prinsip baru (minta user): Alpha = stabil-otomatis minim-stutter;
-  performa maximal via HSIN saja.
+- Isi modul33: lihat entri STATE MODUL33-STABIL-OTOMATIS. L2: tes HP
+  PGR + WuWa pacing-cepat (TUNGGU user).
+
+## B35 — universal runtime guards + flash/uninstall hardening (2026-09-25, L1 DONE, L2 TUNGGU HP)
+- [x] Restore GPU: backup min absen → skip tulis min (was fallback=max
+  = kunci ulang). GPU-max: fallback max_freq-node (was cur_freq);
+  absen → skip. Thermal tanpa sensor: sentinel 75000 + log UNKNOWN
+  (was 0 = extreme buta). Topologi >2 level: floor uniform 60% + skip
+  cpuset (was mid digolong little).
+- [x] Flash-timpa: `customize.sh` sudah bersih transient + native basi.
+- [x] Uninstall: source `detect.sh` dulu → `CPU_POLICIES` terisi →
+  `gb_restore` CPU jalan; unknown-manager AsoulOpt → `retry:` flag
+  (bukan `skip:`) + return 1 → service.sh retry boot berikutnya.
+- [x] Loop var `_alpha_bin` dikurung subshell. Guards `CPU_POLICIES`
+  di `_gb_backup_native`, `_gb_apply_cpu`, `gb_restore` (WARN + return).
+- [x] L1: sh-n OK, shellcheck 0, sandbox (2-cluster identik modul33;
+  3-cluster 912000/1000000/1440000 + cpuset utuh; no-sensor→performance;
+  GPU-tanpa-OPP→gov saja; restore-tanpa-min→min utuh). Merge 69f914d,
+  tanpa bump versi.
+- [ ] L2: tes HP (TUNGGU user).
 
 ## B34 — timeout perintah root (2026-09-25, L1 DONE, L2 TUNGGU HP)
 - [x] `RootExecutor` (timeout 20 dtk + exit code + quoting); `ToolsKit.revert`

@@ -17,6 +17,15 @@
   uclamp15, balanced restore-only. Bump 32→33 modul-only (APK 20).
   Commit 54d103e. MENUNGGU: push/CI + tes HP PGR/WuWa (L2).
 
+- B35-UNIVERSAL-GUARDS (2026-09-25, leader langsung, audit explore):
+  Fix 5 temuan HIGH/MEDIUM: (1) `CPU_POLICIES` unbound di uninstall.sh
+  → source `detect.sh` dulu, `gb_restore` CPU jalan; (2) AsoulOpt
+  unknown-manager → `retry:` flag + return 1 → service.sh retry;
+  (3) customize.sh loop var leak → subshell; (4) gameboost.sh guards
+  `_gb_backup_native`/`_gb_apply_cpu`/`gb_restore` (WARN + return).
+  L1: sh-n OK, shellcheck 0, sandbox 5 skenario PASS. Merge 69f914d.
+  Tanpa bump versi. MENUNGGU: tes HP (L2).
+
 - B34-ROOTEXECUTOR (2026-09-25, leader + dev-apk work/b34-roottimeout):
   kelas baru `java/.../RootExecutor.java` (timeout 20 dtk, cek exit code,
   quoting `quoteArg`); `ToolsKit.revert` pakai wrapper + toast hanya bila

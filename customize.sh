@@ -238,15 +238,16 @@ set_perm "$MODPATH/common/render_manager.sh" 0 0 0755
 # zip git. Guard [ -f ] supaya tidak error "stat failed" saat file absen
 # (biang error tiap flash, bersih maupun timpa). Tak ada yang mengeksekusi
 # .bin (service.sh selalu pakai .sh), jadi skip = aman.
-for _alpha_bin in "$MODPATH/common/monitor.bin" "$MODPATH/common/watchdog.bin" \
-    "$MODPATH/common/apply_now.bin" "$MODPATH/common/game_add.bin" \
-    "$MODPATH/common/engine_manager.bin" "$MODPATH/common/game_manager.bin" \
-    "$MODPATH/common/sync_uperf_exclusion.bin" "$MODPATH/bin/pgr-log.bin"; do
-    if [ -f "$_alpha_bin" ]; then
-        set_perm "$_alpha_bin" 0 0 0755
-    fi
-done
-unset _alpha_bin
+(
+    for _alpha_bin in "$MODPATH/common/monitor.bin" "$MODPATH/common/watchdog.bin" \
+        "$MODPATH/common/apply_now.bin" "$MODPATH/common/game_add.bin" \
+        "$MODPATH/common/engine_manager.bin" "$MODPATH/common/game_manager.bin" \
+        "$MODPATH/common/sync_uperf_exclusion.bin" "$MODPATH/bin/pgr-log.bin"; do
+        if [ -f "$_alpha_bin" ]; then
+            set_perm "$_alpha_bin" 0 0 0755
+        fi
+    done
+)
 set_perm "$MODPATH/common/asoulopt_install.sh" 0 0 0644
 set_perm "$MODPATH/common/companion_install.sh" 0 0 0644
 set_perm "$MODPATH/common/profiles.sh" 0 0 0644

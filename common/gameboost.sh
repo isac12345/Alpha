@@ -26,6 +26,7 @@ SYSFS_DEBUG_PREFIX="${SYSFS_DEBUG_PREFIX:-${SYSFS_DEBUG_PREFIX:-/sys/kernel/debu
 
 # Defaults (di-override bila defaults.conf ada)
 GPU_MAX_FREQ="${GPU_MAX_FREQ:-0}"
+CPU_POLICIES="${CPU_POLICIES:-}"
 
 # ============================================================
 # Logging
@@ -300,6 +301,10 @@ _gb_sched_apply_level() {
 # nilai boost lama, bukan native asli = kresek + ga stabil.
 # ============================================================
 _gb_backup_native() {
+    if [ -z "$CPU_POLICIES" ]; then
+        _gb_log "WARN" "CPU_POLICIES unbound/empty; detect.sh harus di-source dulu; backup CPU dilewati"
+        return 0
+    fi
     if [ -f "$NATIVE_CONF" ]; then
         _nv=$(grep "^NATIVE_VERSION=" "$NATIVE_CONF" 2>/dev/null | head -n 1 | cut -d= -f2)
         [ "$_nv" = "30" ] && return 0
@@ -472,6 +477,10 @@ _gb_read_native() {
 # setrika → throttle/flapping 75C = stutter).
 # ============================================================
 _gb_apply_cpu() {
+    if [ -z "$CPU_POLICIES" ]; then
+        _gb_log "WARN" "CPU_POLICIES unbound/empty; detect.sh harus di-source dulu; apply CPU dilewati"
+        return 0
+    fi
     local _level="$1"
     local _pol _pol_dir _avail_list _opp_list _hw_max _floor _target_min
     local _max_all=0 _mx _topo_unknown=0
@@ -911,6 +920,9 @@ _gb_set_fasrs_mode() {
 # gb_restore — Pulihkan nilai asli
 # ============================================================
 gb_restore() {
+    if [ -z "$CPU_POLICIES" ]; then
+        _gb_log "WARN" "CPU_POLICIES unbound/empty; detect.sh harus di-source dulu; restore CPU dilewati"
+    fi
     [ -f "$NATIVE_CONF" ] || { _gb_log "WARN" "no native backup, skip restore"; return 0; }
     _gb_log "INFO" "restore mulai"
 

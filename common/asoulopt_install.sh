@@ -63,8 +63,8 @@ asoulopt_install_once() {
             ;;
         *)
             asoulopt_msg "AsoulOpt: DILEWATI - root manager tidak dikenali (binary magisk maupun ksud tidak ditemukan). BUKAN masalah chipset. Untuk mencoba lagi, hapus $asoulopt_flag."
-            printf 'skip:unknown-manager\n' > "$asoulopt_flag" 2>/dev/null
-            return 0
+            printf 'retry:unknown-manager\n' > "$asoulopt_flag" 2>/dev/null
+            return 1
             ;;
     esac
 }

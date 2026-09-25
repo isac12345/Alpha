@@ -19,6 +19,24 @@
   PUSH/CI + tes HP menyusul. PELAJARAN: angka hasil T615 hanya contoh
   verifikasi; jangan jadikan konstanta di source agar universal.
 
+## B35 — universal runtime guards + flash/uninstall hardening (2026-09-25)
+- Restore GPU: backup min absen → skip tulis min (was fallback=max
+  = kunci ulang). GPU-max: fallback max_freq-node (was cur_freq);
+  absen → skip. Thermal tanpa sensor: sentinel 75000 + log UNKNOWN
+  (was 0 = extreme buta). Topologi >2 level: floor uniform 60% + skip
+  cpuset (was mid digolong little).
+- Flash-timpa: `customize.sh` sudah bersih transient + native basi.
+- Uninstall: source `detect.sh` dulu → `CPU_POLICIES` terisi →
+  `gb_restore` CPU jalan; unknown-manager AsoulOpt → `retry:` flag
+  (bukan `skip:`) + return 1 → service.sh retry boot berikutnya.
+- Loop var `_alpha_bin` dikurung subshell. Guards `CPU_POLICIES`
+  di `_gb_backup_native`, `_gb_apply_cpu`, `gb_restore` (WARN + return).
+- L1: sh-n OK, shellcheck 0, sandbox (2-cluster identik modul33;
+  3-cluster 912000/1000000/1440000 + cpuset utuh; no-sensor→performance;
+  GPU-tanpa-OPP→gov saja; restore-tanpa-min→min utuh). Merge 69f914d,
+  tanpa bump versi.
+- L2: tes HP (TUNGGU user).
+
 ## B34 RootExecutor timeout (2026-09-25, leader + dev-apk)
 
 - Backlog B2 DONE L1: wrapper timeout 20 dtk + exit code + `quoteArg`;

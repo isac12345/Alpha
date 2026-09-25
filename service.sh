@@ -254,7 +254,8 @@ echo "[BOOT] tahap sync_uperf_exclusion selesai" >> "$LOG_FILE"
 # 7.6 One-shot install AsoulOpt (thread-affinity daemon) saat boot pertama.
 #     Ditunda ke sini (bukan customize.sh) supaya tidak nested-install di
 #     tengah proses instalasi modul ini sendiri, dan supaya boot sudah
-#     completed (syarat ksud module install). Flag mencegah percobaan ulang.
+#     completed (syarat ksud module install). Flag mencegah percobaan ulang
+#     BILA sukses (return 0). Return 1 = gagal/retry -> log + coba lagi boot berikutnya.
 if [ -f "$MODDIR/common/asoulopt_install.sh" ]; then
     . "$MODDIR/common/asoulopt_install.sh"
     asoulopt_msg() { echo "[AsoulOpt] $1" >> "$LOG_FILE"; }

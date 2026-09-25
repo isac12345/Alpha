@@ -33,6 +33,11 @@ echo "[UNINSTALL] pid files removed"
 # modul31: kembalikan nilai native (best-effort, tanpa gagal).
 # Setelah uninstall + reboot kernel kembali default sendiri; ini hanya
 # melepas kunci boost SEKARANG supaya tidak nyangkut sampai reboot.
+if [ -f "${0%/*}/common/detect.sh" ]; then
+    ALPHA_CONF_DIR="$WORK_DIR"
+    export ALPHA_CONF_DIR
+    . "${0%/*}/common/detect.sh" 2>/dev/null
+fi
 if [ -f "${0%/*}/common/gameboost.sh" ]; then
     ALPHA_CONF_DIR="$WORK_DIR" ALPHA_LOG_FILE="/dev/null"
     export ALPHA_CONF_DIR ALPHA_LOG_FILE
