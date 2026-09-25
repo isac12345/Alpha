@@ -1,5 +1,12 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
+## Perf-max + Balanced-adem (2026-09-25, L1 DONE, L2 TUNGGU HP)
+- [x] Performance raw-power (floor 50%/big75%, uclamp60, kbase30,
+  fast, gate95C, tangga 85/90) + Balanced adem-stabil (floor25%,
+  kbase 2/55, mild uclamp30). Merge ba16cd7, tanpa bump versi.
+- [x] L1: bash-n + shellcheck 0 + sandbox + uji tier 10/10.
+- [ ] L2: tes HP PGR/WuWa berat + sesi panjang balanced (TUNGGU user).
+
 ## Modul33 — stabil-otomatis universal (2026-09-25, L1 DONE, L2 TUNGGU HP)
 - Isi modul33: lihat entri STATE MODUL33-STABIL-OTOMATIS. L2: tes HP
   PGR + WuWa pacing-cepat (TUNGGU user).

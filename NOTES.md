@@ -1,5 +1,30 @@
 # NOTES.md — Alpha Fusion v2 (branch fusion-v2)
 
+## Perf-max + Balanced-adem (2026-09-25, leader + dev-modul work/perf-balanced)
+- User balik arah: performance = raw power murni buat game berat
+  (PGR/WuWa/Genshin, oke panas, minim drop/kompe); balanced = tier
+  adem-stabil di bawahnya buat sesi panjang minim stutter; universal.
+- Performance (manual tap + extreme in-game): CPU floor 15→50%
+  (profiles) / big 60→75% (gameboost); uclamp 45→60; sched
+  60/60/50/600→40/40/30/1000; Mali kbase upthreshold 45→30;
+  Adreno up_threshold 50→35; fas-rs extreme performance→fast;
+  gate software GPU 65/75C→95C + tangga monitor geser (warm 85 /
+  high 90 saat manual=performance). Kritis 95C (forced battery)
+  TIDAK tersentuh — proteksi HW kernel utuh.
+- Balanced: floor 0→25% (SKIP 1→0) anti-stutter sesi panjang;
+  kbase polling 4→2 / up 65→55; tier mild in-game uclamp 15→30,
+  sched 70s→60/60/50/600. Max/GPU/VM/IO tetap (85%/85%/mild/128).
+- Koreksi leader (≤20 baris): komentar contoh T615 basi (1040000
+  era 60%) → generik; high-thr 95000→90000 supaya 3-tier tetap
+  terjangkau (85 perf / 90 balanced / 95 battery), bukan lompat
+  ke battery. GPU min tetap TAK dikunci (keputusan modul33).
+- L1: bash-n OK x4, shellcheck -S error 0 x4, sandbox dev
+  (extreme floor 1400000=OPP≤75%, uclamp60, kbase30, fast; balanced
+  floor 25%; thermal perf-manual 80C→extreme, 90C→performance) +
+  uji rantai tier leader 10/10. Merge ba16cd7, tanpa bump versi.
+- L2: tes HP PGR/WuWa (TUNGGU user). PELAJARAN: threshold high ==
+  critical bikin cabang balanced mati — jaga high < critical.
+
 ## Modul33 stabil-otomatis universal (2026-09-25, leader langsung)
 - User: PGR/WuWa pacing-cepat stutter + >40C mode perf; Alpha dibuat
   stabil-otomatis minim-stutter, maximal cukup HSIN; semua HP universal,
