@@ -35,9 +35,9 @@ BATTERY_GPU_FREQ_MAX_PERCENT=45
 # Balanced profile: default compromise between latency, power and heat.
 BALANCED_GOVERNOR_PREFERENCE="schedutil walt interactive performance"
 BALANCED_CPU_FREQ_MAX_PERCENT=85
-# Lantai ringan 25% (SKIP=0) anti-stutter sesi panjang: CPU tidak sering
+# Lantai ringan 30% (SKIP=0) anti-stutter sesi panjang: CPU tidak sering
 # jatuh ke OPP bawah tiap frame load, tetap di bawah tier performance.
-BALANCED_CPU_FREQ_MIN_PERCENT=25
+BALANCED_CPU_FREQ_MIN_PERCENT=30
 BALANCED_BOOST_CPU_INPUT=0
 BALANCED_BOOST_WALT_INPUT=0
 BALANCED_BOOST_MTK_PERFMGR=0
@@ -68,7 +68,7 @@ BALANCED_GPU_FREQ_MAX_PERCENT=85
 # Performance profile: raw power, software thermal gate relaxed (HW protection intact).
 PERFORMANCE_GOVERNOR_PREFERENCE="performance schedutil walt interactive"
 PERFORMANCE_CPU_FREQ_MAX_PERCENT=100
-PERFORMANCE_CPU_FREQ_MIN_PERCENT=50
+PERFORMANCE_CPU_FREQ_MIN_PERCENT=55
 PERFORMANCE_BOOST_CPU_INPUT=0
 PERFORMANCE_BOOST_WALT_INPUT=0
 PERFORMANCE_BOOST_MTK_PERFMGR=0

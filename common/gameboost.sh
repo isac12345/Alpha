@@ -1,9 +1,10 @@
 #!/system/bin/sh
 # Alpha Fusion - Game Boost Engine (Extreme / Performance / Balanced)
-# Modul33 stabil-otomatis: extreme = game stabil (lantai big 75%,
-# little 35%, uclamp 60), performance = mild (lantai 35%, uclamp 30,
-# tangga panas 75C), restore native (pendinginan). Generic semua device + game.
-# Prinsip: pacing stabil > burst max (maximal via HSIN saja).
+# Hybrid v35: extreme = game max (lantai big 80%, little 45%,
+# uclamp 60), performance = mild (lantai 40%, uclamp 30,
+# tangga sadar-profil di monitor.sh), restore native (pendinginan).
+# Prinsip: extreme = burst max (panas oke, khusus game berat),
+# mild/balanced = sustained adem buat sesi panjang.
 # GPU min TIDAK dikunci (adem + pacing), fas-rs fast di extreme (burst).
 # uscfreq-hold OFF (biang kresek modul23). POSIX sh; semua tulis =
 # dua kali tulis-baca-verifikasi.
@@ -495,7 +496,7 @@ _gb_apply_cpu() {
         [ "$_mx" -gt "$_max_all" ] 2>/dev/null && _max_all="$_mx"
     done
 
-    # --- Frequency Floor (extreme: big 75% / little 35%; performance 35%) ---
+    # --- Frequency Floor (hybrid v35: extreme big 80% / little 45%; performance 40%) ---
     for _pol in $CPU_POLICIES; do
         _pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$_pol"
         [ -d "$_pol_dir" ] || continue
@@ -513,19 +514,20 @@ _gb_apply_cpu() {
         fi
         [ -z "$_hw_max" ] && continue
 
-        # Tiap HP ikut OPP sendiri (contoh T615: 60% dulu = 1040000,
-        # kini 75% = satu rung di atasnya; little tetap 35%);
-        # performance 35% semua; tanpa uscfreq-hold)
-        _floor=$((_hw_max * 75 / 100))
+        # Tiap HP ikut OPP sendiri (big 80% = dekat max, little 45%
+        # = ruang napas buat thread helper audio/input/network);
+        # performance 40% semua; tanpa uscfreq-hold)
+        _floor=$((_hw_max * 80 / 100))
         if [ "$_level" = "performance" ]; then
-            _floor=$((_hw_max * 35 / 100))
+            _floor=$((_hw_max * 40 / 100))
         fi
-        # Extreme + topologi dikenal + cluster kecil: turun ke 35%
-        # (game dipin ke big; little dikunci tinggi = setrika).
+        # Extreme + topologi dikenal + cluster kecil: turun ke 45%
+        # (game dipin ke big; little tetap dikasih ruang lebih supaya
+        # thread helper tidak keteteran, tanpa mengunci setinggi big).
         if [ "$_level" = "extreme" ] && [ "$_topo_unknown" -eq 0 ] 2>/dev/null \
                 && [ "$_max_all" -gt 0 ] 2>/dev/null \
                 && [ "$_hw_max" -lt "$_max_all" ] 2>/dev/null; then
-            _floor=$((_hw_max * 35 / 100))
+            _floor=$((_hw_max * 45 / 100))
         fi
 
         if [ -n "$_opp_list" ]; then
