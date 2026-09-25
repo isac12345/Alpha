@@ -21,7 +21,7 @@
 - L1: bash-n OK x4, shellcheck -S error 0 x4, sandbox dev
   (extreme floor 1400000=OPP≤75%, uclamp60, kbase30, fast; balanced
   floor 25%; thermal perf-manual 80C→extreme, 90C→performance) +
-  uji rantai tier leader 10/10. Merge ba16cd7, tanpa bump versi.
+  uji rantai tier leader 10/10. Merge ba16cd7, tanpa bump versi. CI SUCCESS 36160009160.
 - L2: tes HP PGR/WuWa (TUNGGU user). PELAJARAN: threshold high ==
   critical bikin cabang balanced mati — jaga high < critical.
 
