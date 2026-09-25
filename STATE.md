@@ -1,5 +1,22 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- ZIP-V34 (2026-09-25, leader): kedua fix L1 di-merge ke fusion-v2
+  (9bde84a monitor, 0fbfd5f GPU opsi A) + bump modul-only 33->34
+  (f58fe01, APK tetap 20). Build zip lokal Termux:
+  /sdcard/alpha/Alpha-Fusion-v34.zip (5594350 byte, md5
+  e41a4a26b9e30f27f5f42e912965b3c6), 182 entries, tanpa wrapper,
+  META-INF di root, versionCode=34, tanpa .jks/rahasia, md5
+  engine.sh+monitor.sh+APK identik repo, SEMUA skrip sh -n OK dari
+  hasil ekstrak. Zip lama Alpha-Fusion-v1.zip (v33) dibiarkan.
+  TUNGGU: flash + tes HP (L2). BELUM push ke GitHub/arsip.
+  JEBRAKAN ZIP (penting, jangan diulang): rebuild zip pakai
+  python zipfile TANPA set create_system=3 + create_version=30 ->
+  Info-ZIP unzip tidak restore permission, hasil ekstrak mode 000
+  (file tidak bisa dibaca/dijalankan). Yang benar: `git archive |
+  tar -x` ke staging, chmod dipaks (755 skrip+biner, 644 lainnya),
+  lalu `zip -r -9 -X`. Verifikasi wajib: ekstrak ulang + ls -l +
+  sh -n (bukan cuma testzip).
+
 - GPU-PERF-FLAPPING / OPSI-A (2026-09-25, leader + dev-modul
   work/gpu-perf-tune): complaint user = FPS "kesendat mendadak" di profil
   performance. Analisis (leader, live): satuan gpu_pollingtime TIDAK bisa
