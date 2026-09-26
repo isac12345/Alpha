@@ -31,13 +31,17 @@ BATTERY_GPU_ADRENO_SKIP=0
 BATTERY_GPU_ADRENO_MODE="cap"
 BATTERY_GPU_ADRENO_POWERLEVEL=0
 BATTERY_GPU_FREQ_MAX_PERCENT=45
+# Floor 0 = LEPAS kunci (tulis rung terbawah tabel): GPU bebas turun penuh
+# demi baterai. Bukan skip — skip bikin kunci perf nyangkut (bug v36-merged).
+BATTERY_GPU_FREQ_FLOOR_PERCENT=0
 
 # Balanced profile: default compromise between latency, power and heat.
 BALANCED_GOVERNOR_PREFERENCE="schedutil walt interactive performance"
 BALANCED_CPU_FREQ_MAX_PERCENT=85
-# Lantai ringan 30% (SKIP=0) anti-stutter sesi panjang: CPU tidak sering
-# jatuh ke OPP bawah tiap frame load, tetap di bawah tier performance.
-BALANCED_CPU_FREQ_MIN_PERCENT=30
+# Lantai 35% (final: naik dari 30% hybrid) anti-stutter sesi panjang:
+# CPU tidak sering jatuh ke OPP bawah tiap frame load, tetap di bawah
+# tier performance. SKIP=0 = lantai tetap ditulis.
+BALANCED_CPU_FREQ_MIN_PERCENT=35
 BALANCED_BOOST_CPU_INPUT=0
 BALANCED_BOOST_WALT_INPUT=0
 BALANCED_BOOST_MTK_PERFMGR=0
@@ -64,6 +68,9 @@ BALANCED_GPU_ADRENO_POWERLEVEL=0
 # Adreno tetap stock karena MODE=stock (skip di tune_gpu_adreno), jadi
 # nilai ini efektif untuk jalur Mali.
 BALANCED_GPU_FREQ_MAX_PERCENT=85
+# Floor GPU 40% dari max device: cegah downclock jauh antar-frame
+# (micro-stutter) tapi masih ada ruang turun buat jaga suhu sesi panjang.
+BALANCED_GPU_FREQ_FLOOR_PERCENT=40
 
 # Performance profile: raw power, software thermal gate relaxed (HW protection intact).
 PERFORMANCE_GOVERNOR_PREFERENCE="performance schedutil walt interactive"
@@ -92,6 +99,11 @@ PERFORMANCE_GPU_ADRENO_SKIP=0
 PERFORMANCE_GPU_ADRENO_MODE="cap"
 PERFORMANCE_GPU_ADRENO_POWERLEVEL=0
 PERFORMANCE_GPU_FREQ_MAX_PERCENT=100
+# Floor 90%: GPU nyaris dikunci di clock atas, pacing rata antar-frame
+# (obat drop tajam loading/transisi combat). Panas naik = wajar;
+# dilepas otomatis oleh thermal gate kritis di engine (95C), proteksi
+# HW kernel tidak pernah disentuh.
+PERFORMANCE_GPU_FREQ_FLOOR_PERCENT=90
 
 profile_warn() {
     profile_warn_message="$1"
@@ -142,6 +154,7 @@ load_profile() {
     GPU_ADRENO_MODE=$(eval "printf '%s' \"\${${profile_upper}_GPU_ADRENO_MODE}\"")
     GPU_ADRENO_POWERLEVEL=$(eval "printf '%s' \"\${${profile_upper}_GPU_ADRENO_POWERLEVEL}\"")
     GPU_FREQ_MAX_PERCENT=$(eval "printf '%s' \"\${${profile_upper}_GPU_FREQ_MAX_PERCENT}\"")
+    GPU_FREQ_FLOOR_PERCENT=$(eval "printf '%s' \"\${${profile_upper}_GPU_FREQ_FLOOR_PERCENT}\"")
 
     # Legacy ceiling remains available until engine devfreq becomes percentage-based.
     DEVFREQ_MAX_FREQ_VAL=9999000000

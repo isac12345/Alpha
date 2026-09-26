@@ -593,6 +593,46 @@ tune_gpu_mali() {
     fi
     tune_gpu_mali_kbase
     apply_tweak "$category" "$mali_dev/max_freq" "$mali_target"
+
+    # --- Floor lock (final universal) ---
+    # max_freq cuma ceiling; governor masih bebas downclock jauh antar-
+    # frame (loading/transisi combat) -> drop tajam sesekali. Floor kunci
+    # batas bawah per profil (profiles.sh): battery 0, balanced 40,
+    # performance 90. Universal: % dari hw_max + snap OPP + skip aman
+    # bila node tak writable. Adreno sengaja tak ikut (powerlevel
+    # inverse, tanpa device tes).
+    local mali_floor_percent="${GPU_FREQ_FLOOR_PERCENT:-0}"
+    case "$mali_floor_percent" in
+        ''|*[!0-9]*) mali_floor_percent=0 ;;
+    esac
+    if [ ! -w "$mali_dev/min_freq" ] 2>/dev/null; then
+        [ "$mali_floor_percent" -gt 0 ] 2>/dev/null && \
+            log_msg "SKIPPED" "$category" "min_freq tidak writable/tidak ada, floor skip aman"
+    elif [ "$mali_floor_percent" -eq 0 ] 2>/dev/null; then
+        # Battery/lepas-kunci: tulis rung TERBAWAH (bukan skip) agar kunci
+        # performance sebelumnya beneran lepas.
+        local mali_release
+        mali_release=$(printf '%s\n' "$mali_table" | sort -n | head -n 1)
+        case "$mali_release" in ''|*[!0-9]*) mali_release="" ;; esac
+        [ -n "$mali_release" ] && apply_tweak "$category" "$mali_dev/min_freq" "$mali_release"
+    else
+        # Thermal gate per profil (mitigasi loading lama/panas): balanced
+        # lepas floor saat hangat (85C), performance hanya saat kritis
+        # (95C). Proteksi HW kernel tak tersentuh.
+        local mali_floor_gate=95000
+        [ "${ACTIVE_PROFILE:-balanced}" = "balanced" ] && mali_floor_gate=85000
+        if gpu_thermal_is_hot "$mali_floor_gate"; then
+            log_msg "SKIPPED" "$category" "thermal panas, floor lock dilepas aman"
+        else
+            local mali_floor=$(( (mali_hw_max / 100) * mali_floor_percent ))
+            mali_floor=$(alpha_opp_snap_nearest "$mali_floor" "$(printf '%s\n' "$mali_table" | sort -n)")
+            if [ -n "$mali_floor" ] && [ "$mali_floor" -le "$mali_target" ] 2>/dev/null; then
+                apply_tweak "$category" "$mali_dev/min_freq" "$mali_floor"
+            else
+                log_msg "SKIPPED" "$category" "floor target invalid/di atas ceiling, skip aman"
+            fi
+        fi
+    fi
 }
 
 tune_gpu_powervr() {
