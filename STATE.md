@@ -662,3 +662,9 @@
   floor-lock 0, antiracun 2). /sdcard/alpha dibersihkan: 9 file lama
   dihapus, sisa 1 zip final (+ dir agftest, bukan file, dibiarkan).
   BELUM push. L2: flash + reboot + tes WuWa, rasa wajib = hybrid-v36.
+
+- SIMPAN-CHECKPOINT (2026-09-26, perintah user "simpan sampe sini dulu"):
+  HEAD dc9293f (fusion-v2, 4 ahead origin). Tree bersih, versionCode=38
+  (APK 20), zip final tunggal di /sdcard/alpha/
+  (Alpha-Fusion-v38-hybrid-final.zip). Lanjut nanti: push origin +
+  L2 flash/reboot/tes WuWa v38. Tanpa ubah kode, hanya penanda jeda.
