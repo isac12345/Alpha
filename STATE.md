@@ -592,3 +592,18 @@
   JUJUR loading: deteksi loading tak bisa universal (tanpa akses
   FPS/game-state) — mitigasi = thermal gate + saran balanced buat
   sesi story/loading berat.
+
+- ADAPTIVE-FLOOR-PROTOTIPE (2026-09-26, perintah user "coba aja", dev-modul
+  work/adaptive-floor c564783, diverifikasi independen oleh leader):
+  Isi: agf_tick + 9 helper di common/monitor.sh SAJA (+340/-0),
+  hook sesudah check_gb_grace_period di 2 loop. Desain: delta
+  trans_stat -> busy% -> tier HIGH/MID/LOW (70/30, MID=60% plafon),
+  naik langsung + turun 3 tick + thermal paksa LOW; plafon = floor
+  profil dibaca live dari profiles.sh; battery OFF; node absen/RO =
+  SKIPPED sekali. L1 leader: bash-n OK, shellcheck -S error 0,
+  tanpa TODO/stub, API nyata semua (gb_safety_check/GB_HIGH_THR/
+  get_manual_profile), sandbox worker di-run ulang leader: 24 PASS
+  0 FAIL. Asumsi kolom trans_stat TERVERIFIKASI cocok bacaan live
+  T615 (* = freq aktif, kolom akhir time ms). BELUM: end-to-end
+  vs gb_restore di perangkat; BELUM merge fusion-v2; BELUM zip uji.
+  L2: butuh keputusan user (kemas zip uji + flash, atau revisi).
