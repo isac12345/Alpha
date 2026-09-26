@@ -308,7 +308,7 @@ _gb_backup_native() {
     fi
     if [ -f "$NATIVE_CONF" ]; then
         _nv=$(grep "^NATIVE_VERSION=" "$NATIVE_CONF" 2>/dev/null | head -n 1 | cut -d= -f2)
-        [ "$_nv" = "30" ] && return 0
+        [ "$_nv" = "31" ] && return 0
         rm -f "$NATIVE_CONF" 2>/dev/null
     fi
     mkdir -p "$CONF_DIR" 2>/dev/null
@@ -316,6 +316,7 @@ _gb_backup_native() {
     local _pol _gov _mn _mx _avail _mx_val _v
     for _pol in $CPU_POLICIES; do
         [ -d "$SYSFS_CPU_PREFIX/cpufreq/$_pol" ] || continue
+        _mn=""; _mx=""
         [ -f "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_governor" ] && {
             _gov=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_governor" 2>/dev/null | tr -d '[:space:]')
             [ -n "$_gov" ] && echo "${_pol}_scaling_governor=$_gov" >> "$NATIVE_CONF.tmp"
@@ -328,6 +329,17 @@ _gb_backup_native() {
             _mx=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/scaling_max_freq" 2>/dev/null | tr -d '[:space:]')
             [ -n "$_mx" ] && echo "${_pol}_scaling_max_freq=$_mx" >> "$NATIVE_CONF.tmp"
         }
+        # Anti-racun snapshot: bila min==max (backup diambil saat boost
+        # aktif / restore basi), min jatuh ke cpuinfo_min agar restore
+        # tak mengunci min=max (= panas idle + throttle awal game).
+        if [ -n "${_mn:-}" ] && [ -n "${_mx:-}" ] && [ "$_mn" = "$_mx" ] 2>/dev/null; then
+            _fallback=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/cpuinfo_min_freq" 2>/dev/null | tr -d '[:space:]')
+            case "$_fallback" in ''|*[!0-9]*) _fallback="" ;; esac
+            if [ -n "$_fallback" ]; then
+                _mn="$_fallback"
+                sed -i "s/^${_pol}_scaling_min_freq=.*/${_pol}_scaling_min_freq=$_mn/" "$NATIVE_CONF.tmp" 2>/dev/null
+            fi
+        fi
         # uscfreq down_rate_limit_us asli (Unisoc; absen di governor lain → skip)
         if [ -f "$SYSFS_CPU_PREFIX/cpufreq/$_pol/uscfreq/down_rate_limit_us" ]; then
             _v=$(cat "$SYSFS_CPU_PREFIX/cpufreq/$_pol/uscfreq/down_rate_limit_us" 2>/dev/null | tr -d '[:space:]')
@@ -367,6 +379,16 @@ _gb_backup_native() {
             _mn=$(cat "$_df/min_freq" 2>/dev/null | tr -d '[:space:]')
             [ -n "$_mn" ] && echo "gpu_${_gname}_min_freq=$_mn" >> "$NATIVE_CONF.tmp"
         }
+        # Anti-racun GPU: bila max<=min (snapshot saat cap baterai 45%
+        # / boost), max jatuh ke rung tertinggi tabel agar restore tak
+        # mengunci GPU di 384M (= FPS ketahan bawah).
+        if [ -n "${_mx:-}" ] && [ -n "${_mn:-}" ] && [ "$_mx" -le "$_mn" ] 2>/dev/null; then
+            _gtbl=$(cat "$_df/available_frequencies" 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+$' | sort -n | tail -1)
+            case "$_gtbl" in ''|*[!0-9]*) _gtbl="" ;; esac
+            if [ -n "$_gtbl" ]; then
+                sed -i "s/^gpu_${_gname}_max_freq=.*/gpu_${_gname}_max_freq=$_gtbl/" "$NATIVE_CONF.tmp" 2>/dev/null
+            fi
+        fi
     done
     # GPU_MAX_FREQ dari defaults.conf
     if [ -f "$CONF_DIR/defaults.conf" ]; then
@@ -454,7 +476,7 @@ _gb_backup_native() {
             [ -n "$_sq" ] && echo "io_${_bname}_scheduler=$_sq" >> "$NATIVE_CONF.tmp"
         }
     done
-    echo "NATIVE_VERSION=30" >> "$NATIVE_CONF.tmp"
+    echo "NATIVE_VERSION=31" >> "$NATIVE_CONF.tmp"
     mv "$NATIVE_CONF.tmp" "$NATIVE_CONF" 2>/dev/null
     chmod 0644 "$NATIVE_CONF" 2>/dev/null
     [ -f "$NATIVE_CONF" ] || { _gb_log "FAILED" "backup write failed"; return 1; }
