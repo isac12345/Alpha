@@ -1,5 +1,16 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
+## V38-hybrid-final (2026-09-26, L1 DONE, L2 TUNGGU HP)
+- [x] Isi = file hybrid-v36 byte-identik + antisnapshot v31 saja
+  (commit 6031e1d: revert engine floor-lock 40 baris + adaptive AGF
+  415 baris + profiles GPU floor; gameboost + antisnapshot kept).
+- [x] L1: bash-n 4/4, shellcheck 0, diff-vs-hybrid cuma antisnapshot,
+  sandbox racun→bersih PASS (614400/768000/850M, NATIVE 31).
+  Zip: /sdcard/alpha/Alpha-Fusion-v38-hybrid-final.zip (md5 a9b8e053,
+  176 entri = daftar file identik hybrid-v36, perms OK, vCode 38).
+  sdcard dibersihkan, sisa 1 file (perintah user).
+- [ ] L2: flash + reboot + tes WuWa (rasa harus = hybrid-v36).
+
 ## Hybrid-v36 (2026-09-26, L2 MENANG di HP user)
 - Zip: /sdcard/alpha/Alpha-Fusion-v36-hybrid.zip (vCode 34, md5 67dea4).
   Isi = hybrid floors (extreme 80/45, perf 40, tap 55/bal 30) + GPU

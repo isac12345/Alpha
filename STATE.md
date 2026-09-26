@@ -651,3 +651,14 @@
   Kandidat biang v37: floor-lock 90% (min 768M dikunci → panas →
   throttle) + AGF stuck MID 54%. Rencana v38: hybrid-v36 persis +
   antisnapshot v31 saja (tunggu perintah user).
+
+- ZIP-V38-HYBRID-FINAL (2026-09-26, perintah user "sisain yg final"):
+  Commit 6031e1d (engine/profiles/monitor = byte hybrid-v36,
+  gameboost = hybrid + antisnapshot, bump 37->38 modul-only APK 20).
+  L1: bash-n 4/4, shellcheck 0, diff-vs-hybrid hanya antisnapshot,
+  sandbox racun->bersih PASS. Zip Alpha-Fusion-v38-hybrid-final.zip
+  (5589813 byte, md5 a9b8e053, 176 entri = daftar file identik
+  hybrid-v36, ekstrak perms rwx OK + sh-n OK, vCode 38, AGF 0,
+  floor-lock 0, antiracun 2). /sdcard/alpha dibersihkan: 9 file lama
+  dihapus, sisa 1 zip final (+ dir agftest, bukan file, dibiarkan).
+  BELUM push. L2: flash + reboot + tes WuWa, rasa wajib = hybrid-v36.
