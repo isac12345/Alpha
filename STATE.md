@@ -641,6 +641,13 @@
 - L2-V37-GAGAL-VS-HYBRID (2026-09-26, laporan user: "turun cuma ke 54%,
   masih enakan versi hybrid"): adaptive kalah. Tafsir: busy% stuck 54%
   = tier MID (30-70), floor 60% plafon, tak pernah turun LOW/384M.
-  Konsisten HP-test: idle-UI saja 72% busy. Opsi: (A) balik hybrid
-  statis, (B) tune ambang MID/hysteresis. Butuh: output CEK_V37 no.3
-  (grep GPU_AGF) + konfirmasi 54% = busy%/freq/baterai. BELUM coding.
+  Konsisten HP-test: idle-UI saja 72% busy. BELUM coding.
+
+- L2-HYBRID-V36-MENANG (2026-09-26, laporan user: stutter minim,
+  WuWa <10%): /sdcard/alpha/Alpha-Fusion-v36-hybrid.zip (vCode 34)
+  paling enak sejauh ini. Beda vs v37 (diff terverifikasi leader):
+  tanpa engine floor-lock (perf GPU90/balanced40) + tanpa adaptive
+  AGF; hanya hybrid floors + GPU opsi A + monitor event fix.
+  Kandidat biang v37: floor-lock 90% (min 768M dikunci → panas →
+  throttle) + AGF stuck MID 54%. Rencana v38: hybrid-v36 persis +
+  antisnapshot v31 saja (tunggu perintah user).

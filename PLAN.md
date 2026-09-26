@@ -1,5 +1,15 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
+## Hybrid-v36 (2026-09-26, L2 MENANG di HP user)
+- Zip: /sdcard/alpha/Alpha-Fusion-v36-hybrid.zip (vCode 34, md5 67dea4).
+  Isi = hybrid floors (extreme 80/45, perf 40, tap 55/bal 30) + GPU
+  opsi A (Mali polling 10ms + kbase 45) + monitor event fix. TANPA
+  floor-lock engine, TANPA adaptive AGF, TANPA antisnapshot v31.
+- [x] L2 user: stutter minim, WuWa <10% — paling enak sejauh ini.
+- Catatan: vCode 34 = snapshot NATIVE_VERSION=30, rentan racun
+  (min=max + GPU max 384M). Bila snapshot keracunan, rasa enak bisa
+  berubah. Opsi v38: tuning hybrid-v36 persis + antisnapshot saja.
+
 ## V37-adaptive-floor (2026-09-26, L1 DONE, L2 GAGAL vs hybrid)
 - [x] Adaptive GPU floor tiered-delta (monitor.sh +415, work/adaptive-floor):
   delta trans_stat -> busy% -> HIGH/MID/LOW (70/30, MID 60% plafon),
