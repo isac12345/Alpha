@@ -628,3 +628,12 @@
   Commit `a3d8e39` di `work/adaptive-floor`. BELUM merge fusion-v2;
   BELUM zip uji; L2: keputusan user (merge + zip, atau revisi ambang/
   hysteresis).
+
+- ZIP-V37-ADAPTIVE (2026-09-26, perintah user "ya taruh di sdcard/alpha"):
+  Merge work/adaptive-floor -> fusion-v2 (3ea3fe9, --no-ff, 1 file
+  +415) + bump 36->37 modul-only (d3cde1a, APK 20). L1 ulang
+  pasca-merge: bash-n OK, shellcheck 0. Zip:
+  /sdcard/alpha/Alpha-Fusion-v37-adaptive.zip (5.4M, md5 f9278920,
+  vCode 37, GPU_AGF 13x di dalam, ekstrak perms OK + sh-n 4 file
+  OK). BELUM push GitHub. L2: flash + reboot + main game, rasain
+  (tempur mulus? loading adem? panas wajar?).
