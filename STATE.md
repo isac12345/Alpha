@@ -607,3 +607,24 @@
   T615 (* = freq aktif, kolom akhir time ms). BELUM: end-to-end
   vs gb_restore di perangkat; BELUM merge fusion-v2; BELUM zip uji.
   L2: butuh keputusan user (kemas zip uji + flash, atau revisi).
+
+- ADAPTIVE-FLOOR HP-TEST (2026-09-26, leader + izin user test device):
+  Tes live HP T615 (ums9230) via bundle extracted functions (tidak
+  ganggu daemon produksi). Hasil:
+  - Parser trans_stat BENAR: tick 1 baseline (total=20.3Mms low=5.5Mms),
+    tick 2 busy=72% (GPU render UI walau "idle") → tier HIGH benar.
+  - Thermal override BENAR: ambang turun ke 50C → tier paksa LOW + min
+    384M + log `[GAMEBOOST] GPU_AGF: temp ... tier dipaksa LOW` +
+    `[APPLIED] min_freq=384M`.
+  - Battery profile BENAR: adaptive OFF (return 0, no baseline/tier/write/log).
+  - End-to-end floor naik: max_freq manual 850M → tick 1 baseline, tick 2
+    HIGH → target 768M → **APPLIED** (min 384M→768M, max 850M).
+  - Respek plafon profil: battery max_freq=384M → target capped 384M
+    (tak bisa min > max); performance max=850M → floor naik 768M.
+  - Hysteresis: naik langsung, turun butuh 3 tick LOW berturut (tes
+    sandbox PASS; HP "idle" tetap 72% busy = UI render = HIGH benar).
+  - Semua L1 sandbox (24/24) + device tests (parser, thermal, battery,
+    plafon, end-to-end naik) PASS. `monitor.sh` bash-n/shellcheck 0.
+  Commit `a3d8e39` di `work/adaptive-floor`. BELUM merge fusion-v2;
+  BELUM zip uji; L2: keputusan user (merge + zip, atau revisi ambang/
+  hysteresis).
