@@ -822,8 +822,10 @@ check_gb_grace_period() {
 # Filosofi: floor GPU min_freq ngikut beban nyata, bukan angka
 # mati dari profile. Beban tidak bisa dibaca dari node utilization
 # instan (T615 tak punya), jadi dibaca dari DELTA trans_stat
-# devfreq GPU: file kumulatif, kolom terakhir = total time (ms).
-# busy% = 100 * (1 - delta_kolom_terendah / delta_total).
+# devfreq GPU: file kumulatif, tiap baris "FREQ: c1..cN TIME" dengan
+# TIME = ms spent di FREQ itu. low = TIME baris FREQ TERENDAH, total =
+# JUMLAH semua TIME ("Total transition" bukan ms, jangan ikut dijumlah).
+# busy% = 100 * (1 - delta_time_rung_terendah / delta_total).
 # Tier 3 saja: HIGH (busy >= AGF_HIGH_PCT), MID (>= AGF_MID_PCT),
 # LOW sisanya. Naik tier LANGSUNG, turun tier baru berlaku setelah
 # AGF_DROP_TICKS tick berturut-turut (hysteresis), suhu >= ambang
@@ -849,6 +851,8 @@ AGF_FLOOR_PERFORMANCE=""
 AGF_LOGGED_NOSTAT=0
 AGF_LOGGED_RO=0
 AGF_LOGGED_FLOOR=0
+AGF_LOGGED_CEILING=0
+AGF_LOGGED_TARGET=0
 
 # Ambang tier + hysteresis: nilai rusak/0 -> default, biar file
 # state yang digarap user tak bisa membuat tier mati diam-diam.
@@ -870,6 +874,8 @@ agf_log_once() {
         nostat) [ "$AGF_LOGGED_NOSTAT" = "1" ] && return 0; AGF_LOGGED_NOSTAT=1 ;;
         ro) [ "$AGF_LOGGED_RO" = "1" ] && return 0; AGF_LOGGED_RO=1 ;;
         floor) [ "$AGF_LOGGED_FLOOR" = "1" ] && return 0; AGF_LOGGED_FLOOR=1 ;;
+        ceiling) [ "$AGF_LOGGED_CEILING" = "1" ] && return 0; AGF_LOGGED_CEILING=1 ;;
+        target) [ "$AGF_LOGGED_TARGET" = "1" ] && return 0; AGF_LOGGED_TARGET=1 ;;
         *) return 0 ;;
     esac
     monitor_log "$2" "$3"
@@ -895,21 +901,36 @@ agf_find_gpu_node() {
     return 1
 }
 
-# Isi trans_stat -> "<kolom_terendah> <kolom_terakhir>". Kolom
-# non-angka dibuang; butuh >= 2 kolom numerik.
+# Parse trans_stat kernel (format nyata T615):
+#     From  :   To
+#            : 850000000 768000000 ...   time(ms)
+#   850000000:  0  57 578  17 41946  13756988
+#  *384000000:  41936 1 125 0 0  5107256
+#   Total transition : 85522
+# Yang dipakai: tiap baris data "FREQ: c1..c5 TIME" -> total =
+# JUMLAH semua TIME, low = TIME baris FREQ TERENDAH (waktu di OPP
+# terbawah = indikator idle). Baris header & "Total transition"
+# tidak punya angka sebelum ':' jadi otomatis tersaring - itu
+# penting, "Total transition" itu COUNT transisi, bukan ms.
 agf_read_trans() {
     [ -r "$1" ] || return 1
-    agf_line=$(tr -s '[:space:]' '\n' < "$1" 2>/dev/null | grep -E '^[0-9]+$' | tr '\n' ' ')
-    agf_line=${agf_line% }
-    case "$agf_line" in
-        *' '*) ;;
-        *) return 1 ;;
-    esac
-    agf_total=${agf_line##* }
-    agf_head=${agf_line% * }
-    agf_low=$(printf '%s\n' "$agf_head" | tr ' ' '\n' | sort -n | head -n 1)
-    case "$agf_total" in ''|*[!0-9]*) return 1 ;; esac
-    case "$agf_low" in ''|*[!0-9]*) return 1 ;; esac
+    agf_rows=$(sed -n -E '/^[*[:space:]]*[0-9]+:/s/^[*[:space:]]*([0-9]+):.*[[:space:]]([0-9]+)[[:space:]]*$/\1:\2/p' "$1" 2>/dev/null)
+    agf_total=0
+    agf_low=""
+    agf_low_freq=""
+    for agf_tok in $agf_rows; do
+        agf_r_freq=${agf_tok%%:*}
+        agf_r_time=${agf_tok##*:}
+        case "$agf_r_freq" in ''|*[!0-9]*) continue ;; esac
+        case "$agf_r_time" in ''|*[!0-9]*) continue ;; esac
+        agf_total=$((agf_total + agf_r_time))
+        if [ -z "$agf_low_freq" ] || [ "$agf_r_freq" -lt "$agf_low_freq" ] 2>/dev/null; then
+            agf_low_freq="$agf_r_freq"
+            agf_low="$agf_r_time"
+        fi
+    done
+    [ "$agf_total" -gt 0 ] 2>/dev/null || return 1
+    [ -n "$agf_low" ] || return 1
     printf '%s %s\n' "$agf_low" "$agf_total"
     return 0
 }
@@ -924,6 +945,33 @@ agf_opp_floor() {
         [ "$agf_f" -le "$1" ] 2>/dev/null || continue
         if [ -z "$agf_best" ] || [ "$agf_f" -gt "$agf_best" ] 2>/dev/null; then
             agf_best="$agf_f"
+        fi
+    done
+    [ -n "$agf_best" ] || return 1
+    printf '%s\n' "$agf_best"
+    return 0
+}
+
+# Rung tabel TERDEKAT ke target Hz (nearest, seperti
+# engine.sh alpha_opp_snap_nearest). Dipakai untuk plafon
+# profil: floor % dari hw_max -> rung terdekat (bukan snap ke
+# bawah). Contoh: hw_max=850M, floor 90% -> 765M -> nearest
+# rung = 768M (bukan 614M).
+agf_opp_nearest() {
+    case "$1" in ''|*[!0-9]*) return 1 ;; esac
+    agf_target="$1"
+    agf_best=""
+    agf_best_diff=""
+    for agf_f in $2; do
+        case "$agf_f" in ''|*[!0-9]*) continue ;; esac
+        if [ "$agf_f" -ge "$agf_target" ] 2>/dev/null; then
+            agf_diff=$((agf_f - agf_target))
+        else
+            agf_diff=$((agf_target - agf_f))
+        fi
+        if [ -z "$agf_best" ] || [ "$agf_diff" -lt "$agf_best_diff" ] 2>/dev/null; then
+            agf_best="$agf_f"
+            agf_best_diff="$agf_diff"
         fi
     done
     [ -n "$agf_best" ] || return 1
@@ -1051,7 +1099,22 @@ agf_tick() {
         return 0
     fi
 
-    agf_state_load
+    agf_state_load || {
+        # Tick pertama / state kosong: tidak punya baseline -> tak boleh
+        # hitung delta (delta sejak boot = ngawur). Hanya simpan baseline
+        # (total/low sekarang) ke state + return 0 tanpa tier/tulis.
+        agf_now=$(agf_read_trans "$agf_node/trans_stat") || {
+            monitor_log "SKIPPED" "GPU_AGF: trans_stat ${agf_node##*/} tak terbaca, tick dilewati"
+            return 0
+        }
+        agf_low_now=${agf_now%% *}
+        agf_total_now=${agf_now##* }
+        AGF_PREV_TOTAL="$agf_total_now"
+        AGF_PREV_LOW="$agf_low_now"
+        agf_state_save
+        monitor_log "SKIPPED" "GPU_AGF: tick pertama, baseline trans_stat disimpan (total=${agf_total_now}ms low=${agf_low_now}ms)"
+        return 0
+    }
     agf_now=$(agf_read_trans "$agf_node/trans_stat") || {
         monitor_log "SKIPPED" "GPU_AGF: trans_stat ${agf_node##*/} tak terbaca, tick dilewati"
         return 0
@@ -1092,6 +1155,7 @@ agf_tick() {
     # menakar naik/turun). Tanpa ini tier selalu kosong dan hysteresis
     # tak pernah melayani drop.
     AGF_TIER="$AGF_NEXT_TIER"
+    agf_state_save
 
     # Target tier = persen dari plafon profil aktif.
     case "$AGF_NEXT_TIER" in
@@ -1099,7 +1163,13 @@ agf_tick() {
         MID) agf_tier_pct="$AGF_MID_TIER_PCT" ;;
         *) agf_tier_pct=0 ;;
     esac
-    agf_ceiling=$(agf_opp_floor "$(( (agf_hw_max / 100) * agf_floor_pct_v ))" "$agf_table")
+    # Plafon adaptive = rung TERDEKAT ke floor profil (nearest,
+    # bukan floor) -> sama persis engine.sh alpha_opp_snap_nearest.
+    agf_ceiling=$(agf_opp_nearest "$(( (agf_hw_max / 100) * agf_floor_pct_v ))" "$agf_table")
+    if [ -z "$agf_ceiling" ]; then
+        agf_log_once ceiling SKIPPED "GPU_AGF: plafon profil $agf_prof (${agf_floor_pct_v}%) di bawah rung terbawah tabel, adaptive tak menulis"
+        return 0
+    fi
     if [ -n "$agf_ceiling" ] && [ "$agf_tier_pct" -gt 0 ] 2>/dev/null; then
         agf_target=$(agf_opp_floor "$(( (agf_ceiling / 100) * agf_tier_pct ))" "$agf_table")
     else
@@ -1123,10 +1193,15 @@ agf_tick() {
                 ;;
         esac
     fi
-    case "$agf_target" in ''|*[!0-9]*) return 0 ;; esac
+    case "$agf_target" in ''|*[!0-9]*)
+        # Target tier jatuh di bawah rung terbawah tabel (mis. profil
+        # performance 90% -> MID 60% = 368MHz < 384MHz). Floor ditahan
+        # di nilai sekarang + dicatat, bukan diam-diam tanpa jejak.
+        agf_log_once target SKIPPED "GPU_AGF: target tier=$AGF_NEXT_TIER (${agf_tier_pct}% dari plafon ${agf_ceiling}) di bawah rung terbawah tabel, floor ditahan"
+        return 0
+        ;; esac
     [ -f "$GB_ACTIVE_FILE" ] || return 0
     [ "$(tr -d '[:space:]' < "$GB_ACTIVE_FILE" 2>/dev/null)" = "1" ] || return 0
-    agf_state_save
     agf_cur_min=$(tr -d '[:space:]' < "$agf_node/min_freq" 2>/dev/null)
     if [ "$agf_cur_min" = "$agf_target" ]; then
         return 0
