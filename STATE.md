@@ -557,3 +557,19 @@
 - PERF-MAX + BALANCED-ADEM (2026-09-25, leader + dev-modul work/perf-balanced 8f5eec1 + koreksi leader): performance raw-power (floor 50%/big75, uclamp60, sched40s, kbase30, adreno-up35, fast, gate software 95C, tangga monitor 85/90 saat manual=performance, kritis 95 tetap) + balanced adem-stabil (floor 25%, kbase 2/55, mild uclamp30/sched60s). L1: bash-n OK, shellcheck -S error 0, sandbox + uji tier 10/10. Merge --no-ff ba16cd7 ke fusion-v2, tanpa bump versi. L2: TUNGGU tes HP user.
 
 - HYBRID-V35-FLOORS (2026-09-25, leader langsung work/perf-hybrid 62d9abc): adopsi bagian bagus v35 (extreme big 80%/little 45%, mild 40%, tap 55%/balanced 30%) di atas basis perf-max (GPU galak kbase30, gate 95C, tangga sadar-profil, sched agresif, fas-rs fast). Yang TIDAK diambil: tangga flat 82, kbase 60, uclamp/sched kalem. L1: bash-n OK, shellcheck 0, hitung OPP valid. Merge --no-ff 6325238. L2: TUNGGU tes HP user.
+
+- ANTISNAPSHOT-V35 (2026-09-26, leader langsung, izin user audit live):
+  Audit read-only HP (ums9230 T615): native_boost.conf KERACUNAN —
+  policy0 min=1612000 (=max, hrsnya 614400), policy6 min=1820000
+  (=max, hrsnya 768000), gpu max=384M (=min, hrsnya 850M). Akibat:
+  tiap restore kunci CPU min=max (panas idle 48C) + GPU max=384M
+  (FPS ketahan bawah) = "enak tapi kureng tahan 30fps". Koreksi
+  .gb_active: file isi "0" = INACTIVE (bukan stale, cek monitor.sh).
+  Fix repo (common/gameboost.sh, +24/-2): backupfallback CPU min ke
+  cpuinfo_min bila min==max + GPU max ke rung tabel tertinggi bila
+  max<=min + NATIVE_VERSION 30->31 (paksa refresh). Bump 34->35
+  modul-only (APK 20). L1: bash-n OK, shellcheck -S error 0,
+  sandbox racun->bersih PASS (614400/768000/850M, rerun idempoten).
+  Zip: /sdcard/alpha/Alpha-Fusion-v35-antisnapshot.zip (5.4M, md5
+  b02fcdf3, versionCode=35, ekstrak ulang perms OK + sh-n OK).
+  Commit be894ab. L2: TUNGGU flash + reboot + tes HP.
