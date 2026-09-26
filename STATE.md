@@ -637,3 +637,10 @@
   vCode 37, GPU_AGF 13x di dalam, ekstrak perms OK + sh-n 4 file
   OK). BELUM push GitHub. L2: flash + reboot + main game, rasain
   (tempur mulus? loading adem? panas wajar?).
+
+- L2-V37-GAGAL-VS-HYBRID (2026-09-26, laporan user: "turun cuma ke 54%,
+  masih enakan versi hybrid"): adaptive kalah. Tafsir: busy% stuck 54%
+  = tier MID (30-70), floor 60% plafon, tak pernah turun LOW/384M.
+  Konsisten HP-test: idle-UI saja 72% busy. Opsi: (A) balik hybrid
+  statis, (B) tune ambang MID/hysteresis. Butuh: output CEK_V37 no.3
+  (grep GPU_AGF) + konfirmasi 54% = busy%/freq/baterai. BELUM coding.
