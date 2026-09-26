@@ -573,3 +573,22 @@
   Zip: /sdcard/alpha/Alpha-Fusion-v35-antisnapshot.zip (5.4M, md5
   b02fcdf3, versionCode=35, ekstrak ulang perms OK + sh-n OK).
   Commit be894ab. L2: TUNGGU flash + reboot + tes HP.
+
+- FINAL-V36-UNIVERSAL (2026-09-26, perintah user: balance=hybrid dinaikin,
+  perf=merged pacing rata, mitigasi loading lama, semua device/chipset):
+  Isi (3 file, commit 5195c3c): profiles.sh Balanced CPU min 30->35% +
+  GPU floor Battery 0 / Balanced 40 / Performance 90 (+ loader
+  GPU_FREQ_FLOOR_PERCENT); engine.sh blok floor lock Mali di
+  tune_gpu_mali (% + snap OPP + skip node absen; Adreno sengaja cap
+  saja); battery floor 0 = tulis rung terbawah (LEPAS kunci, bukan
+  skip — fix bug v36-merged); thermal gate floor (balanced lepas
+  >=85C, performance >=95C; HW proteksi utuh). Termasuk antisnapshot
+  v31 (be894ab). Bump 35->36 modul-only (APK 20).
+  L1: bash-n OK, shellcheck -S error 0, sandbox tabel T615 6/6
+  (perf768M/bal384M/batt384/max-cap/skip-panas/skip-hangat/release).
+  Zip: /sdcard/alpha/Alpha-Fusion-v36-final.zip (5.4M, md5
+  11add594, vCode 36, ekstrak perms OK + sh-n OK). L2: TUNGGU flash
+  + reboot + tes HP (game berat + bagian loading lama).
+  JUJUR loading: deteksi loading tak bisa universal (tanpa akses
+  FPS/game-state) — mitigasi = thermal gate + saran balanced buat
+  sesi story/loading berat.
