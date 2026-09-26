@@ -1,5 +1,16 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
+## V37-adaptive-floor (2026-09-26, L1 DONE, L2 TUNGGU HP)
+- [x] Adaptive GPU floor tiered-delta (monitor.sh +415, work/adaptive-floor):
+  delta trans_stat -> busy% -> HIGH/MID/LOW (70/30, MID 60% plafon),
+  naik langsung + turun 3 tick + thermal paksa LOW; plafon live dari
+  profiles.sh; battery OFF. Termasuk final v36 (balanced CPU35/GPU40,
+  perf GPU90, battery release, floor thermal gate) + antisnapshot v31.
+- [x] L1: bash-n OK, shellcheck 0, sandbox 24/24, HP test fungsi
+  (parser/thermal/battery/plafon/naik-768M). Merge 3ea3fe9 + bump 37.
+  Zip: /sdcard/alpha/Alpha-Fusion-v37-adaptive.zip (md5 f9278920).
+- [ ] L2: flash + reboot + main game (TUNGGU user).
+
 ## Perf-max + Balanced-adem (2026-09-25, L1 DONE, L2 TUNGGU HP)
 - [x] Performance raw-power (floor 50%/big75%, uclamp60, kbase30,
   fast, gate95C, tangga 85/90) + Balanced adem-stabil (floor25%,
