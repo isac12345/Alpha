@@ -1,5 +1,28 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- V40-FREEZE-FIX (2026-10-01, leader langsung, L1 DONE, L2 TUNGGU HP):
+  v39 (sched/io/input/net) REGRESI SERIUS di T7250 — user: PGR freeze
+  0 fps 2-3 dtk di suhu dingin, "bener-bener parah". Bukti A/B
+  head-to-head (game+versi sama): 26 Sep hybrid AVG 32.0 / 1%low 6.3 /
+  5%low 13.6 / var 194.9 / 111.56mW / stutter 16.82% vs 1 Okt v39
+  AVG 26.4 / 1%low 1.8 / 5%low 5.3 / var 289.0 / 180.89mW / 17.95%.
+  Power NAIK 62% tapi fps TURUN = preemption kacau, bukan kurang clock.
+  Root cause: tunable_scaling=0 (auto-rescale kernel mati) + latency 4ms
+  + migration_cost 1ms (20x GTurbo) -> render/audio nempel little core.
+  Fix (angka GTurbo 3.5-A profile/performance:434-443): tunable_scaling
+  0->1 semua profil; perf lat 4->6ms, mig 1ms->50us, gran 0.4->1ms,
+  wakeup 2->1.5ms; PORT nr_migrate 32 + autogroup 0; read_ahead 256->32KB.
+  APK tetap v20, module.prop 39->40 modul-only. Merge ef835a4 (+ docs).
+  L1: bash -n OK x2, shellcheck -S error 0 x2, load_profile 3 profil
+  semua var terisi bukan fallback, ekstrak zip sh -n 28 skrip FAIL=0, nol
+  keystore. Zip /sdcard/alpha/Alpha-Fusion-v40-gturbo-schedfix.zip
+  (176 entri, 5.4M, md5 97e42c1cceb30e59e56327abe0f83b55).
+  TUNGGU L2: flash + PGR 10 mnt scene sama. Target 1%low >=6, freeze
+  hilang. Kalau masih freeze, isolate #2 = _gb_sched_apply_level gameboost
+  (masih 600% native migration), lalu tune_sched dimatikan penuh.
+  Fallback aman: /sdcard/alpha/Alpha-Fusion-v38-hybrid-final.zip (proven).
+  JANGAN bump/ubah lagi sebelum ada L2 dari user.
+
 - ZIP-V34 (2026-09-25, leader): kedua fix L1 di-merge ke fusion-v2
   (9bde84a monitor, 0fbfd5f GPU opsi A) + bump modul-only 33->34
   (f58fe01, APK tetap 20). Build zip lokal Termux:

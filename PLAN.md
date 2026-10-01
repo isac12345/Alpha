@@ -1,5 +1,21 @@
 # PLAN.md — Alpha Fusion (nama versi v1; internal naik per build)
 
+## V40-gturbo-schedfix (2026-10-01, L1 DONE, L2 TUNGGU HP)
+- [x] Root cause freeze v39: `sched_tunable_scaling=0` + latency 4ms +
+      migration_cost 1ms (20x GTurbo) -> preemption kacau. Bukti A/B
+      PGR 1% low 6.3 -> 1.8, power 111 -> 180 mW, suhu 43C.
+- [x] Fix angka ke proven GTurbo: tunable_scaling 1 (3 profil), perf
+      lat 6ms / mig 50us / gran 1ms / wake 1.5ms, port nr_migrate 32 +
+      autogroup 0, read_ahead 32KB. Merge ef835a4, bump 40 modul-only.
+- [x] L1: bash-n + shellcheck 0 x2, load_profile 3 profil (tanpa
+      fallback), ekstrak zip sh -n 28/28, nol keystore.
+- [ ] L2: flash v40 + tes PGR 10 mnt scene sama. Target 1%low >=6.
+- [ ] L2-WuWa: banding stutter vs v38 (harus < 11%).
+- [ ] BLOCKER kalau masih freeze: isolate `_gb_sched_apply_level` (600%
+      native migration) = kandidat #2, satu variabel per iterasi.
+- [x] Git: commit lokal di fusion-v2 (belum push). Zaman next session
+      baca STATE.md entri V40-FREEZE-FIX dulu.
+
 ## V38-hybrid-final (2026-09-26, L1 DONE, L2 TUNGGU HP)
 - [x] Isi = file hybrid-v36 byte-identik + antisnapshot v31 saja
   (commit 6031e1d: revert engine floor-lock 40 baris + adaptive AGF
