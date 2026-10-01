@@ -1,5 +1,31 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- V42-DONE-BUT-JANGAN-FLASH (2026-10-02 03:50, leader):
+  v41 = yang TERPASANG di HP user (proven: apply 9 dtk -> 0-1 dtk, patch
+  Claude logfork+readbuiltin, commit d87dd85, vCode 41).
+  v42 = SUDAH DI-COMMIT (dfdf613, vCode 42) dari 2 patch Claude:
+    (a) monitor.sh battery gate: cabang 15-30% dari NO-OP-bohong jadi
+        SKIP jujur + flag opt-in GB_WARN_BOOST. Fix bug nyata: gameboost
+        mati total <30% tanpa charging.
+    (b) gameboost.sh GB_PROFILE_OWNS_IO: profil jadi pemilik tunggal
+        scheduler/read_ahead/tcp_fastopen, gameboost skip write+restore.
+        Default OFF (perilaku v41 utuh) => bisa A/B.
+  Keduanya L1 diverifikasi leader (bash-n OK, shellcheck 0, 4 skenario
+  battery, 3 skenario nested expansion). Zip v42 SUDAH DI-/sdcard/alpha/
+  TAPI JANGAN FLASH — nunggu patch total dari Claude (variance/flapping).
+  ALASAN: user capek flash+reboot berulang. ATURAN BARU: patch -> leader
+  review+sandbox (NO build) -> lapor ke user -> user bilang "ok build"
+  -> baru build zip.
+  BALASAN untuk Claude: /sdcard/alpha/BALASAN-CLAUDE-v42.txt (4 bagian:
+  patch diterima, koreksi 'local'=function scope, P3 variance terbuka,
+  7 syarat patch total).
+  LAPORAN benchmark lengkap: /sdcard/alpha/LAPORAN-CLAUDE-v41.txt.
+  PATCH Claude tersimpan: /sdcard/alpha/patch-v41-logfork.patch,
+    patch-v41b-readbuiltin.patch, /sdcard/Download/patch-v42a-battwarn.patch,
+    patch-v42b-ioowner.patch.
+  RESUME 08:00: baca 2 txt di /sdcard/alpha, cek git log, tunggu patch
+  total Claude, review+sandbox dulu sebelum build.
+
 - V40-JAGO (2026-10-01 22:17, data 30 mnt user, GOLDEN BASELINE):
   Test 30 mnt PGR (v40, 576x1280, SurfaceFlinger latency) =
   AVG 32.8 / MAX 60.4 / MIN 1.0 / 1%low 6.1 / 5%low 10.9 /
