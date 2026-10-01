@@ -790,6 +790,13 @@ _gb_apply_vm() {
 # ============================================================
 # IO Apply
 # ============================================================
+# Flag GB_PROFILE_OWNS_IO: profil (tune_io/tune_network) pemilik tunggal
+# scheduler, read_ahead_kb, tcp_fastopen. gameboost tidak menulis maupun
+# me-restore tiga node itu, jadi nilai di dalam game sama di semua jalur.
+_gb_io_owned() {
+    [ -f "$CONF_DIR/GB_PROFILE_OWNS_IO" ]
+}
+
 _gb_apply_io() {
     local _level="$1"
     local _dev _name _sched_list
@@ -800,6 +807,10 @@ _gb_apply_io() {
         case "$_name" in
             *p[0-9]*|*[0-9]rpmb|*[0-9]boot*) continue ;;
         esac
+        if _gb_io_owned; then
+            _gb_log "SKIPPED" "IO scheduler/read_ahead dev=$_name dimiliki profil (GB_PROFILE_OWNS_IO)"
+            continue
+        fi
 
         # Scheduler: coba mq-deadline
         if [ -f "$_dev/queue/scheduler" ]; then
@@ -841,7 +852,11 @@ _gb_apply_net() {
     fi
 
     # tcp_fastopen = 3
-    _gb_write "$_tfo_node" "3" "NET"
+    if _gb_io_owned; then
+        _gb_log "SKIPPED" "NET tcp_fastopen dimiliki profil (GB_PROFILE_OWNS_IO)"
+    else
+        _gb_write "$_tfo_node" "3" "NET"
+    fi
 
     # netdev_max_backlog = 16384
     _gb_write "$_backlog_node" "16384" "NET"
@@ -1051,7 +1066,7 @@ gb_restore() {
     _v=$(_gb_read_native "tcp_congestion_control" "")
     [ -n "$_v" ] && _gb_write "$_netbase/tcp_congestion_control" "$_v" "NET_RESTORE"
     _v=$(_gb_read_native "tcp_fastopen" "")
-    [ -n "$_v" ] && _gb_write "$_netbase/tcp_fastopen" "$_v" "NET_RESTORE"
+    [ -n "$_v" ] && ! _gb_io_owned && _gb_write "$_netbase/tcp_fastopen" "$_v" "NET_RESTORE"
     _v=$(_gb_read_native "tcp_ecn" "")
     [ -n "$_v" ] && _gb_write "$_netbase/tcp_ecn" "$_v" "NET_RESTORE"
     _v=$(_gb_read_native "netdev_max_backlog" "")
@@ -1074,6 +1089,7 @@ gb_restore() {
         case "$_bname" in
             *p[0-9]*|*[0-9]rpmb|*[0-9]boot*) continue ;;
         esac
+        _gb_io_owned && continue
         _v=$(_gb_read_native "io_${_bname}_read_ahead_kb" "")
         [ -n "$_v" ] && _gb_write "$_bdev/queue/read_ahead_kb" "$_v" "IO_RESTORE"
         _v=$(_gb_read_native "io_${_bname}_scheduler" "")

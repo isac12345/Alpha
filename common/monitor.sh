@@ -442,12 +442,24 @@ handle_foreground_event() {
                 # Check battery status
                 local battery_status
                 battery_status=$(check_battery_status)
+                # 15-30% tanpa charging: sebelumnya cabang ini HANYA log tanpa
+                # gb_apply (log bilang "forcing" tapi tidak ada efek). Sekarang
+                # eksplisit: default SKIP (jujur), atau boost level performance
+                # bila flag GB_WARN_BOOST ada (A/B tanpa reflash). Level lewat
+                # gb_batt_level, BUKAN GB_FORCED_LEVEL, supaya cabang cooldown
+                # termal (unforce -> gb_apply level default balanced) tidak
+                # menganggapnya forced dan mematikan boost setelah 60 dtk.
+                local gb_batt_level=""
+                if [ "$battery_status" = "WARNING" ] && \
+                    [ -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GB_WARN_BOOST" ]; then
+                    gb_batt_level="performance"
+                    battery_status="OK"
+                    monitor_log "GAMEBOOST" "BATTERY WARNING: <30% without charging, flag GB_WARN_BOOST -> boost level performance"
+                fi
                 if [ "$battery_status" = "LOW" ]; then
                     monitor_log "GAMEBOOST" "SKIPPED: battery <15% without charging"
                 elif [ "$battery_status" = "WARNING" ]; then
-                    # Battery <30% without charging: force performance-level boost
-                    # (not battery) following HSIN safety policy
-                    monitor_log "GAMEBOOST" "BATTERY WARNING: <30% without charging, forcing performance-level boost"
+                    monitor_log "GAMEBOOST" "SKIPPED: battery <30% without charging (touch GB_WARN_BOOST untuk boost level performance)"
                 else
                     # Run safety check before apply
                     local current_temp
@@ -482,7 +494,7 @@ handle_foreground_event() {
                         # _gb_level tidak jatuh ke fail-safe balanced).
                         local orig_level
                         orig_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null)
-                        local _target_level="${GB_FORCED_LEVEL:-extreme}"
+                        local _target_level="${GB_FORCED_LEVEL:-${gb_batt_level:-extreme}}"
                         printf '%s\n' "$_target_level" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
                         gb_apply
                         if [ -n "$orig_level" ]; then
