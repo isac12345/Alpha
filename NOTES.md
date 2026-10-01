@@ -945,3 +945,59 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
 - L1: sh -n 3/3 OK, shellcheck -S error 0 (SC2148 shebang di customize =
   konvensi Magisk, pre-existing), sandbox 3/3. Bump 30->31 modul-only.
 - Status: MENUNGGU push/CI + tes HP flash-timpa langsung (L2).
+
+## PELAJARAN 2026-10-01 — leader (v38 -> v39)
+
+1. BUG ORDER PANGGILAN (paling mahal):
+   apply_tweak/tune_* memakai var profil, tapi service.sh memanggil tune_*
+   SEBELUM load_profile -> semua var kosong -> 10 baris `APPLIED value=`
+   (kosong). Tuning "aman" belum tentu "benar". ATURAN: sebelum menyatakan
+   sebuah tune_* "selesai", buktikan lewat log bahwa nilainya BUKAN fallback.
+   Bukti: `grep -c 'APPLIED.*value=$' alpha.log` harus 0.
+
+2. EXIT CODE echo BUKAN BUKTI NODE BERUBAH:
+   `echo v > node` exit 0 walau kernel menolak diam-diam (tidak berubah)
+   ATAU mengubah ke nilai lain (clamp). Perbaiki di SATU tempat
+   (apply_tweak) supaya semua tweak dapat manfaat — BUKAN di tiap pemanggil.
+   Bukti before/after wajib (dummy `cat` yang simulating kernel).
+
+3. NODE WAJIB DIBACA SEBELUM DITULIS, bukan sesudah:
+   untuk bedakan "kernel clamp" vs "node menolak", butuh nilai sebelum.
+
+4. GAMEBOOST SUDAH PEGANG BEBERAPA NODE (sched, elevator, GPU min/max, TFO,
+   child_runs_first) saat boost dan restore ke snapshot native. Tuning baru
+   di profil harus BASELINE (absolut per-profil, ditulis ulang tiap apply),
+   bukan absolute-yang-menumpuk. Cek `grep` dulu sebelum nambah.
+
+5. KALIBRASI HARUS DARI SNAPSHOT, BUKAN ANGKA TETAP:
+   input sampling_rate/poll_delay berbeda tiap driver -> persen-dari-snapshot
+   sekali per boot (anti-lengket). Angka tetap = salah di device lain.
+
+6. CAPABILITY, BUKAN NAMA CHIP:
+   elevator "pilih preferensi profil pertama yang ADA di node"; GPU vendor
+   dari cache; thermal lewat `-e`. Tidak ada daftar nama SoC.
+
+7. MENOLAK LEBIH BAIK DARI MEMASUKKAN:
+   dari 26 usulan tweak hanya ~15 layak. DITOLAK dengan alasan tertulis di
+   kode (blok KEBIJAKAN di engine.sh): trip_point (mematikan proteksi
+   thermal), drop_caches (trigger write-only + cache dingin), overcommit
+   (OOM liar), tcp_mem (angka page = hardcode per-RAM), zRAM reinit
+   (destruktif), cpuidle (gaming = layar nyala). Didokumentasi supaya tidak
+   diusulkan ulang.
+
+8. TES STATIS AKAN MENIPU:
+   hanya cek "nilai = angka di profiles.sh". Yang baru berarti: simulasi
+   dengan beban nyata + model termal bereaksi (naik saat game, turun saat
+   cooldown) + invarian ANTI-LENGKET (state kembali ke manual, tidak
+   tertinggal di battery). Bug pertama yang ketemu justru di harness-nya
+   sendiri (tick cooldown tetap) — bukan di modul.
+
+9. BUILD ZIP: staging dari `git ls-files | tar -x` (bukan menyalin working
+   tree) lalu chmod dipaks 755/644, `zip -r -9 -X`, VERIFIKASI ekstrak
+   ulang (ls -l + sh -n semua .sh + cek secret). Naikkan versionCode
+   kalau isi kode berubah, kalau tidak user tidak bisa bedakan zip lama.
+
+10. JUJUR SOAL DATA: "device MTK yg kemarin dikirim" TIDAK ada di repo
+    maupun percakapan. Sandbox memakai OPP tipikal yang DIJELASKAN di
+    komentar sebagai aproksimasi — bukan diklaim sebagai dump device.
+    Angka(device) != angka(test) = test menipu.

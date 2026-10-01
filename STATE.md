@@ -668,3 +668,23 @@
   (APK 20), zip final tunggal di /sdcard/alpha/
   (Alpha-Fusion-v38-hybrid-final.zip). Lanjut nanti: push origin +
   L2 flash/reboot/tes WuWa v38. Tanpa ubah kode, hanya penanda jeda.
+
+- ZIP-V39-SCHED-IO-INPUT-NET (2026-10-01, leader): 5 commit perbaikan
+  inti + 4 commit fitur baru (grup tweak 1-26), versionCode 38->39.
+  (a) FIX boot-order: blok "persist+load_profile" pindah dari 6 ke 3.2
+  (SEBELUM tune_*) — sebelumnya tune_* jalan dengan var profil kosong.
+  (b) FIX apply_tweak: baca-ulang node (sebelum/sesudah tulis) — clamp ->
+  APPLIED+WARN, tolak-diam -> FAILED (sebelumnya APPLIED palsu).
+  (c) FITUR tune_sched (latency/min_gran/wakeup/migration_cost/
+  rr_timeslice/tunable_scaling/child_runs_first) per-profil.
+  (d) FITUR elevator I/O per-profil + GPU floor (Mali min_freq, Adreno
+  max_pwrlevel) + tune_input (sampling_rate/poll_delay, snapshot+persen).
+  (e) FITUR NAPI netdev_budget + tcp_notsent_lowat, TFO 1->7.
+  (f) TES live_sim.sh: simulasi HP hidup 2 device x 5 fase (boot, sosmed,
+  game+panas, cooldown) dengan model termal bereaksi beban; 26/26 hijau.
+  ZIP: /sdcard/alpha/Alpha-Fusion-v39-sched-io-input-net.zip
+  (5593878 byte, md5 84f94ec96dc32e72a890eb788548168a, 176 entri = file
+  set identik v38, permission 755/644, sh-n semua .sh LOLOS, tanpa
+  secret). Commit: 902f3e7, 15f673a, c932a6a, 17557e1, 6331ee0, e183ef4,
+  8306085 — semua sudah PUSH ke origin/fusion-v2.
+  BELUM L2 (flash + tes HP). Semua fitur kernel baru = L1 simulasi saja.
