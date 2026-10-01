@@ -722,6 +722,13 @@ tune_sched() {
 #   thermal = hardcore, melanggar janji "HW protection intact".
 # - wakeup_count/cpuidle-disable: gaming = layar nyala = tidak pernah
 #   suspend; matikan C-state dalam = panas+boros tanpa guna.
+# - vm.overcommit_memory: stok 0 (heuristik) sudah benar; 1 = OOM liar,
+#   2 = strict pecahkan app. Jangan sentuh.
+# - vm.drop_caches: trigger write-only (baca-ulang gagal = FAILED palsu)
+#   + cache dingin = stutter. Bukan tune boot. Jangan sentuh.
+# - tcp_mem (memory_pressure): hitungan page tergantung RAM perangkat =
+#   angka tetap = hardcore lintas device. Jangan sentuh.
+# - Adreno simple_ondemand up/down: SUDAH ADA di tune_gpu_adreno_kgsl.
 
 # --- 2c. TUNE INPUT (touch sampling_rate / poll_delay) ---
 # Node input beda-beda per driver (tidak ada nama standar), jadi:
@@ -1184,4 +1191,8 @@ tune_network() {
     
     # 2. Aktifkan TCP Fast Open
     apply_tweak "$category" "$tfo_node" "$NET_TCP_FASTOPEN"
+
+    # 3. NAPI burst budget + TCP tulis-cepat (21-26). Node hilang = SKIP.
+    apply_tweak "$category" "$PROC_SYS_PREFIX/net/core/netdev_budget" "$NET_DEV_BUDGET"
+    apply_tweak "$category" "$PROC_SYS_PREFIX/net/ipv4/tcp_notsent_lowat" "$NET_TCP_NOTSENT_LOWAT"
 }
