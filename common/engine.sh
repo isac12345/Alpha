@@ -15,6 +15,24 @@ case "$GPU_PERF_POLLING_MS" in
 esac
 [ "$GPU_PERF_POLLING_MS" -gt 0 ] 2>/dev/null || GPU_PERF_POLLING_MS=10
 
+# Direktori log dihitung SEKALI (tanpa fork dirname per baris log).
+ALPHA_LOG_DIR="${LOG_FILE%/*}"
+case "$LOG_FILE" in */*) ;; *) ALPHA_LOG_DIR=. ;; esac
+# Timestamp di-cache: dihitung 1x per seksi tune_* lewat log_ts, bukan
+# 1x per baris log (date = 1 subproses per baris sebelumnya).
+ALPHA_TS=""
+log_ts() {
+    ALPHA_TS=$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date)
+}
+
+# Baca 1 baris node TANPA fork ($(cat) = 1 subshell + 1 exec tiap baca).
+# Hasil di ALPHA_RD. rc 0 = terbaca; node tanpa newline akhir tetap terbaca.
+# Beda dari cat: hanya baris pertama (semua node di apply_tweak 1 baris).
+alpha_rd() {
+    ALPHA_RD=""
+    IFS= read -r ALPHA_RD 2>/dev/null < "$1" || [ -n "$ALPHA_RD" ]
+}
+
 # Inisialisasi counter summary
 APPLIED_COUNT=0
 SKIPPED_COUNT=0
@@ -24,15 +42,14 @@ log_msg() {
     local status="$1"
     local category="$2"
     local detail="$3"
-    local timestamp
-    timestamp=$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date)
+    [ -n "$ALPHA_TS" ] || log_ts
     
     if [ "${ALPHA_DRYRUN:-0}" = "1" ]; then
-        echo "[$timestamp] [$category] [$status] (DRY-RUN) $detail"
+        echo "[$ALPHA_TS] [$category] [$status] (DRY-RUN) $detail"
     fi
     
-    if [ -d "$(dirname "$LOG_FILE")" ]; then
-        echo "[$timestamp] [$category] [$status] $detail" >> "$LOG_FILE" 2>/dev/null
+    if [ -d "$ALPHA_LOG_DIR" ]; then
+        echo "[$ALPHA_TS] [$category] [$status] $detail" >> "$LOG_FILE" 2>/dev/null
     fi
 }
 
@@ -75,15 +92,17 @@ apply_tweak() {
         # diam-diam" (tidak berubah sama sekali meski echo exit 0).
         local before_val=""
         local before_rc=1
-        before_val=$(cat "$path" 2>/dev/null)
+        alpha_rd "$path"
         before_rc=$?
+        before_val="$ALPHA_RD"
         if echo "$value" > "$path" 2>/dev/null; then
             local after_val=""
-            if ! after_val=$(cat "$path" 2>/dev/null); then
+            if ! alpha_rd "$path"; then
                 FAILED_COUNT=$((FAILED_COUNT + 1))
                 log_msg "FAILED" "$category" "path=$path value=$value (tidak bisa dibaca ulang)"
                 return 1
             fi
+            after_val="$ALPHA_RD"
             if [ "$after_val" = "$value" ]; then
                 APPLIED_COUNT=$((APPLIED_COUNT + 1))
                 log_msg "APPLIED" "$category" "path=$path value=$value"
@@ -113,6 +132,7 @@ apply_tweak() {
 # --- 1. TUNE GOVERNOR ---
 # Adaptasi metode Uperf: validasi governor terhadap scaling_available_governors
 tune_governor() {
+    log_ts
     local category="CPU_GOV"
     for pol in $CPU_POLICIES; do
         local pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$pol"
@@ -145,6 +165,7 @@ tune_governor() {
 # --- 2. TUNE CPU FREQ ---
 # Profile max percentage is mapped to the highest valid OPP at or below target.
 tune_cpu_freq() {
+    log_ts
     local category="CPU_FREQ"
     for pol in $CPU_POLICIES; do
         local pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$pol"
@@ -672,6 +693,7 @@ tune_gpu_xclipse() {
 }
 
 tune_gpu() {
+    log_ts
     case "${GPU_VENDOR:-UNKNOWN}" in
         ADRENO) tune_gpu_adreno ;;
         MALI) tune_gpu_mali ;;
@@ -694,6 +716,7 @@ tune_gpu() {
 # dulu supaya kernel tidak me-rescale nilai kita). Semua lewat apply_tweak:
 # node tidak ada = SKIPPED + log, bukan crash (capability-based).
 tune_sched() {
+    log_ts
     local category="SCHED"
     local kern_dir="$PROC_SYS_PREFIX/kernel"
     apply_tweak "$category" "$kern_dir/sched_tunable_scaling" "$SCHED_TUNABLE_SCALING"
@@ -744,6 +767,7 @@ tune_sched() {
 # persen tidak menumpuk (anti-lengket). Hanya performance yang menaikkan
 # (+25% sampling / -25% poll); lainnya = restore snapshot eksplisit.
 tune_input() {
+    log_ts
     local category="INPUT"
     local input_base="${SYSFS_INPUT_PREFIX:-/sys}/class/input"
     local snap_file="${ALPHA_CONF_DIR:-/data/adb/alpha}/input_native.conf"
@@ -808,6 +832,7 @@ tune_input() {
 # --- 3. TUNE KERNEL BOOST SILENCER ---
 # Mengurangi spike throttling saat input touch (pola Uperf)
 tune_boost_silencer() {
+    log_ts
     local category="KERNEL_BOOST"
     # Qualcomm cpu_boost
     if [ "${BOOST_CPU_INPUT:-1}" = "0" ]; then
@@ -844,6 +869,7 @@ tune_boost_silencer() {
 # --- 4. TUNE DEVFREQ BUS ---
 # Unlock bandwidth bus memori DDR/LLCC/L3 dengan validasi available frequencies jika ada
 tune_devfreq() {
+    log_ts
     local category="DEVFREQ"
     local _devfreq_matched=0
     # Qualcomm bus_dcvs & generic devfreq
@@ -891,6 +917,7 @@ tune_devfreq() {
 # --- 5. TUNE BLOCK I/O ---
 # Gabungan I/O optimal dari RaiRin-AI & Uperf
 tune_io() {
+    log_ts
     local category="IO"
     for dev in $STORAGE_DEVICES; do
         local q_dir="$SYSFS_BLOCK_PREFIX/$dev/queue"
@@ -930,6 +957,7 @@ tune_io() {
 # Tweak VM standard Linux yang aman dan teruji
 # M4: battery profile — swap>=stock bila zRAM aktif
 tune_vm() {
+    log_ts
     local category="VM"
     local vm_swap="$VM_SWAPPINESS"
 
@@ -974,6 +1002,7 @@ tune_vm() {
 # tidak ada node threshold writable yang terverifikasi publik -> skip aman.
 # Tidak pernah menonaktifkan thermal protection (headroom selalu <= 100%).
 tune_thermal() {
+    log_ts
     local category="THERMAL"
     local xiaomi_limits="$SYSFS_THERMAL_PREFIX/thermal_message/cpu_limits"
 
@@ -1022,6 +1051,7 @@ tune_thermal() {
 # Dibaca dari render_backend.conf (ditulis APK), dipanggil dari
 # render_manager.sh dan service.sh (re-apply saat boot).
 tune_render() {
+    log_ts
     local category="RENDER"
     local render_conf="${ALPHA_RENDER_CONF:-/data/adb/alpha/render_backend.conf}"
     local render_want=""
@@ -1160,6 +1190,7 @@ alpha_opp_cap_pick() {
 # M5: respek NET_TCP_PREFERENCE — pilih HANYA dari daftar available.
 # Urutan prioritas: NET_TCP_PREFERENCE → bbr (jika ada) → cubic fallback.
 tune_network() {
+    log_ts
     local category="NET"
     local tcp_node="$PROC_SYS_PREFIX/net/ipv4/tcp_congestion_control"
     local avail_node="$PROC_SYS_PREFIX/net/ipv4/tcp_available_congestion_control"
