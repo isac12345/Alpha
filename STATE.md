@@ -1,5 +1,31 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- RENCANA-CLAUDE (2026-10-01 21:15, leader tulis, BELUM dikerjakan):
+  Context v40 dikirim ke Claude AI. Claude baca engine/monitor/gameboost
+  dan beri 4 iterasi "satu variabel", semua berbasis flag/env file (bukan
+  hardcode) supaya bisa A-B-A-B interleaved TANPA reflash:
+  (0) diagnosa dulu, tanpa flash: cek di alpha.log apakah ada
+      `APPLY-POLL target=performance` SETELAH `GAMEBOOST APPLIED` ->
+      artinya profil menimpa gameboost. Cek `removing stale lock` ->
+      9 dtk apply mungkin habis nunggu lock, bukan nulis.
+  (1) v41 flag GB_PROFILE_OWNS_IO: gb_apply skip VM/IO/NET, gb_restore skip
+      restore-nya. Satu pemilik = deterministik.
+  (2) v42 efisiensi apply DENGAN nilai kernel sama persis: `$(cat p)` ->
+      `read -r v < p`, `$(dirname ...)` -> ${LOG_FILE%/*}, timestamp per
+      node -> /proc/uptime (date hanya buat SUMMARY). Target: 9 dtk -> <1 dtk.
+  (3) v43 NOL FLASH: ALPHA_GAME_POLL_INTERVAL_SECS 2 -> 5 (env sudah
+      didukung monitor.sh:13, default 2). Test pertama karena gratis.
+  (4) v44 flag skip tulis IO scheduler (balikin ke v38 = nggak nulis kyber).
+  KOREKSI Claude yang leader terima: "tune_sched = no-op" NGGAK sepenuhnya
+  benar - rr_timeslice_ms (100->25) + child_runs_first (=1) MEMANG ke-apply
+  di HP user. Efek mungkin kecil, disclaim di v44.
+  URUTAN WAJIB: 0 (tanpa flash) -> 3 (nol flash) -> 1 -> 2 -> 4. Jangan skip 0.
+  Data v40 sekarang = 1 run per versi = MASIH NOISE (user juga tes 2-4 mnt
+  doang). A/B minimal 3 run per arm.
+  CARA SET ENV v43: `su -c 'export ALPHA_GAME_POLL_INTERVAL_SECS=5'` tidak
+  tahan reboot; permanen -> `su -c 'echo 5 > /data/adb/alpha/.poll_secs'`
+  (perluato: monitor.sh读 env, bukan file - cek dulu sebelum promising).
+
 - V40-FREEZE-FIX (2026-10-01, leader langsung, L1 DONE, L2 TUNGGU HP):
   v39 (sched/io/input/net) REGRESI SERIUS di T7250 — user: PGR freeze
   0 fps 2-3 dtk di suhu dingin, "bener-bener parah". Bukti A/B
