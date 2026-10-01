@@ -50,7 +50,9 @@ BATTERY_SCHED_MIN_GRAN_NS=3000000
 BATTERY_SCHED_WAKEUP_GRAN_NS=8000000
 BATTERY_SCHED_MIGRATION_COST=500000
 BATTERY_SCHED_RR_TIMESLICE_MS=100
-BATTERY_SCHED_TUNABLE_SCALING=0
+BATTERY_SCHED_TUNABLE_SCALING=1
+BATTERY_SCHED_NR_MIGRATE=16
+BATTERY_SCHED_AUTOGROUP=0
 
 # Balanced profile: default compromise between latency, power and heat.
 BALANCED_GOVERNOR_PREFERENCE="schedutil walt interactive performance"
@@ -94,7 +96,9 @@ BALANCED_SCHED_MIN_GRAN_NS=1200000
 BALANCED_SCHED_WAKEUP_GRAN_NS=6000000
 BALANCED_SCHED_MIGRATION_COST=500000
 BALANCED_SCHED_RR_TIMESLICE_MS=100
-BALANCED_SCHED_TUNABLE_SCALING=0
+BALANCED_SCHED_TUNABLE_SCALING=1
+BALANCED_SCHED_NR_MIGRATE=32
+BALANCED_SCHED_AUTOGROUP=0
 
 # Performance profile: raw power, software thermal gate relaxed (HW protection intact).
 PERFORMANCE_GOVERNOR_PREFERENCE="performance schedutil walt interactive"
@@ -107,7 +111,9 @@ PERFORMANCE_DEVFREQ_MAX_PERCENT=100
 PERFORMANCE_IO_ADD_RANDOM=0
 PERFORMANCE_IO_IOSTATS=0
 PERFORMANCE_IO_NOMERGES=2
-PERFORMANCE_IO_READ_AHEAD_KB=256
+# Read-ahead kecil ala GTurbo: data game_NON-sequential (zip/asset texture
+# acak). 256 KB = prefetch sia-sia yang menabrak fragmentasi saat write dirty.
+PERFORMANCE_IO_READ_AHEAD_KB=32
 PERFORMANCE_IO_SCHED_PREFERENCE="kyber mq-deadline"
 PERFORMANCE_VM_SWAPPINESS=40
 PERFORMANCE_VM_VFS_CACHE_PRESSURE=50
@@ -130,13 +136,29 @@ PERFORMANCE_GPU_ADRENO_MODE="cap"
 PERFORMANCE_GPU_ADRENO_POWERLEVEL=0
 PERFORMANCE_GPU_FREQ_MAX_PERCENT=100
 PERFORMANCE_GPU_FREQ_MIN_PERCENT=50
-# SCHED: responsif tapi tidak hardcore (periode 4ms; KTweak latency pakai 1ms).
-PERFORMANCE_SCHED_LATENCY_NS=4000000
-PERFORMANCE_SCHED_MIN_GRAN_NS=400000
-PERFORMANCE_SCHED_WAKEUP_GRAN_NS=2000000
-PERFORMANCE_SCHED_MIGRATION_COST=1000000
+# SCHED — NILAI BUKTI v39 (latency 4ms + migration_cost 1ms + gran 0.4ms)
+# MEMBUAT PGR/WuWa FREEZE 2-3 dtk (0 fps, 1% low 6.3->1.8) di suhu dingin
+# 43C: CFSUnity, task render/audio/preempt continu, core little jadi antre.
+# Yang JEBOS bukan clock, tapi preemption. Diambil dari GTurbo performance
+# (bukti 3.5-A profile/performance:441-443) + TIDAK menulis sched_latency_ns
+# sama sekali (biarkan kernel default = 6ms, proven adem di T615/D7300).
+# migration_cost 1ms -> 50us (20x turun) = thread pindah core lebih cepat,
+# tidak nempel di little. min_gran 0.4->1ms & wakeup 2->1.5ms = preemption
+# lebih jarang tapi tidak kelamaan nunggu. TUNABLE_SCALING = default kernel.
+PERFORMANCE_SCHED_LATENCY_NS=6000000
+PERFORMANCE_SCHED_MIN_GRAN_NS=1000000
+PERFORMANCE_SCHED_WAKEUP_GRAN_NS=1500000
+PERFORMANCE_SCHED_MIGRATION_COST=50000
 PERFORMANCE_SCHED_RR_TIMESLICE_MS=25
-PERFORMANCE_SCHED_TUNABLE_SCALING=0
+# TUNABLE_SCALING=1 (default kernel) — BUKAN 0. v39 pakai 0 = kernel berhenti
+# auto-rescale latency/min_gran; digabung latency 4ms + migration 1ms =
+# task render/audio terkunci di little core -> freeze 0 fps 2-3 dtk. GTurbo
+# 3.5-A tidak menulis node ini sama sekali. Balikin ke default.
+PERFORMANCE_SCHED_TUNABLE_SCALING=1
+# Port GTurbo 3.5-A:438-442 - nr_migrate 32 + autogroup 0 (anti-jitter tanpa
+# sentuh clock). 8-core kecil: runaway migration = fps drop berkepjangan.
+PERFORMANCE_SCHED_NR_MIGRATE=32
+PERFORMANCE_SCHED_AUTOGROUP=0
 
 profile_warn() {
     profile_warn_message="$1"
@@ -197,6 +219,8 @@ load_profile() {
     SCHED_MIGRATION_COST=$(eval "printf '%s' \"\${${profile_upper}_SCHED_MIGRATION_COST}\"")
     SCHED_RR_TIMESLICE_MS=$(eval "printf '%s' \"\${${profile_upper}_SCHED_RR_TIMESLICE_MS}\"")
     SCHED_TUNABLE_SCALING=$(eval "printf '%s' \"\${${profile_upper}_SCHED_TUNABLE_SCALING}\"")
+    SCHED_NR_MIGRATE=$(eval "printf '%s' \"\${${profile_upper}_SCHED_NR_MIGRATE}\"")
+    SCHED_AUTOGROUP=$(eval "printf '%s' \"\${${profile_upper}_SCHED_AUTOGROUP}\"")
 
     # Legacy ceiling remains available until engine devfreq becomes percentage-based.
     DEVFREQ_MAX_FREQ_VAL=9999000000

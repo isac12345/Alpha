@@ -713,6 +713,12 @@ tune_sched() {
     # child_runs_first = 1 untuk semua profil (aman universal, pola KTweak;
     # gameboost menulis nilai yang SAMA saat boost, jadi tidak rebutan).
     apply_tweak "$category" "$kern_dir/sched_child_runs_first" "1"
+    # Port GTurbo 3.5-A (profile/performance:434-436): nr_migrate 32 = batasi
+    # jumlah task dipindah per tick, autogroup 0 = matikan auto-grouping.
+    # Dua-duanya anti-jitter tanpasentuh clock (biang freeze v39 = preemption,
+    # bukan kurang MHz). Node absen = SKIPPED, bukan crash.
+    apply_tweak "$category" "$kern_dir/sched_nr_migrate" "$SCHED_NR_MIGRATE"
+    apply_tweak "$category" "$kern_dir/sched_autogroup_enabled" "$SCHED_AUTOGROUP"
 }
 
 # KEBIJAKAN SENGAJA-TIDAK-DISENTUH (jangan tambah tanpa review thermal):
