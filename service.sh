@@ -126,6 +126,31 @@ echo "[INIT] SoC Vendor terdeteksi: $SOC_VENDOR" >> "$LOG_FILE"
 echo "[INIT] CPU Policies: $CPU_POLICIES" >> "$LOG_FILE"
 echo "[INIT] Storage Devices: $STORAGE_DEVICES" >> "$LOG_FILE"
 
+# 3.2 Load persisted manual profile SEBELUM tuning.
+# DIPINDAH dari bawah (dulu blok 6 sesudah tune): tune_devfreq/tune_io/
+# tune_vm/tune_thermal/tune_network/tune_gpu + M2 cpu_owner membaca
+# ACTIVE_PROFILE + *_PERCENT dari load_profile. Kalau load sesudah tune,
+# boot selalu jalan dengan var kosong (fallback 100/balanced) walau
+# active_profile=performance. Blok ini hanya butuh profiles.sh (tahap 2),
+# tidak bergantung pada tune/M2/summary/asoulopt/companion/fas-rs.
+ACTIVE_PROFILE_FILE="$WORK_DIR/active_profile"
+CURRENT_STATE_FILE="$WORK_DIR/current_state"
+BOOT_PROFILE="balanced"
+if [ -f "$ACTIVE_PROFILE_FILE" ]; then
+    candidate_profile=$(tr -d '[:space:]' < "$ACTIVE_PROFILE_FILE" 2>/dev/null)
+    case "$candidate_profile" in
+        battery|balanced|performance) BOOT_PROFILE="$candidate_profile" ;;
+    esac
+fi
+load_profile "$BOOT_PROFILE"
+state_tmp="$CURRENT_STATE_FILE.tmp.$$"
+if printf '%s\n' "$ACTIVE_PROFILE" > "$state_tmp" && mv -f "$state_tmp" "$CURRENT_STATE_FILE" 2>/dev/null; then
+    echo "[INIT] current_state=$ACTIVE_PROFILE" >> "$LOG_FILE"
+else
+    rm -f "$state_tmp" 2>/dev/null
+    echo "[ERROR] gagal menulis current_state awal" >> "$LOG_FILE"
+fi
+
 # 4. Jalankan Tweak Sesuai Arsitektur
 # CATATAN MERGE: tune_governor & tune_cpu_freq SENGAJA TIDAK dipanggil di sini.
 # Uperf punya warning eksplisit dari developernya sendiri bahwa modul ini akan
@@ -162,25 +187,6 @@ echo "=== Alpha + Uperf Fusion Optimization Complete ===" >> "$LOG_FILE"
 echo "Applied: $APPLIED_COUNT | Skipped: $SKIPPED_COUNT | Failed: $FAILED_COUNT" >> "$LOG_FILE"
 echo "======================================" >> "$LOG_FILE"
 echo "[BOOT] tahap tuning selesai (applied=$APPLIED_COUNT skipped=$SKIPPED_COUNT failed=$FAILED_COUNT)" >> "$LOG_FILE"
-
-# 6. Persist initial manual profile after boot apply
-ACTIVE_PROFILE_FILE="$WORK_DIR/active_profile"
-CURRENT_STATE_FILE="$WORK_DIR/current_state"
-BOOT_PROFILE="balanced"
-if [ -f "$ACTIVE_PROFILE_FILE" ]; then
-    candidate_profile=$(tr -d '[:space:]' < "$ACTIVE_PROFILE_FILE" 2>/dev/null)
-    case "$candidate_profile" in
-        battery|balanced|performance) BOOT_PROFILE="$candidate_profile" ;;
-    esac
-fi
-load_profile "$BOOT_PROFILE"
-state_tmp="$CURRENT_STATE_FILE.tmp.$$"
-if printf '%s\n' "$ACTIVE_PROFILE" > "$state_tmp" && mv -f "$state_tmp" "$CURRENT_STATE_FILE" 2>/dev/null; then
-    echo "[INIT] current_state=$ACTIVE_PROFILE" >> "$LOG_FILE"
-else
-    rm -f "$state_tmp" 2>/dev/null
-    echo "[ERROR] gagal menulis current_state awal" >> "$LOG_FILE"
-fi
 
 # 7. Start monitor once, without blocking late_start service
 MONITOR_PID_FILE="$WORK_DIR/monitor.pid"
