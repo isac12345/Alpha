@@ -1001,3 +1001,41 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
     maupun percakapan. Sandbox memakai OPP tipikal yang DIJELASKAN di
     komentar sebagai aproksimasi — bukan diklaim sebagai dump device.
     Angka(device) != angka(test) = test menipu.
+
+## V40 — fix freeze v39 + port tweak GTurbo (2026-10-01, leader langsung)
+- User laporan: v39 (sched/io/input/net) "bener-bener parah", PGR freeze
+  0 fps 2-3 dtk di suhu dingin. Bukti head-to-head (game+versi sama,
+  T7250): 26 Sep hybrid AVG 32.0 / 1%low 6.3 / 5%low 13.6 / var 194.9 /
+  111.56mW / 16.82% vs 1 Okt v39 AVG 26.4 / 1%low **1.8** / 5%low 5.3 /
+  var 289.0 / **180.89mW** / 17.95%. Power naik 62% tapi fps turun =
+  usaha kebuang tak sampai = preemption kacau, BUKAN kurang clock.
+  (WuWa 11.24% vs 8.22% sebelumnya = gejala sama, lebih halus.)
+- ROOT CAUSE (angka dari GTurbo 3.5-A `profile/performance:434-443`, bukan
+  tebakan): v39 set `sched_tunable_scaling=0` = kernel berhenti auto-rescale
+  `sched_latency_ns`/`min_gran`; digabung `latency 4ms` + `migration_cost
+  1ms` + `min_gran 0.4ms` -> task render/audio/preempt ter切換 core tiap
+  tick dan nempel di little = freeze. `migration_cost 1ms` = 20x GTurbo
+  (50us) = thread malas pindah core. GTurbo TIDAK menulis tunable_scaling
+  sama sekali.
+- FIX (5 angka + 2 port, `profiles.sh` + `engine.sh`): tunable_scaling
+  0->1 di 3 profil; performance lat 4->6ms (default kernel, GTurbo tak
+  sentuh), mig 1ms->50us, gran 0.4->1ms, wakeup 2->1.5ms; PORT GTurbo
+  `sched_nr_migrate` 32 + `sched_autogroup_enabled` 0 (anti-jitter, tak
+  sentuh clock); read_ahead_kb 256->32 ala GTurbo:379 (data game NON-
+  sequential, 256KB = prefetch sia-sia). APK tetap v20.
+- Bukti L1: bash -n OK x2, shellcheck -S error 0 x2, load_profile三 profil
+  => semua var terisi BUKAN fallback (perf: lat=6000000 mig=50000
+  nrmig=32 autogrp=0 ra=32). Ekstrak zip ulang: sh -n 28 skrip FAIL=0,
+  versionCode=40, nol .jks/keystore. Merge ef835a4.
+- Zip: /sdcard/alpha/Alpha-Fusion-v40-gturbo-schedfix.zip (176 entri,
+  md5 97e42c1c, 5.4M). Dibuat git archive+chmod+zip -X (BUKAN python
+  zipfile — pelajaran JEBRAKAN ZIP di STATE).
+- BELUM L2: tes HP PGR + WuWa (TUNGGU user). Target: 1% low kembali >=6,
+  freeze hilang. Kalau masih freeze, isolate = matikan `tune_sched` penuh
+  (satu variabel), lalu `_gb_sched_apply_level` gameboost (masih 60/60/50/
+  600 = persen-dari-native, kandidat #2 karena 600% native migration).
+- PELAJARAN: knob "responsif" (latency kecil, migration_cost besar,
+  tunable_scaling=0) justru MEMBUAT jank di SoC kecil — optimasi latency
+  ≠ optimasi smoothness. Before shipping tune_sched agresif, cari tune
+  sejenis yang sudah dipakai tool proven di device同类 dan pakai ANGKA
+  yang sama, bukan turunan sendiri.
