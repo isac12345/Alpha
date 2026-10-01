@@ -710,7 +710,18 @@ tune_sched() {
     # Nama asli kernel TANPA _ns (gameboost hanya coba varian _ns + debugfs).
     apply_tweak "$category" "$kern_dir/sched_migration_cost" "$SCHED_MIGRATION_COST"
     apply_tweak "$category" "$kern_dir/sched_rr_timeslice_ms" "$SCHED_RR_TIMESLICE_MS"
+    # child_runs_first = 1 untuk semua profil (aman universal, pola KTweak;
+    # gameboost menulis nilai yang SAMA saat boost, jadi tidak rebutan).
+    apply_tweak "$category" "$kern_dir/sched_child_runs_first" "1"
 }
+
+# KEBIJAKAN SENGAJA-TIDAK-DISENTUH (jangan tambah tanpa review thermal):
+# - zRAM disksize/comp_algorithm: butuh swapoff+reinit (destruktif);
+#   gameboost.sh menegaskan "zRAM tetap aktif, jangan sentuh".
+# - trip_point_*: RO di kernel modern; tulis = melumpuhkan proteksi
+#   thermal = hardcore, melanggar janji "HW protection intact".
+# - wakeup_count/cpuidle-disable: gaming = layar nyala = tidak pernah
+#   suspend; matikan C-state dalam = panas+boros tanpa guna.
 
 # --- 2c. TUNE INPUT (touch sampling_rate / poll_delay) ---
 # Node input beda-beda per driver (tidak ada nama standar), jadi:
