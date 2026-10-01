@@ -232,6 +232,30 @@ tune_gpu_adreno() {
         # best-effort (skip aman kalau node tidak ada), jadi rc yang
         # dikembalikan tetap milik ceiling.
         tune_gpu_adreno_kgsl "$category" "$kgsl_dir"
+        # Floor (9): performance = level tengah (moderat, bukan kunci max);
+        # lainnya = level terbawah (full idle, eksplisit anti-lengket).
+        # Thermal gate sama seperti cap: panas + performance = tahan.
+        local adreno_num adreno_floor
+        adreno_num=$(tr -d '[:space:]' < "$kgsl_dir/num_pwrlevels" 2>/dev/null)
+        case "$adreno_num" in
+            ''|*[!0-9]*|0) adreno_num="" ;;
+        esac
+        if [ -n "$adreno_num" ]; then
+            if [ "${ACTIVE_PROFILE:-balanced}" = "performance" ]; then
+                if gpu_thermal_is_hot 95000; then
+                    log_msg "SKIPPED" "$category" "thermal panas, adreno floor ditahan"
+                else
+                    adreno_floor=$(( adreno_num / 2 ))
+                    [ "$adreno_floor" -ge "$adreno_num" ] 2>/dev/null && adreno_floor=$(( adreno_num - 1 ))
+                    apply_tweak "$category" "$kgsl_dir/max_pwrlevel" "$adreno_floor"
+                fi
+            else
+                adreno_floor=$(( adreno_num - 1 ))
+                apply_tweak "$category" "$kgsl_dir/max_pwrlevel" "$adreno_floor"
+            fi
+        else
+            log_msg "SKIPPED" "$category" "num_pwrlevels tidak terbaca, adreno floor skip"
+        fi
         return "$_cap_rc"
     fi
 
@@ -618,6 +642,23 @@ tune_gpu_mali() {
     fi
     tune_gpu_mali_kbase
     apply_tweak "$category" "$mali_dev/max_freq" "$mali_target"
+    # Floor (9-10): hanya performance yang mengangkat (50%); lainnya = rung
+    # terendah (full idle, eksplisit supaya tidak lengket dari performance).
+    # Perf-panas sudah early-return di atas (gate 95C), jadi aman.
+    local mali_min_pct="${GPU_FREQ_MIN_PERCENT:-0}"
+    case "$mali_min_pct" in
+        ''|*[!0-9]*) mali_min_pct=0 ;;
+    esac
+    [ "$mali_min_pct" -gt "$mali_percent" ] 2>/dev/null && mali_min_pct="$mali_percent"
+    local mali_floor
+    mali_floor=$(printf '%s\n' "$mali_table" | sort -n | head -n 1)
+    if [ "$mali_min_pct" -gt 0 ] 2>/dev/null; then
+        local mali_min_target=$(( (mali_hw_max / 100) * mali_min_pct ))
+        # cap_pick: bila target di bawah rung terendah, jatuh ke terendah =
+        # sama dengan default (jinak), bukan error.
+        mali_floor=$(alpha_opp_cap_pick "$mali_min_target" "$(printf '%s\n' "$mali_table" | sort -n)")
+    fi
+    [ -n "$mali_floor" ] && apply_tweak "$category" "$mali_dev/min_freq" "$mali_floor"
 }
 
 tune_gpu_powervr() {
@@ -669,6 +710,75 @@ tune_sched() {
     # Nama asli kernel TANPA _ns (gameboost hanya coba varian _ns + debugfs).
     apply_tweak "$category" "$kern_dir/sched_migration_cost" "$SCHED_MIGRATION_COST"
     apply_tweak "$category" "$kern_dir/sched_rr_timeslice_ms" "$SCHED_RR_TIMESLICE_MS"
+}
+
+# --- 2c. TUNE INPUT (touch sampling_rate / poll_delay) ---
+# Node input beda-beda per driver (tidak ada nama standar), jadi:
+# scan capability (glob) + persen-dari-snapshot (kalibrasi otomatis,
+# bukan angka mutlak yang bisa salah skala). Snapshot sekali per boot
+# (pola _gb_backup_native di gameboost): apply berikut pakai ulang agar
+# persen tidak menumpuk (anti-lengket). Hanya performance yang menaikkan
+# (+25% sampling / -25% poll); lainnya = restore snapshot eksplisit.
+tune_input() {
+    local category="INPUT"
+    local input_base="${SYSFS_INPUT_PREFIX:-/sys}/class/input"
+    local snap_file="${ALPHA_CONF_DIR:-/data/adb/alpha}/input_native.conf"
+    local input_nodes=""
+    local _cand
+    for _cand in "$input_base"/input*/sampling_rate "$input_base"/input*/poll_delay; do
+        [ -e "$_cand" ] || continue
+        input_nodes="$input_nodes $_cand"
+    done
+    if [ -z "$input_nodes" ]; then
+        log_msg "SKIPPED" "$category" "tidak ada node sampling_rate/poll_delay (driver beda-beda, skip aman)"
+        return 0
+    fi
+    if [ ! -f "$snap_file" ]; then
+        : > "$snap_file.tmp" 2>/dev/null || {
+            log_msg "SKIPPED" "$category" "snapshot tidak bisa ditulis, skip aman"
+            return 0
+        }
+        local _v
+        for _cand in $input_nodes; do
+            _v=$(cat "$_cand" 2>/dev/null | tr -d '[:space:]')
+            case "$_v" in
+                ''|*[!0-9]*) continue ;;
+            esac
+            printf '%s=%s\n' "$_cand" "$_v" >> "$snap_file.tmp" 2>/dev/null
+        done
+        mv -f "$snap_file.tmp" "$snap_file" 2>/dev/null
+    fi
+    local _native _target _base
+    for _cand in $input_nodes; do
+        _native=$(grep -F "${_cand}=" "$snap_file" 2>/dev/null | head -n 1 | cut -d= -f2)
+        case "$_native" in
+            ''|*[!0-9]*)
+                log_msg "SKIPPED" "$category" "path=$_cand (snapshot non-numerik, skip aman)"
+                continue
+                ;;
+        esac
+        _base=$(basename "$_cand")
+        if [ "${ACTIVE_PROFILE:-balanced}" = "performance" ]; then
+            case "$_base" in
+                sampling_rate)
+                    _target=$(( _native + _native / 4 ))
+                    ;;
+                poll_delay)
+                    # Nilai kecil (<4) terlalu riskan diskalakan buta.
+                    if [ "$_native" -lt 4 ] 2>/dev/null; then
+                        log_msg "SKIPPED" "$category" "path=$_cand (terlalu kecil untuk skala aman)"
+                        continue
+                    fi
+                    _target=$(( _native - _native / 4 ))
+                    [ "$_target" -lt 1 ] 2>/dev/null && _target=1
+                    ;;
+                *) continue ;;
+            esac
+        else
+            _target="$_native"
+        fi
+        apply_tweak "$category" "$_cand" "$_target"
+    done
 }
 
 # --- 3. TUNE KERNEL BOOST SILENCER ---
@@ -764,6 +874,31 @@ tune_io() {
         apply_tweak "$category" "$q_dir/iostats" "$IO_IOSTATS"
         apply_tweak "$category" "$q_dir/nomerges" "$IO_NOMERGES"
         apply_tweak "$category" "$q_dir/read_ahead_kb" "$IO_READ_AHEAD_KB"
+        # Elevator: pilih preferensi profil pertama yang ADA di kernel.
+        # (sio pra-4.x tidak dicantumkan di profiles: selalu SKIP di kernel
+        # modern.) gameboost menimpa mq-deadline saat boost + restore native;
+        # baseline di sini komplementer, ditulis ulang tiap apply.
+        local sched_node="$q_dir/scheduler"
+        if [ -f "$sched_node" ]; then
+            local sched_list
+            sched_list=$(cat "$sched_node" 2>/dev/null)
+            local sched_pick=""
+            for sched_try in ${IO_SCHED_PREFERENCE:-}; do
+                case " $sched_list " in
+                    *" $sched_try "*)
+                        sched_pick="$sched_try"
+                        break
+                        ;;
+                esac
+            done
+            if [ -n "$sched_pick" ]; then
+                apply_tweak "$category" "$sched_node" "$sched_pick"
+            else
+                log_msg "SKIPPED" "$category" "path=$sched_node (tidak ada preferensi ${IO_SCHED_PREFERENCE:-none} di kernel)"
+            fi
+        else
+            log_msg "SKIPPED" "$category" "path=$sched_node (node tidak ditemukan)"
+        fi
     done
 }
 
