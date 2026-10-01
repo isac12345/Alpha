@@ -212,6 +212,7 @@ tune_vm
 tune_thermal
 tune_network
 tune_gpu
+tune_sched
 
 # Engine mapping: set fas-rs mode per profil (powersave/balance/performance/fast).
 # Tidak kill apa pun — hanya echo mode via powercfg.sh.

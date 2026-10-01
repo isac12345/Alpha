@@ -31,6 +31,15 @@ BATTERY_GPU_ADRENO_SKIP=0
 BATTERY_GPU_ADRENO_MODE="cap"
 BATTERY_GPU_ADRENO_POWERLEVEL=0
 BATTERY_GPU_FREQ_MAX_PERCENT=45
+# SCHED (CFS latency): battery = relaks ≈ stok 8-core (lebih tenang, hemat).
+# gameboost tetap boleh main persen-di-atas-native saat boost; baseline di sini
+# ditulis ulang tiap apply sehingga tidak ada state lengket antar profil.
+BATTERY_SCHED_LATENCY_NS=24000000
+BATTERY_SCHED_MIN_GRAN_NS=3000000
+BATTERY_SCHED_WAKEUP_GRAN_NS=8000000
+BATTERY_SCHED_MIGRATION_COST=500000
+BATTERY_SCHED_RR_TIMESLICE_MS=100
+BATTERY_SCHED_TUNABLE_SCALING=0
 
 # Balanced profile: default compromise between latency, power and heat.
 BALANCED_GOVERNOR_PREFERENCE="schedutil walt interactive performance"
@@ -64,6 +73,13 @@ BALANCED_GPU_ADRENO_POWERLEVEL=0
 # Adreno tetap stock karena MODE=stock (skip di tune_gpu_adreno), jadi
 # nilai ini efektif untuk jalur Mali.
 BALANCED_GPU_FREQ_MAX_PERCENT=85
+# SCHED: mild di bawah stok (periode 12ms; rasio KTweak min=1/10, wake=1/2).
+BALANCED_SCHED_LATENCY_NS=12000000
+BALANCED_SCHED_MIN_GRAN_NS=1200000
+BALANCED_SCHED_WAKEUP_GRAN_NS=6000000
+BALANCED_SCHED_MIGRATION_COST=500000
+BALANCED_SCHED_RR_TIMESLICE_MS=100
+BALANCED_SCHED_TUNABLE_SCALING=0
 
 # Performance profile: raw power, software thermal gate relaxed (HW protection intact).
 PERFORMANCE_GOVERNOR_PREFERENCE="performance schedutil walt interactive"
@@ -92,6 +108,13 @@ PERFORMANCE_GPU_ADRENO_SKIP=0
 PERFORMANCE_GPU_ADRENO_MODE="cap"
 PERFORMANCE_GPU_ADRENO_POWERLEVEL=0
 PERFORMANCE_GPU_FREQ_MAX_PERCENT=100
+# SCHED: responsif tapi tidak hardcore (periode 4ms; KTweak latency pakai 1ms).
+PERFORMANCE_SCHED_LATENCY_NS=4000000
+PERFORMANCE_SCHED_MIN_GRAN_NS=400000
+PERFORMANCE_SCHED_WAKEUP_GRAN_NS=2000000
+PERFORMANCE_SCHED_MIGRATION_COST=1000000
+PERFORMANCE_SCHED_RR_TIMESLICE_MS=25
+PERFORMANCE_SCHED_TUNABLE_SCALING=0
 
 profile_warn() {
     profile_warn_message="$1"
@@ -142,6 +165,12 @@ load_profile() {
     GPU_ADRENO_MODE=$(eval "printf '%s' \"\${${profile_upper}_GPU_ADRENO_MODE}\"")
     GPU_ADRENO_POWERLEVEL=$(eval "printf '%s' \"\${${profile_upper}_GPU_ADRENO_POWERLEVEL}\"")
     GPU_FREQ_MAX_PERCENT=$(eval "printf '%s' \"\${${profile_upper}_GPU_FREQ_MAX_PERCENT}\"")
+    SCHED_LATENCY_NS=$(eval "printf '%s' \"\${${profile_upper}_SCHED_LATENCY_NS}\"")
+    SCHED_MIN_GRAN_NS=$(eval "printf '%s' \"\${${profile_upper}_SCHED_MIN_GRAN_NS}\"")
+    SCHED_WAKEUP_GRAN_NS=$(eval "printf '%s' \"\${${profile_upper}_SCHED_WAKEUP_GRAN_NS}\"")
+    SCHED_MIGRATION_COST=$(eval "printf '%s' \"\${${profile_upper}_SCHED_MIGRATION_COST}\"")
+    SCHED_RR_TIMESLICE_MS=$(eval "printf '%s' \"\${${profile_upper}_SCHED_RR_TIMESLICE_MS}\"")
+    SCHED_TUNABLE_SCALING=$(eval "printf '%s' \"\${${profile_upper}_SCHED_TUNABLE_SCALING}\"")
 
     # Legacy ceiling remains available until engine devfreq becomes percentage-based.
     DEVFREQ_MAX_FREQ_VAL=9999000000

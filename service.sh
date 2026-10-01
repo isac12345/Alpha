@@ -170,6 +170,7 @@ tune_vm
 tune_thermal
 tune_network
 tune_gpu
+tune_sched
 
 # M2: CPU Ownership — deteksi fas-rs vs Alpha fallback
 # Bila fas-rs hidup → powercfg.sh; bila mati → tune_cpu_freq fallback

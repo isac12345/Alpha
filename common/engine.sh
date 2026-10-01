@@ -643,6 +643,34 @@ tune_gpu() {
     esac
 }
 
+# --- 2b. TUNE SCHED LATENCY (CFS) ---
+# Baseline absolut per profil (battery relaks / balanced mild / performance
+# responsif). Komplementer, bukan rebutan, dengan gameboost:
+# gameboost (_gb_sched_apply_level) main persen-dari-snapshot saat boost dan
+# restore ke snapshot; baseline di sini ditulis ulang tiap apply via
+# load_profile, jadi tidak ada state lengket. Nilai absolut mengikuti pola
+# KTweak (min_gran = periode/10, wakeup = periode/2, tunable_scaling = 0
+# dulu supaya kernel tidak me-rescale nilai kita). Semua lewat apply_tweak:
+# node tidak ada = SKIPPED + log, bukan crash (capability-based).
+tune_sched() {
+    local category="SCHED"
+    local kern_dir="$PROC_SYS_PREFIX/kernel"
+    apply_tweak "$category" "$kern_dir/sched_tunable_scaling" "$SCHED_TUNABLE_SCALING"
+    apply_tweak "$category" "$kern_dir/sched_latency_ns" "$SCHED_LATENCY_NS"
+    apply_tweak "$category" "$kern_dir/sched_min_granularity_ns" "$SCHED_MIN_GRAN_NS"
+    # wakeup_granularity: kernel baru melepas sufiks _ns; coba yang ada.
+    if [ -e "$kern_dir/sched_wakeup_granularity_ns" ]; then
+        apply_tweak "$category" "$kern_dir/sched_wakeup_granularity_ns" "$SCHED_WAKEUP_GRAN_NS"
+    elif [ -e "$kern_dir/sched_wakeup_granularity" ]; then
+        apply_tweak "$category" "$kern_dir/sched_wakeup_granularity" "$SCHED_WAKEUP_GRAN_NS"
+    else
+        log_msg "SKIPPED" "$category" "path=$kern_dir/sched_wakeup_granularity_ns (node tidak ditemukan)"
+    fi
+    # Nama asli kernel TANPA _ns (gameboost hanya coba varian _ns + debugfs).
+    apply_tweak "$category" "$kern_dir/sched_migration_cost" "$SCHED_MIGRATION_COST"
+    apply_tweak "$category" "$kern_dir/sched_rr_timeslice_ms" "$SCHED_RR_TIMESLICE_MS"
+}
+
 # --- 3. TUNE KERNEL BOOST SILENCER ---
 # Mengurangi spike throttling saat input touch (pola Uperf)
 tune_boost_silencer() {
