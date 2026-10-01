@@ -69,9 +69,34 @@ apply_tweak() {
     fi
     
     if [ -w "$path" ]; then
+        # Baca-ulang verifikasi (pola sama seperti tune_cpu_freq di bawah):
+        # simpan nilai SEBELUM tulis supaya bisa dibedakan "kernel
+        # clamp/snap" (berubah tapi beda dari minta) vs "node menolak
+        # diam-diam" (tidak berubah sama sekali meski echo exit 0).
+        local before_val=""
+        local before_rc=1
+        before_val=$(cat "$path" 2>/dev/null)
+        before_rc=$?
         if echo "$value" > "$path" 2>/dev/null; then
+            local after_val=""
+            if ! after_val=$(cat "$path" 2>/dev/null); then
+                FAILED_COUNT=$((FAILED_COUNT + 1))
+                log_msg "FAILED" "$category" "path=$path value=$value (tidak bisa dibaca ulang)"
+                return 1
+            fi
+            if [ "$after_val" = "$value" ]; then
+                APPLIED_COUNT=$((APPLIED_COUNT + 1))
+                log_msg "APPLIED" "$category" "path=$path value=$value"
+                return 0
+            fi
+            if [ "$before_rc" -eq 0 ] && [ "$after_val" = "$before_val" ]; then
+                FAILED_COUNT=$((FAILED_COUNT + 1))
+                log_msg "FAILED" "$category" "path=$path value=$value (node menolak nilai, tidak berubah)"
+                return 1
+            fi
             APPLIED_COUNT=$((APPLIED_COUNT + 1))
             log_msg "APPLIED" "$category" "path=$path value=$value"
+            log_msg "WARN" "$category" "verifikasi mismatch: current=$after_val target=$value ($path)"
             return 0
         else
             FAILED_COUNT=$((FAILED_COUNT + 1))
