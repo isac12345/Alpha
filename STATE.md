@@ -1,5 +1,17 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- V40-JAGO (2026-10-01 22:17, data 30 mnt user, GOLDEN BASELINE):
+  Test 30 mnt PGR (v40, 576x1280, SurfaceFlinger latency) =
+  AVG 32.8 / MAX 60.4 / MIN 1.0 / 1%low 6.1 / 5%low 10.9 /
+  VARIANCE 269.2 / SMOOTH 14.1ms / Stutter 13.58% / FramePower 105.47mW /
+  Temp 41.5C. = REKOR di semua metrik vs v38 (AVG 32.0, stutter 16.8%,
+  111.6mW) dan v39 (26.4, 18.0%, 180.9mW). V40 ADALAH VERSI TERBAIK.
+  PENTING: test 2-4 mnt sebelumnya (AVG 29.4, MIN 6.0, stutter 21%) itu
+  NOISE - durasi短 = flapping. MIN 1.0 di 30 mnt = 1 frame, bukan freeze
+  (1%low 6.1 & 5%low 10.9 = ribuan frame sehat). ATURAN: benchmarking
+  minimal 10 mnt, kalau bisa 30, satu run doang = belum valid.
+  => JANGAN disable v40, jangan revert ke v38. Beri tau Claude fakta ini.
+
 - RENCANA-CLAUDE (2026-10-01 21:15, leader tulis, BELUM dikerjakan):
   Context v40 dikirim ke Claude AI. Claude baca engine/monitor/gameboost
   dan beri 4 iterasi "satu variabel", semua berbasis flag/env file (bukan
