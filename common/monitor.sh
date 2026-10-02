@@ -274,6 +274,9 @@ is_transient_package() {
 gb_safety_check() {
     local current_temp=0
     local max_temp=0
+    local max2_temp=0
+    local fault_zone=""
+    local fault_val=0
     local valid_count=0
 
     # Read thermal zones
@@ -300,11 +303,32 @@ gb_safety_check() {
             # Filter valid range: -50000..150000 milliC
             [ "$current_temp" -ge -50000 ] 2>/dev/null && \
                 [ "$current_temp" -le 150000 ] 2>/dev/null || continue
+            # Dua zone teratas, bukan cuma max. Satu zone rusak (mis. pa-thmzone
+            # di T7250 baca +114000 sementara soc 52000) sebelumnya menang
+            # tunggal lalu mematikan boost dengan "CRITICAL TEMP" palsu.
+            # Bandingkan max1 vs max2: zone yang melonjak >25C di atas zone
+            # lain dianggap sensor fault, bukan panas. Tidak ada nama zone
+            # yang di-hardcode (universal, tidak khas perangkat).
             if [ "$current_temp" -gt "$max_temp" ] 2>/dev/null; then
+                max2_temp=$max_temp
                 max_temp=$current_temp
+                fault_zone="${zone##*/}"
+                fault_val=$current_temp
+            elif [ "$current_temp" -gt "$max2_temp" ] 2>/dev/null; then
+                max2_temp=$current_temp
             fi
             valid_count=$((valid_count + 1))
         done
+    fi
+
+    # Sensor fault: max1 melonjak jauh di atas max2 DAN nilainya di atas
+    # batas fisik mana pun SoC (105C = batas shutdown typical). Dua syarat
+    # WAJIB: zona 93C sendirian tetap dipercaya (hotspot itu bisa nyata),
+    # hanya lonjakan mustahil seperti 114C vs soc 52C yang dibuang.
+    if [ "$valid_count" -ge 2 ] && [ "$max_temp" -gt 105000 ] 2>/dev/null && \
+       [ "$((max_temp - max2_temp))" -gt 25000 ] 2>/dev/null; then
+        monitor_log "GAMEBOOST" "SENSOR-FAULT: ${fault_zone} baca ${fault_val}mC, dibuang; acuan jadi ${max2_temp}mC (selisih $((max_temp - max2_temp))mC > 25000)"
+        max_temp=$max2_temp
     fi
 
     # No valid thermal zones: warm sentinel memilih performance, bukan 0
