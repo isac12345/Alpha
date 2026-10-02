@@ -1,5 +1,24 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- FINAL-QUESTION-SENT (2026-10-02 14:40, leader): semua pertanyaan
+  digabung jadi 1 file = /sdcard/alpha/UNTUK-CLAUDE-FINAL.txt.
+  Isi: BAGIAN 0 data perangkat nyata T7250 + Poco (node scheduler 2-dari-9
+  ADA, fpsgo TIDAK, 18 zona termal 1 trip, topologi 0-5/6-7, uclamp 60).
+  BAGIAN 1 perf P1-P6 (angka tuning paling salah utk T606 boost ON,
+  cpuset vs uperf gtmain dipin {7}, uclamp.min 60, read_ahead 2048 vs 32,
+  dirty 15/5 vs 10/1, mali kbase pollingtime=1 boros?).
+  BAGIAN 2 edge H1-H7 (1 zona thermal, hotspot tanpa trip, prinsip "jangan
+  hardcore kecuali device punya node", kapan berhenti, flag mati, drop-in).
+  BAGIAN 3 metodologi (WAJIB test mksh device bukan bash Termux).
+  BAGIAN 4 13 pertanyaan prioritas (P1-P6 + H1,H2,H4,H5,H6,H7).
+  Prinsip user: "jangan hardcore kecuali device tertentu yg punya node
+  (MTK punya fpsgo), cuma chip tertentu aja yg boleh" - gw SEPAKAT, ini
+  masuk H4.
+  Jawaban Claude yg "write-down limitation, jangan patch" gw terima.
+  Tinggal nunggu s/d 17:50.
+  File lama (LAPORAN-v41, BALASAN-v42, v44-review, v44b-final, audit-hasil,
+  perf-question, hardcore) SUDAH TERGABUNG - jangan baca ulang.
+
 - V45-LOLOS-SENSOR-FIX (2026-10-02 14:30, leader, L2 CONFIRMED):
   v45 terpasang di HP user (versionCode=45, 9 outlier_min = filter median
   AKTIF). Hasil smoking — GAME-SNAPSHOT dari log device:
