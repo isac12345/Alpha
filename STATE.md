@@ -1,4 +1,28 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- FLOOR-ROOTCAUSE-KETEMU (2026-10-02 15:10, leader, bisect device):
+  Claude benar uclamp bug (P3). Untuk floor CPU, teori "fas-rs menimpa"
+  = SALAH. BUKTI (bisect live, launch PGR via adb + kill -STOP):
+  1. games.toml live = 2 entri (PGR+WuWa), BUKAN kosong. /sdcard/..games.toml
+     (0 entri) = path SALAH; yang dipakai = games.toml modul.
+  2. Kernel = 5.15.211 (bukan 4.19). service.sh TIDAK skip fas-rs
+     (butuh <5.8, kita 5.15). fas-rs pid 6755 JALAN. /dev/fas_rs ada.
+  3. uperf tulis freq = 0 (konfirmasi).
+  BISECT: kill -STOP fas-rs (beku) -> Alpha tulis min=1404000 -> 3 dtk = 768000.
+  JADI BUKAN fas-rs. Uji min-vs-max (INI AKAR MASALAHNYA):
+    A) max=1820000 dulu, trus min=1404000 (min<max SAH) -> TAHAN 4+ dtk.
+    B) max DULU dikecilkan, trus min=1404000 (min>max) -> kernel RESET
+       min=max=1040000. min HILANG.
+  ROOT CAUSE: gb_apply nulis min_freq TANPA MENJAGA max_freq cukup
+  besar. Kalau max < min saat ditulis, kernel clamp/reset min. Floor
+  1404000 HANYA bertahan kalau max >= 1404000. Ini bug INTERNAL urut-an
+  tulis, bukan dua penulis eksternal.
+  FIX (usul, belum patch): F1 tulis max dulu kalau max<min / F2 skip
+  floor kalau max<min (biarkan governor) / F3 tulis max+min satu tick.
+  Menunggu Claude pilih. UCLAMP (P3) masih terbuka: gov T606=uscfreq
+  (bukan schedutil) => uclamp mungkin tidak berefek ke freq di T606.
+  Question: device-aware (hanya tulis kalau gov=schedutil) vs always write?
+  File: /sdcard/alpha/UNTUK-CLAUDE-floor-ROOTCAUSE.txt
+
 - P3+FLOOR-DUA-BUG-KONFIRMASI (2026-10-02 14:45, leader, device live):
   Claude menebak 2 bug, gw KONFIRMASI sendiri dengan launch PGR via adb
   (am start SplashActivity, tunggu 40 dtk, baca node, force-stop, balik
