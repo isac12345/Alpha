@@ -1,4 +1,29 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- V47-ZIP-SIAP (2026-10-01 18:50, leader): 2 patch Claude (fasrs-owns-cpu
+  + snapshot periodik) sudah di-review + verified di DEVICE (mksh).
+  v47a: flag GB_FASRS_OWNS_CPU = fas-rs satu-satunya pemilik frekuensi CPU
+  di game. Alpha skip tulis lantai (log SKIPPED per policy). BUKAN hapus:
+  tanpa flag = perilaku lama. Restore TIDAK diubah (tetap kembalikan
+  min/max ke native). v47b: GAME-SNAPSHOT periodik default 300 dtk (env
+  ALPHA_GAME_SNAP_EVERY_SECS, 0=saja sekali). Ganti date+%s -> /proc/uptime
+  (nol fork, stabil lintas reboot - gap v43 yang t0 pakai epoch). Guard
+  t0 basi (_el negatif) = tulis ulang. Field baru: fasrs_mode, forced,
+  batt_lv, cpu cur/min/max per policy. Kegunaan: tren suhu + step-down
+  termal utk sesi panjang 4 jam.
+  L1 (device mksh): sh -n OK x2, log_game_snapshot jalan (t0+400s = log,
+  snapshot ke-2 <300s = skip), bash-n OK, shellcheck 0.
+  Zip: /sdcard/alpha/Alpha-Fusion-v47-fasrs-ownscpu.zip (vCode 47, 177
+  entri, md5 di bawah). APK tetap 20.
+  WAJIB SAAT FLASH: touch GB_COOLDOWN_EXTREME (tanpa itu, step-down termal
+  -> boost restore-only diam-diam sampai game ditutup = stutter 4 jam).
+  ARM TEST (satu per arm, 30mnt, baterai >35%, main BENERAN bukan launch):
+    Arm A: GB_FASRS_OWNS_CPU on, fas-rs mode fast
+    Arm B: GB_FASRS_OWNS_CPU on, echo balance > /dev/fas_rs/mode
+    (fast vs performance = noise: margin 0/95C vs 0.3/95C. Yang benar
+     fast vs BALANCE = dua mode yang lu mau.)
+  CATATAN: fwSnapshot t0 = uptime BUKAN epoch - cek ulang setelah reboot
+  (v43 t0 epoch jadi gap reboot, v47 fix).
+
 - V47-DARI-CLAUDE-BELUM-DATANG (2026-10-02 18:40, leader):
   Claude kirim arah v47 (2 patch): v47a-fasrs-owns-cpu (flag
   GB_FASRS_OWNS_CPU -> Alpha tidak tulis lantai CPU saat fas-rs hidup;
