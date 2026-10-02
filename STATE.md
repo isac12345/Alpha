@@ -1,5 +1,28 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- V44B-DRAFT-BELUM-ZIP (2026-10-02 09:30, leader): 2 patch Claude (2-sampel
+  konfirmasi termal + gate 95000 + median pure-shell + pengecualian trip
+  critical) sudah di-commit = d7e9b86, vCode 45. BELUM build zip, BELUM flash.
+  Yang terpasang di HP = v43 (proven jalan; GAME-SNAPSHOT-nya yang menangkap
+  biang: pa-thmzone baca +114000 -> CRITICAL palsu -> apply_now battery ->
+  terkunci 29 menit).
+  ROOT CAUSE sensor: pa-thmzone oscillate -39742 (idle) <-> +114000 (main),
+  TIDAK punya trip_point, jadi node rusak. gb_safety_check lama ambil MAX
+  semua zona + filter longgar (-50000..150000) -> 1 zona rusak = max = bunuh
+  boost. Trip point cuma soc-thmzone (passive 70000/85000 critical 110000).
+  Filter outlier median (tahan >1 zona rusak), median pure-shell (tanpa
+  awk/sort, device bisa tidak punya awk), gerbang = 95000 (ambang kritis
+  modul sendiri), pengecualian zona bertrip 'critical' (kERNEL matikan
+  sistem bila terlampaui -> bacaan sah, tak pernah dibuang).
+  12 skenario sandbox PASS (device tanpa awk disimulasikan): no-awk 108C
+  seragam -> 108500 (bukan 0); pa=114000 -> 54280 dibuang; Poco 100000 ->
+  52000 dibuang; 2 zona rusak -> 52000; SoC 100C+trip -> 100000 dipercaya;
+  hotspot 93000 peers 50 -> 93000 dipercaya. bash-n OK, shellcheck 0.
+  3 flag: GB_THERMAL_NOCONFIRM (opt-out 2-sampel), ALPHA_GB_OUTLIER_MIN_MC
+  (override gate, default 95000), GB_PROFILE_OWNS_IO (default mati).
+  Review Claude: /sdcard/alpha/UNTUK-CLAUDE-v44b-final.txt (7 bagian, kode
+  gb_safety_check lengkap untuk dia review).
+
 - V43-ZIP-SIAP (2026-10-02 08:11, leader): zip v43 sudah di-build =
   /sdcard/alpha/Alpha-Fusion-v43-total.zip (176 entri, 5.4M,
   md5 0391526850886afd0df22c97854f6664, versionCode 43, APK tetap 20).
