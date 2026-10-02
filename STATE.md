@@ -1,4 +1,35 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- P3+FLOOR-DUA-BUG-KONFIRMASI (2026-10-02 14:45, leader, device live):
+  Claude menebak 2 bug, gw KONFIRMASI sendiri dengan launch PGR via adb
+  (am start SplashActivity, tunggu 40 dtk, baca node, force-stop, balik
+  Termux). Tidak bisa main gameplay (butuh input), tapi cgroup/floor check
+  works di menu level.
+  BUG 1 (P3 UCLAMP = NOL EFEK): gameboost tulis uclamp ke
+  /dev/cpuctl/foreground/cpu.uclamp.min=60, TAPI /proc/PID/cgroup PGR =
+  cpuset:/top-app + cpu:/top-app. Semua 10 group uclamp = 0.00 saat live
+  (termasuk top-app). Jadi uclamp 60/45 = TIDAK PERNAH ngaruh ke game.
+  Claude benar 100%.
+  BUG 2 (FLOOR CPU DITIMPA FAS-RS): gameboost tulis policy6 min=1404000
+  (log 14:38:48), tapi live baca policy6 min=768000 (= min native device)
+  dan gov=uscfreq. 1404000 HILANG dalam 1-2 dtk. Yang menimpa paling
+  mungkin fas-rs (mode=fast) yang tulis min/max sendiri. Jadi tuning
+  CPU_FREQ_MIN_PERCENT = NO-OP selama fas-rs aktif. Claude benar.
+  BUKTI YANG BENERAN JALAN: cpuset top-app=0-1,6-7 (bukan 0-7 native),
+  foreground=6-7. GAME-SNAPSHOT: profile=performance gb_active=1
+  boost_level=extreme batt=50% temp_max=58440mC tfo=7 flags:none (v45
+  thermal TERBUKTI, boost extreme HIDUP, nol SENSOR-FAULT/CRITICAL).
+  V46 (buang 2 flag mati) sudah di-commit 855730d, verified mksh.
+  PERTANYAAN ke Claude (/sdcard/alpha/UNTUK-CLAUDE-P3-floor-confirm.txt):
+    Q1 (P0) Floor CPU: 2 CPU writer (Alpha + fas-rs). Opsi A (Alpha skip
+      CPU_FREQ saat fas-rs aktif) / B (tulis belakang, menang last) / C
+      (fas-rs mode performance bukan fast)? Mana benar?
+    Q2 (P0) UCLAMP: tulis top-app bukan foreground? Atau T606 butuh
+      schedtune/stune? Atau tidak ada = uclamp tidak berguna di T606?
+    Q3 (P1) fas-rs fast conflicted dengan Alpha extreme?
+    Q4 (P1) perlu eksperimen CPU_OWNER relinquish?
+  PRIORITAS: JANGAN patch angka tuning (P1-P6) sebelum Q1-Q2 selesai -
+  kalau uclamp & floor no-op, angka lain jadi waste.
+
 
 - FINAL-QUESTION-SENT (2026-10-02 14:40, leader): semua pertanyaan
   digabung jadi 1 file = /sdcard/alpha/UNTUK-CLAUDE-FINAL.txt.
