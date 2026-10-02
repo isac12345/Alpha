@@ -1,4 +1,25 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- V47-CLEAN-REBUILD (2026-10-02 19:00, leader): Claude review zip v47,
+  gw verifikasi sendiri di hasil ekstrak. 3 temuan, 2 gw kerjakan, 1 gw TOLAK:
+  1. common/monitor.sh.orig ikut ter-zip (54KB) - BENAR. Penyebab: .orig
+     pernah ke-commit, jadi git archive ikut ambil. Fix: git rm --cached +
+     .gitignore '*.orig'. Rebuild zip: .orig = 0.
+  2. monitor.sh:304 komentar rusak ('#ENTRY dead ... menesztukan ...')
+     BENAR. Kosmetik, sudah diperbaiki (tidak ada perubahan kode).
+  3. v46-uperf-single tidak masuk - GW TOLAK dengan bukti. pid 7285 ppid=1
+     + pid 7286 ppid=7285 task=6 starttime identik = worker anak (fork),
+     bukan leak. Patch itu menambah 3.5 dtk delay untuk masalah yang tidak
+     ada. TUNGGU hasil snap + kill-STOP uperf SAAT GAME RESUME (semua test
+     gw sebelumnya = launch+22dtk = IDLE downclock, bukan leak) sebelum
+     putuskan.
+  UJI CLAUDE (paritas, cooldown, debounce, filter sensor, snapshot, gate
+  clamp, izin, CRLF, sh -n dash) gw terima. Verified di device mksh juga.
+  Zip rebuilt: /sdcard/alpha/Alpha-Fusion-v47-fasrs-ownscpu.zip (176 entri,
+  vCode 47, md5 di bawah). SEBELUM FLASH:
+    touch /data/adb/alpha/GB_COOLDOWN_EXTREME  (wajib utk sesi 4 jam)
+    touch /data/adb/alpha/GB_FASRS_OWNS_CPU   (arm test fasrs owns CPU)
+    reboot (monitor.sh harus reload fungsi baru)
+
 - V47-ZIP-SIAP (2026-10-01 18:50, leader): 2 patch Claude (fasrs-owns-cpu
   + snapshot periodik) sudah di-review + verified di DEVICE (mksh).
   v47a: flag GB_FASRS_OWNS_CPU = fas-rs satu-satunya pemilik frekuensi CPU
