@@ -1,5 +1,34 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- AUDIT-3-MODUL-HASIL (2026-10-02, leader, semua dari root HP user):
+  Claudeheim balls: 4 komponen bukan 3 (AsoulOpt = modul Magisk terpisah),
+  "4 centrok cpuset" bukan race runtime (uperf tulis sekali saat boot),
+  DAN TABRAKAN NYATA = mask thread uperf tidak cocok topologi T606.
+  BUKTI DARI DEVICE: uperf/config/t606.json c1=[4,5,6] c2=[7];
+  gtmain touch->c2={7}, gtcoop touch->c1={4,5,6}; policy0=cpu0-5 (LITTLE),
+  policy6=cpu6-7 (BIG). Jadi gtmain cuma dapat 1 core BIG, gtcoop dapat
+  2 LITTLE + 1 BIG saat touch (4 dtk per sentuhan). INI kandidat AVG/stutter
+  — belum pernah terisolasi sebelum ini.
+  TEMUAN TAMBAHAN gw: DUA instance uperf dari exe SAMA (pid 3913 + 6902),
+  kemungkinan leak dari "restart uperf to load new config" yang tak
+  mematikan instance lama. Dua writer ke switchInode yang sama.
+  games.toml: modul = 2 entri (PGR+WuWa) tapi /sdcard = 0 entri. Mana
+  yang dibaca fas-rs saat runtime belum jelas - kalau /sdcard, mode fas-rs
+  = variabel mati untuk PGR/WuWa.
+  Exclusion "Alpha-FasrsManaged" regex PGR+WuWa punya pinned:true + ac/pc
+  auto (mask "auto" = semua core, AMAN). Jadi utk 2 game itu thread
+  placement tidak bermasalah; utk game lain Default rule c1/c2 = masalah.
+  AsoulOpt: modul terpasang, tidak terlihat sebagai proses hidup.
+  File: /sdcard/alpha/UNTUK-CLAUDE-audit-hasil.txt (6 bagian, 5 pertanyaan
+  lanjutan + 4 langkah A/B tanpa kode).
+  A/B PLAN (satu langkah per test, 30 dtk PGR per arm): Step 0 snapshot
+  read-only -> Step 1 NO_CPUSET (flag Alpha) -> Step 2 killall uperf ->
+  Step 3 kill AsoulOpt -> Step 4 ubah mask c1/c2 di t606.json (terakhir).
+  Semua flag default mati = A/B aman.
+  CATATAN PENTING: v45 (sensor fix) BELUM flash. Rantai: flash v45 ->
+  smoke (GAME-SNAPSHOT temp_max~45000) -> baseline PGR 30 dtk ->
+  baru A/B 3-modul.
+
 - AUDIT-3-MODUL (2026-10-02, leader, untuk Claude): user tanya "3 modul
   fused beneran jalan ga? nabrak? cara run yang benar?" — belum pernah
   dijawab dari awal. Data sudah gw kumpulkan dari HP live (root):
