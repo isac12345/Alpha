@@ -1,4 +1,31 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- V47-DARI-CLAUDE-BELUM-DATANG (2026-10-02 18:40, leader):
+  Claude kirim arah v47 (2 patch): v47a-fasrs-owns-cpu (flag
+  GB_FASRS_OWNS_CPU -> Alpha tidak tulis lantai CPU saat fas-rs hidup;
+  tidak ada flag = perilaku lama) + v47b-snapshot-periodik (snapshot
+  tiap 5 mnt: suhu, min/max/cur tiap policy, mode fas-rs, status step-down).
+  Arah Claude: SATU PEMILIK FREKUENSI CPU di game = fas-rs. Performance=fast,
+  Balanced=balance. Alpha cuma GPU/IO/NET/VM/termal.
+  KOREKSI Claude atas gw (terima, dia benar):
+    1. log 'powersave -> fast' saat launch = tulisan ALPHA (gb_apply ->
+       _gb_set_fasrs_mode), BUKAN fas-rs mengenali PGR. Bukti valid tetep
+       uji kill-STOP lu (lantai bertahan saat fas-rs beku, ditimpa 1-2 dtk
+       saat hidup, di game yang jalan).
+    2. keep_std=true = soal merge config, bukan 'fas-rs kendalikan semua
+       game'. Penentunya baris 'New fas buffer on:' di fas_log.txt.
+  Q10: fast vs performance hampir sama (margin 0/95C vs 0.3/95C) = noise.
+       Arm yang benar = FAST vs BALANCE.
+  Q8: lantai Alpha percuma kalau ditimpa. Fix = flag, bukan hapus.
+  BELUM: patch v47 tidak ada di /sdcard/Download atau /sdcard/alpha.
+  Recommended user (Claude): touch GB_COOLDOWN_EXTREME (tanpa itu, step-down
+  termal -> boost restore-only sampai game ditutup = stutter di sesi 4 jam).
+  UJI MURAH uclamp (tanpa buka game, gw lakuin): /dev/cpuctl/top-app dan
+  /dev/cpuctl/foreground uclamp.min = 0.00 (idle). Node top-app =_writeable_
+  (ada di /dev/cpuctl/). Jadi uclamp top-app bisa ditulis jika perlu.
+  RESUME: tunggu patch v47 dari Claude, review + sandbox (mksh device),
+  baru build zip. PATCH BELUM DIBUILD (aturan: no build tanpa review).
+  Arah Claude (satu pemilik CPU = fas-rs) masuk akal dan gw hargakan.
+
 - PENULUS=fas-rs (2026-10-02 18:15, leader, UJI DECISIVE):
   PENULUS scaling_min_freq = fas-rs (mode=fast). BUKTI decisive:
     launch PGR (game foreground) -> kill -STOP $(pidof fas-rs)
