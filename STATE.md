@@ -1,4 +1,36 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- UPERF-eBPF-KETEMU-PEMILIK-CPU (2026-10-02 15:25, leader, ftrace device):
+  Claude minta ftrace (power/cpu_frequency_limits). JALAN. HASIL KUNCI:
+  1. floor 1404000 Alpha BETAH 1x, lalu di-override ke 1820000 (=max)
+     dalam <1 dtk. BUKAN fas-rs (sudah dibuktikan: kill -STOP fas-rs
+     tidakolicies), BUKAN min>max reset.
+  2. DI TRACE YANG SAMA: 35 baris bpf_trace_printk = "LOOKUP_PREFILTER:
+     <bpf_obj> com.kurogame.gplay...grayraven.en" + ":GP7Worker" +
+     ":GP7Service". uperf sedang attach BPF ke thread game PGR!
+  3. /sys/fs/bpf punya prog_timeInState_tracepoint_sched_sched_switch,
+     prog_timeInState_tracepoint_sched_sched_process_free,
+     prog_timeInState_tracepoint_power_cpu_frequency,
+     prog_gpuWork_tracepoint_power_gpu_work_period,
+     prog_gpuMem_tracepoint_gpu_mem_gpu_mem_total, prog_fuseMedia_fuse_media
+     + map_timeInState_cpu_policy_map / map_timeInState_freq_to_idx_map.
+  KESIMPULAN: uperf = PEMILIK SEBENARNYA CPU CONTROL di T606 (eBPF),
+  BUKAN sysfs. Alpha sysfs floor/uclamp = NO-OP karena uperf BPF +
+  governor uscfreq override. Ini explains: floor no-op, uclamp no-op,
+  v39 power-naik-fps-turun, "kadang enak kadang ga".
+  P1-P3 ke Claude: (a) uperf BPF = controller utama? (b) Alpha relinquish
+  CPU ke uperf (hapus floor+uclamp dari gameboost)? (c) matikan uperf BPF
+  (kalau bisa)? PATCH F1/F2/F3 + uclamp top-app = TIDAK BERGUNA selama
+  uperf BPF pegang. Menunggu klarifikasi sebelum patch lagi.
+  File: /sdcard/alpha/UNTUK-CLAUDE-uperf-BPF-terbukti.txt
+  Metodologi ftrace (untuk Claude):
+    T=/sys/kernel/debug/tracing; [ -d /sys/kernel/tracing ] && T=/sys/kernel/tracing
+    echo 0 > $T/tracing_on; echo > $T/trace
+    echo 1 > $T/events/power/cpu_frequency_limits/enable; echo 1 > $T/tracing_on
+    # launch game, tunggu 25 dtk, echo 0 > $T/tracing_on, grep min $T/trace
+  Penting: store_scaling_min_freq TIDAK ada di available_filter_functions,
+  tapi event power/cpu_frequency_limits (min/max/cpu_id) ADA. Trace
+  Output juga bpf_trace_printk = LOOKUP_PREFILTER (uperef BPF attach).
+
 - FLOOR-ROOTCAUSE-KETEMU (2026-10-02 15:10, leader, bisect device):
   Claude benar uclamp bug (P3). Untuk floor CPU, teori "fas-rs menimpa"
   = SALAH. BUKTI (bisect live, launch PGR via adb + kill -STOP):
