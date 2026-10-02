@@ -1,4 +1,34 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- STACKTRACE-TERBUKTI + FPS-GW-TIDAK-BISA (2026-10-02 16:10, leader):
+  Claude koreksi: kolom comm di cpu_frequency_limits BUKAN penulis
+  (cpufreq limit lewat workqueue policy->update). BUKTI gw:
+    echo stacktrace > events/power/cpu_frequency_limits/trigger
+    -> trace Isi: 13x "handle_update" + 13x "cpufreq"
+    = event SELALU keluar dari kworker handle_update, siapa pun penulisnya.
+    Claims gw "kworker = penulis = governor" SALAH. Claude benar.
+  ANOMALI BARU: log alpha.log = 6 tulis CPU_FREQ policy6 min (jarak 7-10
+  mnt = 1 per sesi game). Trace = 1404000 muncul 2x dalam 14 dtk. Berarti
+  ADA PENULIS KEDUA dengan nilai identik (bukan Alpha, karena Alpha cuma
+  tulis 1x per sesi). Kandidat: profile apply (tune_cpu_freq) atau
+  uperf/AsoulOpt. BELUM teridentifikasi.
+  KNOB uscfreq policy6: /sys/devices/system/cpufreq/policy6/uscfreq/ TIDAK
+  ADA (direktori tidak ada). Jadi P1c Claude (governor_params knob) = tidak
+  ada di device ini. Modul boost-related: TIDAK ADA (hanya sprd_thermal,
+  sprd_vsp, dll). grep -il boost /sys/module/*/parameters/* = NOL.
+  -> tidak ada knob governor yang bisa dimatikan. P1c = DEAD END di T7250.
+  FPS GW TIDAK BISA UKUR: gfxinfo cuma 13 frame (Unity native renderer,
+  bukan hwui). SurfaceFlinger --latency tidak punya layer PGR (bukan
+  SurfaceView). Jadi A/B arm HARUS lewat user main + screenshot, tidak
+  bisa gw otomatisasi.
+  ACTIONS PERLU (urut Claude):
+    1. User ukur v45 boost-ON 3x30mnt = BASELINE (wajib, tanpa ini semua
+       arm tidak ada pembanding).
+    2. Arm 1: NO_CPUSET (nol flash). Boost-ON=top-app 4 core (0,1,6,7),
+       kandidat stutter terkuat yang belum diuji.
+    3. Floor/uclamp = prioritas rendah sampai penulis kedua ketemu.
+  Patch CPU/floor/uclamp/uclamp-topapp = HOLD. Tidak ada yang perlu
+  di-flash. v45 = L2 CONFIRMED thermal.
+
 - STUTTER-FOKUS (2026-10-02 15:55, leader): user tired, FOKUS SATU =
   stutter PGR minimal. Trace cpu_frequency_limits MENTAH: semua penulis
   = kworker/* = KERNEL worker = governor `uscfreq` (bukan uperf/fas-rs).
