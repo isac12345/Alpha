@@ -1,5 +1,30 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- V46-REVERT (2026-10-02 14:00, leader): patch-v46-uperf-single (Claude)
+  TIDAK DITERIMA, sudah di-revert, working tree bersih.
+  Claude v46 Hypothesis: "2 instance uperf = leak dari restart uperf".
+  BUKTI GW DI DEVICE (mkshin '/proc'):
+    pid 7285  ppid=1     task=1   <- main
+    pid 7286  ppid=7285  task=6   <- WORKER anak (fork dari main)
+    starttime keduanya IDENTIK (228095 ticks) = start BERSAMA
+  uperf_start (run_uperf.sh:62) -> 1 process -> uperf fork worker -> 2 PID.
+  Binary uperf punya 'fork' + 'HeavyWorker' + 'ContextScheduler' =
+  multi-process BY DESIGN, bukan leak.
+  TEST GW: uperf_stop versi Claude = 2->0 dalam 75ms (cepat), TAPI
+  start ulang tetap 2 = TIDAK solve masalah. Memperparah: 4x uperf_count
+  + sleep 0.5 + killall -9 = memperlambat start, dan killall -9 bisa
+  bunuh worker yang in-flight.
+  MASALAH NYATA: mask uperf c1=[4,5,6] c2=[7] tidak cocok topologi T606
+  (policy0=0-5 LITTLE, policy6=6-7 BIG). gtmain dipin {7}, gtcoop dipin
+  {4,5,6} saat touch (4 dtk) = render/worker thread dapat 2 little + 1 big.
+  Kandidat AVG/stutter — belum terisolasi.
+  ISOLASI YANG BENAR (Claude Step 2 + 4, urutan):
+    A) killall uperf (tanpa patch), main PGR 30 dtk. Kalau stutter turun
+       drastis -> uperf (bukan jumlah-instance) yang bikin jitter.
+    B) ubah c1/c2 di uperf/config/t606.json (c1=[5,6] atau [6] atau all),
+       reload uperf, test lagi. Kalau turun -> masker jadi penyebab.
+  JANGAN patch uperf script sebelum Bukti A/B.
+
 - AUDIT-3-MODUL-HASIL (2026-10-02, leader, semua dari root HP user):
   Claudeheim balls: 4 komponen bukan 3 (AsoulOpt = modul Magisk terpisah),
   "4 centrok cpuset" bukan race runtime (uperf tulis sekali saat boot),
