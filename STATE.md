@@ -1,5 +1,30 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- V43-ZIP-SIAP (2026-10-02 08:11, leader): zip v43 sudah di-build =
+  /sdcard/alpha/Alpha-Fusion-v43-total.zip (176 entri, 5.4M,
+  md5 0391526850886afd0df22c97854f6664, versionCode 43, APK tetap 20).
+  Commit 5407e36. Ekstrak ulang: sh -n 28/28 OK, nol keystore.
+  Default v43 = v42 = v41 (semua flag MATI) => flash relatif aman.
+  YANG BELUM PERNAH JALAN DI DEVICE: v42 + v43. Yang terpasang = v41.
+  SETELAH FLASH, cek 3 hal di log (1x aja, ):
+    1. grep 'GAME-SNAPSHOT' alpha.log  -> harus ada 1 baris di detik ke-60
+       tiap sesi game. Ini data P3 (variance) + jalur A/B.
+    2. grep 'GAMEBOOST\] \[INFO\] level=' alpha.log -> harus muncul.
+       Kalau 0x = gameboost masih mati. Cek dulu 'BATTERY WARNING'
+       (baterai <30% = boost mati by design, bukan bug) atau
+       'SKIPPED: temp' (panas) atau GRACE belum habis.
+    3. Ukur apply: dari baris driver pertama s/d '[APPLY] [SUMMARY]'.
+       v40 = 9 dtk, v41 = 0-1 dtk. v43 harus tetap 0-1 dtk.
+  BATERAI >35% saat test (di bawah itu boost mati). JANGAN pindah app
+  buat screenshot (trigger GRACE 12 dtk + apply/restore berulang =
+  mencemari variance, Katie cara Claude bilang).
+  A/B arm berikutnya (1 flag per arm, 30 mnt, 3 run):
+    a) baseline tanpa flag   b) GB_PROFILE_OWNS_IO
+    c) MONITOR_LOOP_SECS=8   d) GB_COOLDOWN_EXTREME (klog ada step-down)
+  KEPUTUSAN TERTUNDA: DAILY-LOADGUARD masih NO-OP (Claude tidak ubah,
+  itu keputusan desain kita). Rekomendasi leader: biarkan dulu s/d ada
+  data. P3 variance juga tertunda - butuh data snapshot dulu.
+
 - V42-DONE-BUT-JANGAN-FLASH (2026-10-02 03:50, leader):
   v41 = yang TERPASANG di HP user (proven: apply 9 dtk -> 0-1 dtk, patch
   Claude logfork+readbuiltin, commit d87dd85, vCode 41).
