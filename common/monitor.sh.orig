@@ -274,10 +274,8 @@ is_transient_package() {
 gb_safety_check() {
     local current_temp=0
     local max_temp=0
-    local max2_temp=0
-    local fault_zone=""
-    local fault_val=0
     local valid_count=0
+    local kept="" kept_n=0 kept_i median=0 drop_list=""
 
     # Read thermal zones
     if [ -d "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}" ]; then
@@ -300,35 +298,39 @@ gb_safety_check() {
             else
                 current_temp=$temp_val
             fi
-            # Filter valid range: -50000..150000 milliC
-            [ "$current_temp" -ge -50000 ] 2>/dev/null && \
+            # Filter kasar: buang nilai yang secara fisik mustahil. Batas bawah
+            # -20000 mC (bukan -50000): sensor termal tidak pernah -20C di HP
+            # yang menyala, nilai seperti -39742 = node rusak (P6: tanpa state).
+            [ "$current_temp" -ge -20000 ] 2>/dev/null && \
                 [ "$current_temp" -le 150000 ] 2>/dev/null || continue
-            # Dua zone teratas, bukan cuma max. Satu zone rusak (mis. pa-thmzone
-            # di T7250 baca +114000 sementara soc 52000) sebelumnya menang
-            # tunggal lalu mematikan boost dengan "CRITICAL TEMP" palsu.
-            # Bandingkan max1 vs max2: zone yang melonjak >25C di atas zone
-            # lain dianggap sensor fault, bukan panas. Tidak ada nama zone
-            # yang di-hardcode (universal, tidak khas perangkat).
-            if [ "$current_temp" -gt "$max_temp" ] 2>/dev/null; then
-                max2_temp=$max_temp
-                max_temp=$current_temp
-                fault_zone="${zone##*/}"
-                fault_val=$current_temp
-            elif [ "$current_temp" -gt "$max2_temp" ] 2>/dev/null; then
-                max2_temp=$current_temp
-            fi
+            kept="$kept $current_temp"
+            kept_n=$((kept_n + 1))
             valid_count=$((valid_count + 1))
         done
     fi
 
-    # Sensor fault: max1 melonjak jauh di atas max2 DAN nilainya di atas
-    # batas fisik mana pun SoC (105C = batas shutdown typical). Dua syarat
-    # WAJIB: zona 93C sendirian tetap dipercaya (hotspot itu bisa nyata),
-    # hanya lonjakan mustahil seperti 114C vs soc 52C yang dibuang.
-    if [ "$valid_count" -ge 2 ] && [ "$max_temp" -gt 105000 ] 2>/dev/null && \
-       [ "$((max_temp - max2_temp))" -gt 25000 ] 2>/dev/null; then
-        monitor_log "GAMEBOOST" "SENSOR-FAULT: ${fault_zone} baca ${fault_val}mC, dibuang; acuan jadi ${max2_temp}mC (selisih $((max_temp - max2_temp))mC > 25000)"
-        max_temp=$max2_temp
+    # Buang zone outlier dengan acuan MEDIAN (max-vs-max2 hanya tahan SATU
+    # zone rusak; median tahan berapa pun). Outlier bila >105000 mC DAN
+    # >median+25000 mC. T7250: pa-thmzone 114000 vs median ~52000 -> dibuang.
+    # Hotspot 93000 dgn sibling 50000 TIDAK dibuang (93000 < 105000). Median
+    # hanya ACUAN; nilai keputusan tetap max zone yang lolos (hotspot nyata
+    # tidak tertutup median). sort+awk 1x per panggilan (jarang, <1%).
+    if [ "$kept_n" -ge 2 ] 2>/dev/null; then
+        median=$(printf '%s\n' $kept | sort -n | awk -v n="$kept_n" 'NR==int((n+1)/2){print; exit}')
+        case "$median" in ''|*[!0-9]*) median=0 ;; esac
+        for kept_i in $kept; do
+            if [ "$kept_i" -gt 105000 ] 2>/dev/null && \
+               [ "$((kept_i - median))" -gt 25000 ] 2>/dev/null; then
+                drop_list="$drop_list $kept_i"
+                continue
+            fi
+            [ "$kept_i" -gt "$max_temp" ] 2>/dev/null && max_temp=$kept_i
+        done
+        if [ -n "$drop_list" ]; then
+            monitor_log "GAMEBOOST" "SENSOR-FAULT: zona mustahil (>median+25000=${median}mC, >105000) dibuang:${drop_list# } ; max sah=${max_temp}mC"
+        fi
+    elif [ "$kept_n" -eq 1 ] 2>/dev/null; then
+        for kept_i in $kept; do max_temp=$kept_i; done
     fi
 
     # No valid thermal zones: warm sentinel memilih performance, bukan 0
@@ -871,6 +873,29 @@ check_gb_grace_period() {
             if [ "$gb_manual_prof" = "performance" ]; then
                 gb_warm_thr=85000
                 gb_high_thr=90000
+            fi
+
+            # Konfirmasi 2 sampel sebelum step-down/kritis. Satu bacaan sensor
+            # rusak yang melonjak (114C padahal SoC 52C) sebelumnya langsung
+            # membunuh boost + mengunci profil battery sampai game ditutup.
+            # Biaya salah-tolak panas asli: paling lama 1 tick (15 dtk), kernel
+            # tetap punya proteksi termal sendiri. Biaya salah-bunuh: seluruh
+            # sesi. Hanya jalan saat sampel pertama >= warm (jarang), jadi
+            # suhu normal tidak menambah fork/sleep. Opt-out: flag
+            # GB_THERMAL_NOCONFIRM (perilaku lama, 1 sampel).
+            if [ "$current_temp" -ge "$gb_warm_thr" ] 2>/dev/null && \
+                [ ! -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GB_THERMAL_NOCONFIRM" ]; then
+                local gb_confirm_temp gb_first_temp="$current_temp"
+                sleep 2
+                gb_confirm_temp=$(gb_safety_check)
+                if [ "$gb_confirm_temp" -lt "$gb_warm_thr" ] 2>/dev/null; then
+                    monitor_log "SENSOR-GLITCH" "sampel1=${gb_first_temp}mC tidak terkonfirmasi (sampel2=${gb_confirm_temp}mC < warm ${gb_warm_thr}), diabaikan"
+                    current_temp="$gb_confirm_temp"
+                else
+                    # Keduanya >= warm: pakai yang lebih rendah (tahan satu spike).
+                    [ "$gb_confirm_temp" -lt "$current_temp" ] 2>/dev/null && current_temp="$gb_confirm_temp"
+                    monitor_log "THERMAL-CONFIRM" "sampel1=${gb_first_temp}mC sampel2=${gb_confirm_temp}mC terkonfirmasi, dipakai ${current_temp}mC"
+                fi
             fi
             
             # Check thermal thresholds

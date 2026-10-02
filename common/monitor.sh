@@ -271,15 +271,34 @@ is_transient_package() {
 }
 
 # GameBoost safety check function (b23: timeout + range filter)
+# Zona yang punya trip point "critical" = zona yang KERNEL sendiri pantau dan
+# matikan sistem bila terlampaui, jadi bacaan tingginya sah (tidak pernah dibuang
+# sebagai outlier). Zona tanpa trip (mis. pa-thmzone) harus lolos korroborasi.
+_gb_zone_has_critical_trip() {
+    local _t
+    for _t in "$1"/trip_point_*_type; do
+        [ -f "$_t" ] || continue
+        monitor_rd "$_t" && [ "$MONITOR_RD" = "critical" ] && return 0
+    done
+    return 1
+}
+
 gb_safety_check() {
     local current_temp=0
     local max_temp=0
     local valid_count=0
-    local kept="" kept_n=0 kept_i median=0 drop_list=""
+    local kept="" kept_z="" kept_n=0 kept_i kept_zn median="" drop_list=""
+    local zbase="${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"
+    # Gerbang outlier = ambang KRITIS milik modul sendiri (95000): zona di bawah
+    # ini tidak bisa memicu kill-boost-kritis, jadi tidak perlu dibuang; zona di
+    # atasnya HARUS lolos korroborasi. (110000/105000 membiarkan bacaan palsu
+    # 95-110C, mis. zona konstan 100C di Poco, tetap memicu CRITICAL.)
+    local outlier_min="${ALPHA_GB_OUTLIER_MIN_MC:-95000}"
+    case "$outlier_min" in ''|*[!0-9]*) outlier_min=95000 ;; esac
 
     # Read thermal zones
-    if [ -d "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}" ]; then
-        for zone in "${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"/thermal_zone*; do
+    if [ -d "$zbase" ]; then
+        for zone in "$zbase"/thermal_zone*; do
             [ -r "$zone/temp" ] || continue
             local temp_val
             # b23: timeout 2s per zone to prevent hang on unresponsive sysfs
@@ -304,30 +323,51 @@ gb_safety_check() {
             [ "$current_temp" -ge -20000 ] 2>/dev/null && \
                 [ "$current_temp" -le 150000 ] 2>/dev/null || continue
             kept="$kept $current_temp"
+            kept_z="$kept_z ${zone##*/}"
             kept_n=$((kept_n + 1))
             valid_count=$((valid_count + 1))
         done
     fi
 
-    # Buang zone outlier dengan acuan MEDIAN (max-vs-max2 hanya tahan SATU
-    # zone rusak; median tahan berapa pun). Outlier bila >105000 mC DAN
-    # >median+25000 mC. T7250: pa-thmzone 114000 vs median ~52000 -> dibuang.
-    # Hotspot 93000 dgn sibling 50000 TIDAK dibuang (93000 < 105000). Median
-    # hanya ACUAN; nilai keputusan tetap max zone yang lolos (hotspot nyata
-    # tidak tertutup median). sort+awk 1x per panggilan (jarang, <1%).
     if [ "$kept_n" -ge 2 ] 2>/dev/null; then
-        median=$(printf '%s\n' $kept | sort -n | awk -v n="$kept_n" 'NR==int((n+1)/2){print; exit}')
-        case "$median" in ''|*[!0-9]*) median=0 ;; esac
+        # Median (bawah) murni shell: nilai terkecil yang punya >= (n+1)/2
+        # nilai <= dirinya. Tanpa sort/awk: kalau awk tidak ada di PATH,
+        # median jatuh ke 0 dan SEMUA zona >outlier_min (panas merata
+        # asli) ikut dibuang -> max=0 dilaporkan "dingin" = gagal ke
+        # arah berbahaya. Zona yang punya trip "critical" = zona yang
+        # kernel sendiri matikan sistem bila terlampaui, jadi bacaan
+        # tingginya sah (tidak pernah dibuang).
+        local mc_a mc_b mc_c mc_t=$(((kept_n + 1) / 2))
+        for mc_a in $kept; do
+            mc_c=0
+            for mc_b in $kept; do
+                [ "$mc_b" -le "$mc_a" ] 2>/dev/null && mc_c=$((mc_c + 1))
+            done
+            if [ "$mc_c" -ge "$mc_t" ] 2>/dev/null; then
+                if [ -z "$median" ] || [ "$mc_a" -lt "$median" ] 2>/dev/null; then
+                    median=$mc_a
+                fi
+            fi
+        done
+    fi
+
+    if [ -n "$median" ]; then
+        # Outlier = >outlier_min DAN >median+25000 DAN zona tanpa trip critical.
+        # Elemen median tidak mungkin terbuang, jadi max_temp >= median.
+        set -- $kept_z
         for kept_i in $kept; do
-            if [ "$kept_i" -gt 105000 ] 2>/dev/null && \
-               [ "$((kept_i - median))" -gt 25000 ] 2>/dev/null; then
-                drop_list="$drop_list $kept_i"
+            kept_zn="$1"; shift
+            if [ "$kept_i" -gt "$outlier_min" ] 2>/dev/null && \
+               [ "$((kept_i - median))" -gt 25000 ] 2>/dev/null && \
+               ! _gb_zone_has_critical_trip "$zbase/$kept_zn"; then
+                monitor_rd "$zbase/$kept_zn/type"
+                drop_list="$drop_list ${MONITOR_RD:-$kept_zn}=$kept_i"
                 continue
             fi
             [ "$kept_i" -gt "$max_temp" ] 2>/dev/null && max_temp=$kept_i
         done
         if [ -n "$drop_list" ]; then
-            monitor_log "GAMEBOOST" "SENSOR-FAULT: zona mustahil (>median+25000=${median}mC, >105000) dibuang:${drop_list# } ; max sah=${max_temp}mC"
+            monitor_log "GAMEBOOST" "SENSOR-FAULT: dibuang (>${outlier_min} dan >median+25000, median=${median}mC, tanpa trip critical):${drop_list} ; max sah=${max_temp}mC"
         fi
     elif [ "$kept_n" -eq 1 ] 2>/dev/null; then
         for kept_i in $kept; do max_temp=$kept_i; done
