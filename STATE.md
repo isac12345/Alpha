@@ -1,5 +1,33 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- V45-LOLOS-SENSOR-FIX (2026-10-02 14:30, leader, L2 CONFIRMED):
+  v45 terpasang di HP user (versionCode=45, 9 outlier_min = filter median
+  AKTIF). Hasil smoking — GAME-SNAPSHOT dari log device:
+    v43 (rusak): temp_max=114000mC | profile=battery | gb_active=0 |
+                 boost_level=none → boost hidup 55 dtk lalu CRITICAL
+                 palsu → apply_now battery → terkunci 29 mnt.
+    v45 (fixed): temp_max=58180mC (58.2C realistis) | profile=performance |
+                 gb_active=1 | boost_level=extreme | batt=65%
+    → [GAMEBOOST] level=extreme / gb_apply complete level=extreme
+    → nol SENSOR-FAULT, nol CRITICAL TEMP, nol forced battery.
+  VERDICT: filter median + gate 95000 + trip-critical exception + 2-sample
+  confirm + gate clamp (2 patch Claude) = LULUS 100%. Ini pertama kali
+  boost HIDUP sejak v36. Root cause variance selama ini = boost mati.
+
+  CATATAN PENTING: semua angka tuning di profiles.sh disetel saat boost
+  MATI (55 dtk). Jadi baseline = hasil run TANPA boost. Sekarang boost
+  hidup → setiap angka perlu dievaluasi ulang. Test 30mnt dengan boost ON
+  belum dilakukan (user tes tanpa record FPS, tapi log sudah cukup bukti).
+
+  PERTANYAAN PERF ke Claude (untuk箭箭Ctuning dengan boost hidup + mask
+  uperf): /sdcard/alpha/UNTUK-CLAUDE-perf-question.txt (6 bagian, P1-P6:
+  tuning angka yang paling salah untuk T606, cpuset top-app vs uperf
+  gtmain dipin {7}, mask c1/c2 ({4,5,6}/{7} tidak cocok topologi),
+  uclamp.min=60 dengan 2 big core, read_ahead 2048 vs 32).
+  Plus: patch v46 (uperf-single) gw TOLAK + revert — 2 instance uperf =
+  multi-process by DESIGN (main 7285 + worker anak 7286, starttime sama),
+  bukan leak. uperf TIDAK diubah, working tree bersih.
+
 - V46-REVERT (2026-10-02 14:00, leader): patch-v46-uperf-single (Claude)
   TIDAK DITERIMA, sudah di-revert, working tree bersih.
   Claude v46 Hypothesis: "2 instance uperf = leak dari restart uperf".
