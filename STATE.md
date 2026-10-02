@@ -1,4 +1,33 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- FLOOR-CONFIRMED-MODUL-CPU-UPERF (2026-10-02 15:40, leader):
+  Claude KOREKSI gw: prog_timeInState_* = AOSP builtin tracepoint
+  (PENGAMAT, tidak bisa tulis) -> klaim gw "uperf eBPF" SALAH. Verifikasi
+  strings binary uperf: 'bpf'=0, 'uclamp'=0, 'scaling_min_freq'/'max_freq'=2,
+  'cpuset'=4. Jadi uperf BISA tulis freq via sysfs, TIDAK bisa uclamp.
+  LOOKUP_PREFILTER nihil di repo (cuma di STATE.md gw) = pemilik di luar modul.
+  UJI KILL -STOP (tanpa patch, sesuai instruksi Claude): 2 instance uperf
+  di-STOP (7285, 7286) -> Alpha tulis policy6 min=1404000 -> TAHAN 10 dtk
+  (0x balik ke 768000). kill -CONT -> masih tahan 5 dtk.
+  BANDINGKAN run normal (uperef hidup): min=1404000 -> <1 dtk -> 1820000 ->
+  768000 bolak-balik. KESIMPULAN: floor hilang karena modul `cpu` uperf.
+  BUKAN eBPF, BUKAN fas-rs (kill-STOP fas-rs tidak policies), BUKAN
+  min>max reset.
+  ARM PERMANEN (ide Claude): set "cpu":{"enable":false} di uperf.json ->
+  uperf tidak tulis freq, Alpha floor jalan. Modul sched (cpuset) tetap.
+  MENUNGGU Q1-Q3 Claude sebelum patch: (Q1) path uperf.json (/sdcard
+  survive boot? /data/adb/alpha?) + cara edit permanen, (Q2) cpu.enable=false
+  = uperf masih jalan modul lain (sched/gpuWork/gpuMem) atau mati total,
+  (Q3) test-arm manual safe (edit json, killall uperf, main, revert).
+  UCLAMP: klaim gw "uperf nimpa uclamp" DIBATALKAN (binary 0 uclamp).
+  Pelaku uclamp 0.00 = belum teridentifikasi, tapi TIDAK prioritas
+  (kalau cpu uperf dimatikan, uclamp mungkin juga tidak relevan).
+  SEMUA patch CPU/floor/uclamp = HOLD. Tuning angka P1-P6 = HOLD.
+  v45 = L2 CONFIRMED (thermal), tidak perlu flash sebelum P0 clear.
+  File: /sdcard/alpha/UNTUK-CLAUDE-floor-CONFIRMED.md
+  Metodologi (penting, jangan diulang): kill -STOP $(pidof uperf) untuk
+  membekukan writer sysfs, lalu tulis node target, lalu poll 10 dtk.
+  Kalau node TAHAN = penulisnya proses itu. kill -CONT untuk lanjutkan.
+
 - UPERF-eBPF-KETEMU-PEMILIK-CPU (2026-10-02 15:25, leader, ftrace device):
   Claude minta ftrace (power/cpu_frequency_limits). JALAN. HASIL KUNCI:
   1. floor 1404000 Alpha BETAH 1x, lalu di-override ke 1820000 (=max)
