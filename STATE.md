@@ -1,4 +1,27 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- STUTTER-FOKUS (2026-10-02 15:55, leader): user tired, FOKUS SATU =
+  stutter PGR minimal. Trace cpu_frequency_limits MENTAH: semua penulis
+  = kworker/* = KERNEL worker = governor `uscfreq` (bukan uperf/fas-rs).
+  Pola = governor acquire/release: 1820000(MAX) -> 768000(native) ->
+  1404000(Alpha) -> 1820000 -> 768000 -> 1404000. Floor Alpha BENAR-BENAR
+  TERTULIS (2x di trace), CUMA governor override <1 dtk setelah gb_apply.
+  uperf cpu.enable=false dari installer customize.sh (bukan arm gw).
+  Control run tanpa kill-STOP juga tahan 10 dtk = test gw udh nggak
+  diskriminatif (Claude bener). uclamp: uperf binary 0 string uclamp,
+  Pelaku 0.00 belum teridentifikasi.
+  PERTANYAAN stutter ke Claude (/sdcard/alpha/UNTUK-CLAUDE-stutter-goal.txt):
+    P1 governor override floor: stop tulis / re-apply periodik / cek
+       governor_params (boost knob) -> solusi bersih?
+    P2 mali kbase pollingtime=1 (extreme) vs 8 default - boros, bikin
+       acquire/release sering = stutter? 2 atau 4?
+    P3 uclamp stop tulis (device lain pake schedutil = conditional)?
+    P4 read_ahead 2048 vs 32 (mobile asset non-sequential)?
+    P5 DIRTY_RATIO 15/5 vs 10/1 -> naik 20/10?
+    P6 A/B governor: uscfreq vs performance (no acquire/release)?
+  SEMUA patch CPU/floor/uclama HOLD. Tidak ada yang perlu di-flash
+  sebelum test boost-ON 30mnt (baseline stutter BELUM pernah diukur
+  dengan boost hidup).
+
 - FLOOR-CONFIRMED-MODUL-CPU-UPERF (2026-10-02 15:40, leader):
   Claude KOREKSI gw: prog_timeInState_* = AOSP builtin tracepoint
   (PENGAMAT, tidak bisa tulis) -> klaim gw "uperf eBPF" SALAH. Verifikasi
