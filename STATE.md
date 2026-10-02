@@ -1,5 +1,39 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- V45-ZIP-SIAP-FLASH-SEKARANG (2026-10-02, leader): v44b + v44c (gate clamp)
+  sudah di-commit = da9d771, vCode 45.
+  Zip: /sdcard/alpha/Alpha-Fusion-v45-sensorfix.zip (md5
+  5f38a08d8e2fc70b1f9c6b8e7d0a4c11 - CEK md5sum saat flash).
+  Ekstrak: sh -n 28/28 OK, nol keystore.
+  ISI v45: (1) median pure-shell filter outlier (tahan >1 zona rusak, tanpa
+  awk/sort), (2) gerbang = 95000 (ambang kritis modul, BUKAN angka karangan),
+  (3) pengecualian zona bertrip 'critical' (kERNEL matikan sistem bila
+  terlampaui -> bacaan sah, tak pernah dibuang), (4) konfirmasi 2-sampel
+  (GB_THERMAL_NOCONFIRM opt-out), (5) gate clamp (override hanya boleh
+  MENINGKATKAN gerbang, env tak bisa melemahkan termal lagi).
+
+  VERIFIKASI DI DEVICE (mksh, Claude minta — gw sempat arrogant median rusak,
+  ternyata modul TERPASANG masih v43 yg tak punya filter; kode v44b sendiri
+  BENAR di mksh. Bukti: BUG pa=114000 vs soc 52C -> 52000mC DIBUANG+log;
+  108C seragam no-awk -> 108500; SoC 100C+trip -> 100000 dipercaya).
+  sh -n device: OK. Thermal asli: 43620/46220/45180 mC realistis.
+
+  ⚠️ FLASH SEKARANG, TIDAK PERLU TUNGGU. Root cause sudah terbukti 100%:
+  pa-thmzone baca +114000 saat main (114°C palsu vs nyata 44°C) -> CRITICAL
+  palsu -> apply_now battery -> boost TERKUNCI 29 menit. Ini SEBAB variance
+  tinggi + stutter jelek di semua test 30mnt (boost cuma hidup 55 detik).
+
+  SMOKE TEST PASCA-FLASH (baterai >35%, JANGAN pindah app buat screenshot):
+    1. su -c 'sh -n /data/adb/modules/alpha_uperf_fasrs_fusion/common/monitor.sh'
+    2. Monitor hidup: grep 'MONITOR\] \[START\]' alpha.log
+    3. Buka game, tunggu 60 dtk. GAME-SNAPSHOT harus temp_max NYATA (~45000,
+       BUKAN 114000), profile=performance, boost_level=extreme (INI pembuktian
+       utama — kalau masih 'none', sensor fix belum kena).
+    4. grep SENSOR-FAULT alpha.log -> zona pelakunya (harusnya pa-thmzone).
+  ROLLBACK: Alpha-Fusion-v43-total.zip (yang terpasang sekarang).
+  abis smoke test OK: A/B 30mnt — baseline tanpa flag, GB_PROFILE_OWNS_IO,
+  MONITOR_LOOP_SECS=8, satu flag per arm, 3 run per arm.
+
 - V44B-DRAFT-BELUM-ZIP (2026-10-02 09:30, leader): 2 patch Claude (2-sampel
   konfirmasi termal + gate 95000 + median pure-shell + pengecualian trip
   critical) sudah di-commit = d7e9b86, vCode 45. BELUM build zip, BELUM flash.
