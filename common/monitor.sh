@@ -301,7 +301,7 @@ gb_safety_check() {
     # (isi: angka mC). Env ALPHA_GB_OUTLIER_MIN_MC sengaja DIBUANG (v46):
     # env tidak pernah sampai ke proses monitor di device (dijalankan dari
     # service.sh), dan knob yang sama sudah ada lewat file — jadi env cuma
-    #ENTRY dead yang menyesatkan (menesztukan override tidak berfungsi).
+    # entry mati yang menyesatkan (user set env, tidak ada efek, tidak tahu).
     local outlier_min=95000
     if [ -f "${STATE_DIR:-/data/adb/alpha}/GB_OUTLIER_MIN_MC" ] && \
         monitor_rd "${STATE_DIR:-/data/adb/alpha}/GB_OUTLIER_MIN_MC"; then
