@@ -51,7 +51,26 @@ GB_ACTIVE_FILE="$STATE_DIR/.gb_active"
 GB_SAFETY_INTERVAL=15
 GB_SAFETY_LAST=0
 GB_FORCED_LEVEL=""
+# Level boost karena batas baterai 15-30% (flag GB_WARN_BOOST). Terpisah dari
+# GB_FORCED_LEVEL (termal) supaya cabang cooldown termal tidak menyentuhnya.
+GB_BATT_LEVEL=""
 GB_COOLDOWN_SECS=60
+
+# GAME-SNAPSHOT: 1x per sesi game, GAME_SNAP_AFTER_SECS detik sejak game
+# jadi foreground. Murni baca + log (nol perubahan perilaku).
+GAME_T0_FILE="$STATE_DIR/.game_t0"
+GAME_SNAP_DONE_FILE="$STATE_DIR/.game_snap_done"
+GAME_SNAP_AFTER_SECS=60
+
+# Kadensi loop: default 2 dtk (perilaku lama). Override: env ALPHA_EVENT_LOOP_SECS
+# atau file $STATE_DIR/MONITOR_LOOP_SECS (angka 1-8, dibaca tiap putaran).
+# Maks 8 supaya cek termal tiap 15 dtk tidak melambat jauh (termal tetap menang).
+EVENT_LOOP_SECS_DEFAULT="${ALPHA_EVENT_LOOP_SECS:-2}"
+case "$EVENT_LOOP_SECS_DEFAULT" in ''|*[!0-9]*) EVENT_LOOP_SECS_DEFAULT=2 ;; esac
+[ "$EVENT_LOOP_SECS_DEFAULT" -ge 1 ] 2>/dev/null || EVENT_LOOP_SECS_DEFAULT=2
+[ "$EVENT_LOOP_SECS_DEFAULT" -le 8 ] 2>/dev/null || EVENT_LOOP_SECS_DEFAULT=8
+MONITOR_LOOP_FILE="$STATE_DIR/MONITOR_LOOP_SECS"
+MONITOR_LOOP_OVR=""
 GB_COOLDOWN_COUNT_FILE="$STATE_DIR/.gb_cooldown_count"
 
 # DAILY anti-lag guard: loadavg threshold tracking
@@ -204,7 +223,14 @@ get_game_profile() {
     [ -f "$MAP_FILE" ] || return 1
 
     while IFS= read -r monitor_map_line || [ -n "$monitor_map_line" ]; do
-        monitor_map_line=$(printf '%s' "$monitor_map_line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+        # Trim spasi depan/belakang TANPA fork (sebelumnya printf|sed per baris,
+        # tiap panggilan = puluhan subproses). Hasil identik dengan sed [[:space:]].
+        while :; do
+            case "$monitor_map_line" in [[:space:]]*) monitor_map_line=${monitor_map_line#?} ;; *) break ;; esac
+        done
+        while :; do
+            case "$monitor_map_line" in *[[:space:]]) monitor_map_line=${monitor_map_line%?} ;; *) break ;; esac
+        done
         case "$monitor_map_line" in ''|'#'*) continue ;; esac
         monitor_map_package=${monitor_map_line%%:*}
         monitor_map_profile=${monitor_map_line#*:}
@@ -434,6 +460,10 @@ handle_foreground_event() {
     # GameBoost logic (rasa v20: extreme untuk game, performance = tangga mild panas)
     if [ "$is_game_perf" -eq 1 ]; then
         # Game with performance profile detected
+        if [ ! -f "$GAME_T0_FILE" ]; then
+            printf '%s %s\n' "$(date +%s 2>/dev/null)" "$handle_pkg" > "$GAME_T0_FILE" 2>/dev/null
+            rm -f "$GAME_SNAP_DONE_FILE" 2>/dev/null
+        fi
         if [ "$gb_active" != "1" ]; then
             # Check DISABLE_GAMEBOOST gate
             if [ -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/DISABLE_GAMEBOOST" ]; then
@@ -446,13 +476,13 @@ handle_foreground_event() {
                 # gb_apply (log bilang "forcing" tapi tidak ada efek). Sekarang
                 # eksplisit: default SKIP (jujur), atau boost level performance
                 # bila flag GB_WARN_BOOST ada (A/B tanpa reflash). Level lewat
-                # gb_batt_level, BUKAN GB_FORCED_LEVEL, supaya cabang cooldown
+                # GB_BATT_LEVEL (global), BUKAN GB_FORCED_LEVEL, supaya cabang cooldown
                 # termal (unforce -> gb_apply level default balanced) tidak
                 # menganggapnya forced dan mematikan boost setelah 60 dtk.
-                local gb_batt_level=""
+                GB_BATT_LEVEL=""
                 if [ "$battery_status" = "WARNING" ] && \
                     [ -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GB_WARN_BOOST" ]; then
-                    gb_batt_level="performance"
+                    GB_BATT_LEVEL="performance"
                     battery_status="OK"
                     monitor_log "GAMEBOOST" "BATTERY WARNING: <30% without charging, flag GB_WARN_BOOST -> boost level performance"
                 fi
@@ -494,7 +524,7 @@ handle_foreground_event() {
                         # _gb_level tidak jatuh ke fail-safe balanced).
                         local orig_level
                         orig_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null)
-                        local _target_level="${GB_FORCED_LEVEL:-${gb_batt_level:-extreme}}"
+                        local _target_level="${GB_FORCED_LEVEL:-${GB_BATT_LEVEL:-extreme}}"
                         printf '%s\n' "$_target_level" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
                         gb_apply
                         if [ -n "$orig_level" ]; then
@@ -523,6 +553,7 @@ handle_foreground_event() {
         fi
     else
         # Not a game with performance profile
+        rm -f "$GAME_T0_FILE" "$GAME_SNAP_DONE_FILE" 2>/dev/null
         if [ "$gb_active" = "1" ]; then
             # Start grace period if not already started
             if [ ! -f "$GB_PENDING_FILE" ]; then
@@ -594,6 +625,17 @@ event_stream_reader() {
 # When triggered, temporarily apply balanced VM/IO to relieve pressure,
 # then return to battery when load drops.
 check_daily_loadavg_guard() {
+    # monitor.sh hanya source gameboost.sh; tune_vm/tune_io ada di engine.sh dan
+    # TIDAK dimuat di proses ini, jadi pemanggilan di bawah selalu "not found"
+    # (disenyapkan 2>/dev/null) dan guard tidak mengubah apa pun. Jujur: log
+    # sekali, lalu keluar. Perilaku kernel tidak berubah.
+    if ! command -v tune_vm >/dev/null 2>&1 || ! command -v tune_io >/dev/null 2>&1; then
+        if [ "${DAILY_LOADGUARD_NOOP_LOGGED:-0}" != "1" ]; then
+            DAILY_LOADGUARD_NOOP_LOGGED=1
+            monitor_log "DAILY-LOADGUARD" "NO-OP: tune_vm/tune_io tidak dimuat di proses monitor, guard tidak mengubah VM/IO"
+        fi
+        return 0
+    fi
     local current_prof
     current_prof=""
     [ -f "$CURRENT_STATE_FILE" ] && current_prof=$(tr -d '[:space:]' < "$CURRENT_STATE_FILE" 2>/dev/null)
@@ -685,6 +727,65 @@ _gb_unforce_level() {
         fi
         rm -f "$STATE_DIR/.gb_level_orig" 2>/dev/null
     fi
+}
+
+# Baca 1 baris file TANPA fork. Hasil di MONITOR_RD.
+monitor_rd() {
+    MONITOR_RD=""
+    IFS= read -r MONITOR_RD 2>/dev/null < "$1" || [ -n "$MONITOR_RD" ]
+}
+
+# Override kadensi loop dari file MONITOR_LOOP_SECS (1-8). Kosong = default.
+monitor_loop_override() {
+    MONITOR_LOOP_OVR=""
+    [ -f "$MONITOR_LOOP_FILE" ] || return 0
+    monitor_rd "$MONITOR_LOOP_FILE" || return 0
+    case "$MONITOR_RD" in ''|*[!0-9]*) return 0 ;; esac
+    [ "$MONITOR_RD" -ge 1 ] 2>/dev/null && [ "$MONITOR_RD" -le 8 ] 2>/dev/null && MONITOR_LOOP_OVR="$MONITOR_RD"
+    return 0
+}
+
+# GAME-SNAPSHOT: nilai efektif node + state tepat saat game sudah GAME_SNAP_AFTER_SECS
+# detik di foreground. Tiap run benchmark jadi self-documenting (jalur A/B,
+# flag aktif, baterai, suhu). Murni baca.
+log_game_snapshot() {
+    [ -f "$GAME_T0_FILE" ] || return 0
+    [ -f "$GAME_SNAP_DONE_FILE" ] && return 0
+    local _t0="" _pkg="" _now _el
+    read -r _t0 _pkg 2>/dev/null < "$GAME_T0_FILE"
+    case "$_t0" in ''|*[!0-9]*) return 0 ;; esac
+    _now=$(date +%s 2>/dev/null)
+    case "$_now" in ''|*[!0-9]*) return 0 ;; esac
+    _el=$((_now - _t0))
+    [ "$_el" -ge "$GAME_SNAP_AFTER_SECS" ] 2>/dev/null || return 0
+    : > "$GAME_SNAP_DONE_FILE" 2>/dev/null
+
+    local _cdir="${ALPHA_CONF_DIR:-/data/adb/alpha}"
+    local _state="?" _boost="none" _gbact="0" _cap="?" _bst="?" _flags="" _f _io="" _d _n _ra _sc _tfo="?" _tmax="?"
+    monitor_rd "$CURRENT_STATE_FILE" && _state="$MONITOR_RD"
+    monitor_rd "$_cdir/boost_level" && _boost="$MONITOR_RD"
+    monitor_rd "$GB_ACTIVE_FILE" && _gbact="$MONITOR_RD"
+    monitor_rd "${SYSFS_POWER_PREFIX:-/sys/class/power_supply}/battery/capacity" && _cap="$MONITOR_RD"
+    monitor_rd "${SYSFS_POWER_PREFIX:-/sys/class/power_supply}/battery/status" && _bst="$MONITOR_RD"
+    monitor_rd "${PROC_SYS_PREFIX:-/proc/sys}/net/ipv4/tcp_fastopen" && _tfo="$MONITOR_RD"
+    for _f in DISABLE_GAMEBOOST GB_WARN_BOOST GB_PROFILE_OWNS_IO GB_COOLDOWN_EXTREME; do
+        [ -f "$_cdir/$_f" ] && _flags="$_flags $_f"
+    done
+    monitor_loop_override
+    [ -n "$MONITOR_LOOP_OVR" ] && _flags="$_flags MONITOR_LOOP_SECS=$MONITOR_LOOP_OVR"
+    for _d in "${SYSFS_BLOCK_PREFIX:-/sys/block}"/sd* "${SYSFS_BLOCK_PREFIX:-/sys/block}"/mmcblk*; do
+        [ -d "$_d/queue" ] || continue
+        _n=${_d##*/}
+        case "$_n" in *p[0-9]*|*[0-9]rpmb|*[0-9]boot*) continue ;; esac
+        monitor_rd "$_d/queue/read_ahead_kb"; _ra="$MONITOR_RD"
+        monitor_rd "$_d/queue/scheduler"; _sc="$MONITOR_RD"
+        # scheduler aktif = yang dalam [kurung]
+        case "$_sc" in *\[*\]*) _sc=${_sc#*\[}; _sc=${_sc%%\]*} ;; esac
+        _io="$_io $_n:ra=$_ra sched=$_sc"
+    done
+    command -v gb_safety_check >/dev/null 2>&1 && _tmax=$(gb_safety_check)
+    monitor_log "GAME-SNAPSHOT" "pkg=${_pkg:-?} t=+${_el}s method=${MONITOR_METHOD} profile=${_state} gb_active=${_gbact} boost_level=${_boost} batt=${_cap}%(${_bst}) temp_max=${_tmax}mC tfo=${_tfo} io:${_io} flags:${_flags:- none}"
+    return 0
 }
 
 # Check GameBoost grace period and safety
@@ -805,7 +906,28 @@ check_gb_grace_period() {
                         rm -f "$GB_COOLDOWN_COUNT_FILE"
                         local _cool_level=""
                         if command -v gb_apply >/dev/null 2>&1; then
-                            gb_apply
+                            if [ -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GB_COOLDOWN_EXTREME" ]; then
+                                # Legacy: gb_apply tanpa level eksplisit -> _gb_level
+                                # fail-safe "balanced" (GAMEBOOST_LEVEL dihapus saat
+                                # boot) = restore-only, boost mati diam-diam. Flag ini:
+                                # kembali ke level game seperti jalur buka-game
+                                # (extreme, atau batas baterai bila GB_WARN_BOOST).
+                                # Hanya tercapai setelah suhu <70C 60 dtk; thermal
+                                # tetap menang (naik lagi -> tangga step-down jalan).
+                                local _cd_orig _cd_target
+                                _cd_orig=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null)
+                                _cd_target="${GB_BATT_LEVEL:-extreme}"
+                                printf '%s\n' "$_cd_target" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                                gb_apply
+                                if [ -n "$_cd_orig" ]; then
+                                    printf '%s\n' "$_cd_orig" > "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                                else
+                                    rm -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GAMEBOOST_LEVEL" 2>/dev/null
+                                fi
+                                monitor_log "GB-COOLDOWN" "re-apply level=${_cd_target} (flag GB_COOLDOWN_EXTREME)"
+                            else
+                                gb_apply
+                            fi
                             _cool_level=$(cat "${ALPHA_CONF_DIR:-/data/adb/alpha}/boost_level" 2>/dev/null)
                         else
                             monitor_log "GAMEBOOST" "WARN: gb_apply unavailable during cooldown complete"
@@ -871,7 +993,9 @@ run_event_supervised_loop() {
         # Jika jendela lewat tapi NOL event ter-parse, fallback polling permanen
         # sisa sesi. Layar-mati tidak dihitung, jadi "sepi karena idle" tidak
         # disalahartikan sebagai "filter rusak".
-        EVENT_ON_SECS=$((EVENT_ON_SECS + 2))
+        monitor_loop_override
+        monitor_ev_secs="${MONITOR_LOOP_OVR:-$EVENT_LOOP_SECS_DEFAULT}"
+        EVENT_ON_SECS=$((EVENT_ON_SECS + monitor_ev_secs))
         if [ "$EVENT_FALLBACK_DONE" -eq 0 ] && [ "$EVENT_ON_SECS" -ge "$EVENT_HEALTH_SECS" ] 2>/dev/null; then
             event_parsed=$(event_count_get)
             [ -z "$event_parsed" ] && event_parsed=0
@@ -889,9 +1013,10 @@ run_event_supervised_loop() {
         fi
         # GameBoost: check grace period + thermal safety
         check_gb_grace_period
+        log_game_snapshot
         # DAILY: anti-lag guard (loadavg)
         check_daily_loadavg_guard
-        sleep 2
+        sleep "$monitor_ev_secs"
     done
     stop_event_stream
     return 0
@@ -926,13 +1051,15 @@ run_polling_loop() {
 
         monitor_poll_interval="$SCREEN_ON_INTERVAL"
         if [ -n "$(get_game_profile "$monitor_foreground_package")" ]; then
-            monitor_poll_interval="$GAME_POLL_INTERVAL_SECS"
+            monitor_loop_override
+            monitor_poll_interval="${MONITOR_LOOP_OVR:-$GAME_POLL_INTERVAL_SECS}"
         fi
 
         handle_foreground_event "$monitor_foreground_package" "poll"
 
         # GameBoost: check grace period + thermal safety
         check_gb_grace_period
+        log_game_snapshot
         # DAILY: anti-lag guard (loadavg)
         check_daily_loadavg_guard
         sleep "$monitor_poll_interval"
