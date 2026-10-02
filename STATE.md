@@ -1,4 +1,31 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- PENULUS=fas-rs (2026-10-02 18:15, leader, UJI DECISIVE):
+  PENULUS scaling_min_freq = fas-rs (mode=fast). BUKTI decisive:
+    launch PGR (game foreground) -> kill -STOP $(pidof fas-rs)
+    -> Alpha tulis policy6 min=1404000 -> TAHAN 8 dtk (game jalan!)
+    -> kill -CONT -> fas-rs override lagi.
+  BANDINGKAN run normal (fas-rs hidup): <1-2 dtk min balik 768000.
+  KOREKSI 2 inference Claude (bukti device):
+    1. games.toml live = /sdcard/Android/fas-rs/games.toml, 0 entri
+       game_list TAPI [config] keep_std=true + scene_game_list=true.
+       0 entri != fas-rs diam (keep_std = tetap pakai std profile).
+    2. fas_log.txt (path BENAR = /sdcard/Android/fas-rs/) ter-update
+       18:09:47 = "Switch mode: powersave -> fast" DETIK gw launch PGR.
+       => fas-rs AKTIF saat game foreground, bukan diam.
+  PELAJARAN GW (6x salah sebelumnya): semua test gw = launch game,
+  tunggu 22 dtk, TIDAK MAIN (cursor idle). Idle = governor downclock =
+  min turun = gw kira "override". Control run juga tahan = gw kira STOP
+  = bukti. Dua-duanya cuma idle-downclock. HARUS test GAME RESUME.
+  ASOULOPT: Claude bilang tidak jalan, tapi /dev/cpuset/asopt ADA (0-7)
+  = pernah jalan di boot ini. Cek ulang tiap boot.
+  PERTANYAAN BARU ke Claude: Q8 (fas-rs mode=fast vs performance =
+  over-boost v39 atau sweet spot v38?), Q9 (keep_std = fas-rs selalu
+  kendalikan semua game), Q10 (arm A/B: manual set /dev/fas_rs/mode
+  fast vs performance saat PGR + screenshot).
+  File: /sdcard/alpha/UNTUK-CLAUDE-fasrs-PENULUS.md
+  Semua patch CPU/floor/uclamp = HOLD. Root cause bukan uperef/eBPF/
+  min>max, tapi fas-rs. Numerik tuning P1-P6 tetap TUNDA.
+
 - STACKTRACE-TERBUKTI + FPS-GW-TIDAK-BISA (2026-10-02 16:10, leader):
   Claude koreksi: kolom comm di cpu_frequency_limits BUKAN penulis
   (cpufreq limit lewat workqueue policy->update). BUKTI gw:
