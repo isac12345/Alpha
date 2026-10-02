@@ -294,7 +294,18 @@ gb_safety_check() {
     # atasnya HARUS lolos korroborasi. (110000/105000 membiarkan bacaan palsu
     # 95-110C, mis. zona konstan 100C di Poco, tetap memicu CRITICAL.)
     local outlier_min="${ALPHA_GB_OUTLIER_MIN_MC:-95000}"
+    # Env tidak sampai ke proses monitor di device (service.sh), jadi ada juga
+    # file override $STATE_DIR/GB_OUTLIER_MIN_MC (isi: angka mC).
+    if [ -f "${STATE_DIR:-/data/adb/alpha}/GB_OUTLIER_MIN_MC" ] && \
+        monitor_rd "${STATE_DIR:-/data/adb/alpha}/GB_OUTLIER_MIN_MC"; then
+        outlier_min="$MONITOR_RD"
+    fi
     case "$outlier_min" in ''|*[!0-9]*) outlier_min=95000 ;; esac
+    # Override hanya boleh MELONGGARKAN filter (naikkan gerbang). Menurunkannya di
+    # bawah ambang kritis modul bisa membuang panas asli (zona >median+25C) dan
+    # melemahkan proteksi termal; flag user tidak boleh melakukan itu.
+    [ "$outlier_min" -ge 95000 ] 2>/dev/null || outlier_min=95000
+    [ "$outlier_min" -le 150000 ] 2>/dev/null || outlier_min=150000
 
     # Read thermal zones
     if [ -d "$zbase" ]; then
