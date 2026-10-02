@@ -1,5 +1,33 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
 
+- AUDIT-3-MODUL (2026-10-02, leader, untuk Claude): user tanya "3 modul
+  fused beneran jalan ga? nabrak? cara run yang benar?" — belum pernah
+  dijawab dari awal. Data sudah gw kumpulkan dari HP live (root):
+  * Alpha tulis 53 node family (ekstrak dari alpha.log, bukan asumsi).
+  * uperf tulis 22 node family (uperf/config/*.json).
+  * fas-rs tulis 1 node (/dev/fas_rs/mode via fasrs/powercfg.sh).
+  * BENTROK NYATA: 4 node cpuset (top-app, foreground, background,
+    system-background) ditulis Alpha gameboost DAN uperf perapp switcher.
+    Node lain TIDAK bentrok (uperf core_ctl/bus_dcvs/exynos tidak ada di
+    T7250 — uperf log "not writeable").
+  * CPU freq: Alpha apply + gameboost floor (scaling_min) LANGSUNG, tapi
+    fas-rs pegang CPU lewat /dev/fas_rs/mode. Boot pertama CPU_OWNER=alpha
+    (fas-rs belum siap), sesudahnya CPU_OWNER=fas-rs. Double-writer CPU
+    = belum pernah diaudit.
+  * Race: Alpha apply profile (boot step 6) SEBELUM uperf (10) + fas-rs
+    (11). Setelah itu 3 penulis aktif tanpa lock lintas-modul. gameboost
+    punya lock internal (apply_now.sh) tapi lock itu Alpha saja.
+  * Live: cpuset top-app 0-7 / fg 0-2,4-7 / bg 0-2 / sysbg 0-2 (idle,
+    battery profile). fas-rs mode=powersave. uperf 2 PID (3913, 6902).
+    fas-rs PID 6887.
+  PERTANYAAN ke Claude (5): ownership matrix per kategori, intervensi
+  race?, fas-rs+Alpha floor memang{WIN}observed (v38 enak = 2 penulis
+  CPU), performance recipe yang benar, dan cara BUKTI 3 modul hidup
+  (bukan zombie).
+  File: /sdcard/alpha/UNTUK-CLAUDE-3modul-audit.txt
+  CATATAN: masalah ini BEDA dari sensor thermal (v45). Sensor = thermal
+  gate salah. 3-modul = ownership. Dua-duanya belumariansional tunables.
+
 - V45-ZIP-SIAP-FLASH-SEKARANG (2026-10-02, leader): v44b + v44c (gate clamp)
   sudah di-commit = da9d771, vCode 45.
   Zip: /sdcard/alpha/Alpha-Fusion-v45-sensorfix.zip (md5
