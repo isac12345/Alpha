@@ -522,6 +522,10 @@ _gb_apply_cpu() {
     for _pol in $CPU_POLICIES; do
         _pol_dir="$SYSFS_CPU_PREFIX/cpufreq/$_pol"
         [ -d "$_pol_dir" ] || continue
+        if _gb_fasrs_owns_cpu; then
+            _gb_log "SKIPPED" "CPU_FREQ $_pol lantai dilewati: fas-rs pemilik CPU (GB_FASRS_OWNS_CPU)"
+            continue
+        fi
 
         _avail_list=""
         _opp_list=""
@@ -790,6 +794,15 @@ _gb_apply_vm() {
 # ============================================================
 # IO Apply
 # ============================================================
+# Flag GB_FASRS_OWNS_CPU: bila fas-rs hidup (node mode ada), fas-rs satu-satunya
+# pemilik frekuensi CPU di dalam game. Terbukti di device: fas-rs menimpa
+# scaling_min_freq tulisan Alpha dalam 1-2 dtk (kill -STOP fas-rs -> lantai
+# bertahan), jadi lantai Alpha cuma churn. Hanya menghentikan TULISAN lantai;
+# restore tetap normal (mengembalikan min/max ke native saat game selesai).
+_gb_fasrs_owns_cpu() {
+    [ -f "$CONF_DIR/GB_FASRS_OWNS_CPU" ] && [ -r "${ALPHA_FASRS_MODE_NODE:-/dev/fas_rs/mode}" ]
+}
+
 # Flag GB_PROFILE_OWNS_IO: profil (tune_io/tune_network) pemilik tunggal
 # scheduler, read_ahead_kb, tcp_fastopen. gameboost tidak menulis maupun
 # me-restore tiga node itu, jadi nilai di dalam game sama di semua jalur.

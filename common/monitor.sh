@@ -61,6 +61,10 @@ GB_COOLDOWN_SECS=60
 GAME_T0_FILE="$STATE_DIR/.game_t0"
 GAME_SNAP_DONE_FILE="$STATE_DIR/.game_snap_done"
 GAME_SNAP_AFTER_SECS=60
+# Snapshot berulang tiap N dtk selama game foreground (visibilitas sesi panjang:
+# tren suhu, step-down termal, frekuensi, mode fas-rs). 0 = hanya sekali.
+GAME_SNAP_EVERY_SECS="${ALPHA_GAME_SNAP_EVERY_SECS:-300}"
+case "$GAME_SNAP_EVERY_SECS" in ''|*[!0-9]*) GAME_SNAP_EVERY_SECS=300 ;; esac
 
 # Kadensi loop: default 2 dtk (perilaku lama). Override: env ALPHA_EVENT_LOOP_SECS
 # atau file $STATE_DIR/MONITOR_LOOP_SECS (angka 1-8, dibaca tiap putaran).
@@ -541,7 +545,8 @@ handle_foreground_event() {
     if [ "$is_game_perf" -eq 1 ]; then
         # Game with performance profile detected
         if [ ! -f "$GAME_T0_FILE" ]; then
-            printf '%s %s\n' "$(date +%s 2>/dev/null)" "$handle_pkg" > "$GAME_T0_FILE" 2>/dev/null
+            monitor_uptime
+            printf '%s %s\n' "${MONITOR_UP:-0}" "$handle_pkg" > "$GAME_T0_FILE" 2>/dev/null
             rm -f "$GAME_SNAP_DONE_FILE" 2>/dev/null
         fi
         if [ "$gb_active" != "1" ]; then
@@ -815,6 +820,14 @@ monitor_rd() {
     IFS= read -r MONITOR_RD 2>/dev/null < "$1" || [ -n "$MONITOR_RD" ]
 }
 
+# Uptime detik (bulat) tanpa fork. Hasil di MONITOR_UP (kosong bila gagal).
+monitor_uptime() {
+    MONITOR_UP=""
+    read -r MONITOR_UP _ 2>/dev/null < /proc/uptime
+    MONITOR_UP=${MONITOR_UP%%.*}
+    case "$MONITOR_UP" in ''|*[!0-9]*) MONITOR_UP="" ;; esac
+}
+
 # Override kadensi loop dari file MONITOR_LOOP_SECS (1-8). Kosong = default.
 monitor_loop_override() {
     MONITOR_LOOP_OVR=""
@@ -830,15 +843,30 @@ monitor_loop_override() {
 # flag aktif, baterai, suhu). Murni baca.
 log_game_snapshot() {
     [ -f "$GAME_T0_FILE" ] || return 0
-    [ -f "$GAME_SNAP_DONE_FILE" ] && return 0
-    local _t0="" _pkg="" _now _el
+    local _t0="" _pkg="" _now _el _last=""
     read -r _t0 _pkg 2>/dev/null < "$GAME_T0_FILE"
     case "$_t0" in ''|*[!0-9]*) return 0 ;; esac
-    _now=$(date +%s 2>/dev/null)
-    case "$_now" in ''|*[!0-9]*) return 0 ;; esac
+    monitor_uptime
+    _now="$MONITOR_UP"
+    [ -n "$_now" ] || return 0
     _el=$((_now - _t0))
-    [ "$_el" -ge "$GAME_SNAP_AFTER_SECS" ] 2>/dev/null || return 0
-    : > "$GAME_SNAP_DONE_FILE" 2>/dev/null
+    if [ "$_el" -lt 0 ] 2>/dev/null; then
+        # t0 sisa boot sebelumnya (uptime direset): mulai ulang, jangan macet.
+        printf '%s %s\n' "$_now" "$_pkg" > "$GAME_T0_FILE" 2>/dev/null
+        rm -f "$GAME_SNAP_DONE_FILE" 2>/dev/null
+        return 0
+    fi
+    if [ -f "$GAME_SNAP_DONE_FILE" ]; then
+        [ "$GAME_SNAP_EVERY_SECS" -gt 0 ] 2>/dev/null || return 0
+        monitor_rd "$GAME_SNAP_DONE_FILE" && _last="$MONITOR_RD"
+        case "$_last" in
+            ''|*[!0-9]*) printf '%s\n' "$_now" > "$GAME_SNAP_DONE_FILE" 2>/dev/null; return 0 ;;
+        esac
+        [ $((_now - _last)) -ge "$GAME_SNAP_EVERY_SECS" ] 2>/dev/null || return 0
+    else
+        [ "$_el" -ge "$GAME_SNAP_AFTER_SECS" ] 2>/dev/null || return 0
+    fi
+    printf '%s\n' "$_now" > "$GAME_SNAP_DONE_FILE" 2>/dev/null
 
     local _cdir="${ALPHA_CONF_DIR:-/data/adb/alpha}"
     local _state="?" _boost="none" _gbact="0" _cap="?" _bst="?" _flags="" _f _io="" _d _n _ra _sc _tfo="?" _tmax="?"
@@ -863,8 +891,18 @@ log_game_snapshot() {
         case "$_sc" in *\[*\]*) _sc=${_sc#*\[}; _sc=${_sc%%\]*} ;; esac
         _io="$_io $_n:ra=$_ra sched=$_sc"
     done
+    local _cpu="" _p _pn _c _mn _mx _fm="-"
+    for _p in "${SYSFS_CPU_PREFIX:-/sys/devices/system/cpu}"/cpufreq/policy*; do
+        [ -d "$_p" ] || continue
+        _pn=${_p##*/}
+        monitor_rd "$_p/scaling_cur_freq"; _c="$MONITOR_RD"
+        monitor_rd "$_p/scaling_min_freq"; _mn="$MONITOR_RD"
+        monitor_rd "$_p/scaling_max_freq"; _mx="$MONITOR_RD"
+        _cpu="$_cpu $_pn:cur=$_c,min=$_mn,max=$_mx"
+    done
+    monitor_rd "${ALPHA_FASRS_MODE_NODE:-/dev/fas_rs/mode}" && _fm="$MONITOR_RD"
     command -v gb_safety_check >/dev/null 2>&1 && _tmax=$(gb_safety_check)
-    monitor_log "GAME-SNAPSHOT" "pkg=${_pkg:-?} t=+${_el}s method=${MONITOR_METHOD} profile=${_state} gb_active=${_gbact} boost_level=${_boost} batt=${_cap}%(${_bst}) temp_max=${_tmax}mC tfo=${_tfo} io:${_io} flags:${_flags:- none}"
+    monitor_log "GAME-SNAPSHOT" "pkg=${_pkg:-?} t=+${_el}s method=${MONITOR_METHOD} profile=${_state} gb_active=${_gbact} boost_level=${_boost} batt=${_cap}%(${_bst}) temp_max=${_tmax}mC tfo=${_tfo} fasrs_mode=${_fm} forced=${GB_FORCED_LEVEL:-none} batt_lv=${GB_BATT_LEVEL:-none} cpu:${_cpu} io:${_io} flags:${_flags:- none}"
     return 0
 }
 
