@@ -293,9 +293,12 @@ gb_safety_check() {
     # ini tidak bisa memicu kill-boost-kritis, jadi tidak perlu dibuang; zona di
     # atasnya HARUS lolos korroborasi. (110000/105000 membiarkan bacaan palsu
     # 95-110C, mis. zona konstan 100C di Poco, tetap memicu CRITICAL.)
-    local outlier_min="${ALPHA_GB_OUTLIER_MIN_MC:-95000}"
-    # Env tidak sampai ke proses monitor di device (service.sh), jadi ada juga
-    # file override $STATE_DIR/GB_OUTLIER_MIN_MC (isi: angka mC).
+    # Gerbang hanya bisa di-override lewat FILE \$STATE_DIR/GB_OUTLIER_MIN_MC
+    # (isi: angka mC). Env ALPHA_GB_OUTLIER_MIN_MC sengaja DIBUANG (v46):
+    # env tidak pernah sampai ke proses monitor di device (dijalankan dari
+    # service.sh), dan knob yang sama sudah ada lewat file — jadi env cuma
+    #ENTRY dead yang menyesatkan (menesztukan override tidak berfungsi).
+    local outlier_min=95000
     if [ -f "${STATE_DIR:-/data/adb/alpha}/GB_OUTLIER_MIN_MC" ] && \
         monitor_rd "${STATE_DIR:-/data/adb/alpha}/GB_OUTLIER_MIN_MC"; then
         outlier_min="$MONITOR_RD"
@@ -932,10 +935,11 @@ check_gb_grace_period() {
             # Biaya salah-tolak panas asli: paling lama 1 tick (15 dtk), kernel
             # tetap punya proteksi termal sendiri. Biaya salah-bunuh: seluruh
             # sesi. Hanya jalan saat sampel pertama >= warm (jarang), jadi
-            # suhu normal tidak menambah fork/sleep. Opt-out: flag
-            # GB_THERMAL_NOCONFIRM (perilaku lama, 1 sampel).
-            if [ "$current_temp" -ge "$gb_warm_thr" ] 2>/dev/null && \
-                [ ! -f "${ALPHA_CONF_DIR:-/data/adb/alpha}/GB_THERMAL_NOCONFIRM" ]; then
+            # suhu normal tidak menambah fork/sleep.
+            # TIDAK ada opt-out lagi (v46): flag GB_THERMAL_NOCONFIRM sudah
+            # dibuang karena cuma mengembalikan bug yang v45 perbaiki
+            # (1 sampel = salah-bunuh boost di sensor bohong).
+            if [ "$current_temp" -ge "$gb_warm_thr" ] 2>/dev/null; then
                 local gb_confirm_temp gb_first_temp="$current_temp"
                 sleep 2
                 gb_confirm_temp=$(gb_safety_check)
