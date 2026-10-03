@@ -67,7 +67,7 @@ fun DashScreen(vm: AppViewModel) {
             Pill("CARI ULANG", { vm.findModule() })
         }
     }
-    AlphaCard { ToggleRow("Tampilkan bubble", null, vm.bubbleOn) { vm.setBubbleOn(it) } }
+    AlphaCard { ToggleRow("Tampilkan bubble", null, vm.bubbleOn) { vm.updateBubbleOn(it) } }
 
     AlphaCard {
         Label("Current profile")
