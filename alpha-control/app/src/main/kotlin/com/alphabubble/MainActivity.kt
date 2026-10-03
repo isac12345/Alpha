@@ -35,12 +35,12 @@ class MainActivity : Activity() {
     private fun buildTab(i: Int): View = when(i) {
         0 -> buildDash(); 1 -> buildGames(); 2 -> buildCustom(); else -> buildTools()
     }
-    private fun buildDash(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("BUBBLE", TextView(this@MainActivity).apply{ text="Bubble saklar\nOverlay · Notifikasi"; textSize=12f; setTextColor(0xFFF4F2EE.toInt()) })) }) }
+    private fun buildDash(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("BUBBLE", "").apply{ addView(TextView(this@MainActivity).apply{ text="Bubble saklar\nOverlay · Notifikasi"; textSize=12f; setTextColor(0xFFF4F2EE.toInt()) })) }) } }
     private fun buildGames(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("GAME","Cari game · item pak + chip")) }) }
     private fun buildCustom(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("CUSTOMIZE","Background · Icon · HUD")) }) }
     private fun buildTools(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("TOOLS","Resolusi · Tuning · Engine · Device")) }) }
     private fun card(title:String, body:String): LinearLayout = LinearLayout(this).apply {
-        val t = TextView(this@MainActivity).apply { text=title; textSize=14f; setTextColor(0xFFF4F2EE.toInt()); setTypeface(android.graphics.Typeface.MONOSPACE,null) }
+        val t = TextView(this@MainActivity).apply { text=title; textSize=14f; setTextColor(0xFFF4F2EE.toInt()); setTypeface(android.graphics.Typeface.MONOSPACE) }
         val b = TextView(this@MainActivity).apply { text=body; textSize=12f; setTextColor(0xFF87878A.toInt()) }
         orientation = LinearLayout.VERTICAL; setBackgroundResource(R.drawable.card_bg); setPadding(20,20,20,20)
         addView(t); addView(b)
