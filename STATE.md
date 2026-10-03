@@ -1,4 +1,12 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- APP-V2-L2-LOS (2026-10-03): Alpha Control v2 (4 tab, Kotlin tanpa
+  AndroidX) rebuilt dari source zip user via CI run 37106755499 (branch
+  app-control). APK 377KB, versionCode 20, signed. User tes HP: L2 LOS
+  ("jalan smua jir modenya"). APK: ~/storage/downloads/AlphaControl-apk/
+  AlphaBubble-v2.apk. Fixlog masuk. NEXT (kalau diminta): bundel APK ke
+  zip modul (butuh COMPANION_VER 20->21 supaya flash modul install app
+  baru; APK lama v20 = versi sama jadi tidak ter-replace).
+
 - APPv2-STYLE (2026-10-03, CI 37098571283 SUCCESS): 12 tombol abu2
   (gaya inline ikut kebuang dgn overlay) -> StyleRestore balikin via kode
   (getIdentifier, tanpa R). File sdcard DITIMPA (apk 00e3c5fa). L2 tunggu user.
