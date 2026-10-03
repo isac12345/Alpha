@@ -35,7 +35,8 @@ class MainActivity : Activity() {
     private fun buildTab(i: Int): View = when(i) {
         0 -> buildDash(); 1 -> buildGames(); 2 -> buildCustom(); else -> buildTools()
     }
-    private fun buildDash(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("BUBBLE", "").apply{ addView(TextView(this@MainActivity).apply{ text="Bubble saklar\nOverlay · Notifikasi"; textSize=12f; setTextColor(0xFFF4F2EE.toInt()) })) }) } }
+    private fun buildDash(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("BUBBLE", "Saklar Bubble }) }
+Overlay . Notifikasi"))
     private fun buildGames(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("GAME","Cari game · item pak + chip")) }) }
     private fun buildCustom(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("CUSTOMIZE","Background · Icon · HUD")) }) }
     private fun buildTools(): ScrollView = ScrollView(this).apply { addView(LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL; addView(card("TOOLS","Resolusi · Tuning · Engine · Device")) }) }
