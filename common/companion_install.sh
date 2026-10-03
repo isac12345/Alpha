@@ -9,7 +9,7 @@
 # GAGAL kalau nilainya beda. versionCode APK hasil build juga dipatch
 # dari version.txt yang sama.
 ALPHA_COMPANION_PKG="com.alphabubble"
-ALPHA_COMPANION_VER=20
+ALPHA_COMPANION_VER=21
 
 # $1 = path APK, $2 = flag file (berisi versionCode yang terakhir dipasang
 # oleh helper ini). Return 0 = APK sudah current (atau baru dipasang).
@@ -53,6 +53,12 @@ alpha_companion_install_once() {
     if [ "$_have" -ge "$ALPHA_COMPANION_VER" ] 2>/dev/null; then
         printf '%s\n' "$ALPHA_COMPANION_VER" > "$_flag" 2>/dev/null
         return 0
+    fi
+    if [ "$_have" -gt 0 ] 2>/dev/null && [ "$_have" -lt "$ALPHA_COMPANION_VER" ] 2>/dev/null; then
+        # v2 (perintah user): app lama di-UNINSTALL dulu, baru pasang baru.
+        # Alasan: install -r gagal bila tanda tangan beda. CATAT: data app
+        # (background, setting bubble, logbook) ikut HILANG.
+        pm uninstall "$ALPHA_COMPANION_PKG" >/dev/null 2>&1
     fi
     if pm install -r "$_apk" 2>/dev/null | grep -qi 'success'; then
         printf '%s\n' "$ALPHA_COMPANION_VER" > "$_flag" 2>/dev/null
