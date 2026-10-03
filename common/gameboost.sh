@@ -801,13 +801,22 @@ _gb_apply_vm() {
 # ============================================================
 # IO Apply
 # ============================================================
-# Flag GB_FASRS_OWNS_CPU: bila fas-rs hidup (node mode ada), fas-rs satu-satunya
-# pemilik frekuensi CPU di dalam game. Terbukti di device: fas-rs menimpa
-# scaling_min_freq tulisan Alpha dalam 1-2 dtk (kill -STOP fas-rs -> lantai
-# bertahan), jadi lantai Alpha cuma churn. Hanya menghentikan TULISAN lantai;
-# restore tetap normal (mengembalikan min/max ke native saat game selesai).
+# v50 AUTO: Alpha memutuskan sendiri tiap apply, user tidak perlu touch/rm
+# flag apa pun. Logika: fas-rs HIDUP (node mode bisa dibaca) = dia pemilik
+# frekuensi CPU, Alpha skip tulis lantai/uclamp/stune (cuma churn: terbukti
+# di device, tulisan Alpha ditimpa dalam 1-2 dtk). fas-rs MATI/node hilang =
+# Alpha nulis assist seperti biasa.
+# Sengaja TIDAK pakai isi mode (fast/balance) sebagai syarat: owner diputus
+# SEBELUM mode di-set saat apply + restore selalu reset mode ke powersave,
+# jadi mode saat keputusan selalu basi (maka auto akan selalu assist = bug).
+# Override manual (hanya utk A/B): GB_FASRS_FORCE_ALPHA = paksa assist,
+# GB_FASRS_FORCE_OWNS = paksa skip. Flag lama GB_FASRS_OWNS_CPU = paksa skip
+# (kompatibel v47-49). Tanpa file apa pun = AUTO.
 _gb_fasrs_owns_cpu() {
-    [ -f "$CONF_DIR/GB_FASRS_OWNS_CPU" ] && [ -r "${ALPHA_FASRS_MODE_NODE:-/dev/fas_rs/mode}" ]
+    [ -f "$CONF_DIR/GB_FASRS_FORCE_ALPHA" ] && return 1
+    [ -f "$CONF_DIR/GB_FASRS_FORCE_OWNS" ] && return 0
+    [ -f "$CONF_DIR/GB_FASRS_OWNS_CPU" ] && return 0
+    [ -r "${ALPHA_FASRS_MODE_NODE:-/dev/fas_rs/mode}" ]
 }
 
 # Flag GB_PROFILE_OWNS_IO: profil (tune_io/tune_network) pemilik tunggal
