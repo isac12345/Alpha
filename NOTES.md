@@ -1039,3 +1039,15 @@ tidak match "performance" → jatuh ke `echo "extreme"`.
   ≠ optimasi smoothness. Before shipping tune_sched agresif, cari tune
   sejenis yang sudah dipakai tool proven di device同类 dan pakai ANGKA
   yang sama, bukan turunan sendiri.
+
+## KONVENSI PERMANEN (2026-10-03, permintaan user)
+- Jelasin ke user SELALU pake bahasa Indonesia santai yg gampang (analogi
+  sehari-hari). Istilah teknis mentah dilarang tanpa terjemahan. Berlaku tiap
+  sesi, permanen.
+
+## KONVENSI (2026-10-03): USER = DEV APLIKASI
+- User adalah dev Alpha Control (APK). Rilis APK v2 di GitHub NUNGGU
+  APPROVE user. Versi APK jangan dinaikin: mentok v2 semua.
+- Pilihan fitur v2 user (final): 1,2,5,6,11,12,13,15,18,20,21,22,24.
+  Catatan user: #20 harus PER-GAME (fast/perf/balance per game, modul
+  lama begitu); #22 daftar app harus termasuk system app.
