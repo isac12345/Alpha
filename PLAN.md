@@ -222,3 +222,12 @@ Decode APK `AlphaBubble.apk` (run `35436973720`, `/usr/tmp/opencode/decode`, jan
   tes di HP + OK. Maks 2 putaran revisi per fase. Gagal 2x -> NOTES.
 - Urutan: F1 -> F2 -> F3 -> F4. Selesai = 13 fitur L2 + CI hijau +
   diff minimal + tanpa file sampah. Baru minta approve rilis.
+
+### LAYOUT RULE (2026-10-03, perintah user — berlaku F2 dst)
+- DASH = INFO SAJA (kartu status F1, snapshot, versi). NOL kontrol.
+- Kontrol F2 (toggle flag, mode fas-rs per-game, profil uperf) =
+  di page GAMES, bukan DASH.
+- Kontrol bubble PINDAH dari DASH ke CUSTOM (Floating Bubble & HUD —
+  tempatnya sudah ada). DASH tidak pegang bubble lagi.
+- Kontrol render/resolusi (APPLY RES + refresh render) KUMPUL di
+  TOOLS/Peralatan (tempat seharusnya, sebelahan). DASH bersih.
