@@ -1299,3 +1299,10 @@
   secret). Commit: 902f3e7, 15f673a, c932a6a, 17557e1, 6331ee0, e183ef4,
   8306085 — semua sudah PUSH ke origin/fusion-v2.
   BELUM L2 (flash + tes HP). Semua fitur kernel baru = L1 simulasi saja.
+- APPv2-DISINI (2026-10-03): kode v2 (F1-F4) tersimpan di GitHub branch
+  `app-v2-code` (commit 3d928ab) — 11 file java + ids.xml. BELUM bisa
+  dipasang karena base APK di repo cuma 3 tab (DASHBOARD/GAMES/TOOLS),
+  TANPA tab CUSTOM. Versi 4 tab yang user pakai (10:24) tidak pernah
+  ada di repo (cek semua branch). Butuh source 4-tab dari user
+  (push project Android Studio, atau kirim APK-nya) → save ke repo,
+  baru v2 bisa di-merge di atasnya.
