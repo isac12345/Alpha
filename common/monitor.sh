@@ -297,7 +297,7 @@ gb_safety_check() {
     # ini tidak bisa memicu kill-boost-kritis, jadi tidak perlu dibuang; zona di
     # atasnya HARUS lolos korroborasi. (110000/105000 membiarkan bacaan palsu
     # 95-110C, mis. zona konstan 100C di Poco, tetap memicu CRITICAL.)
-    # Gerbang hanya bisa di-override lewat FILE \$STATE_DIR/GB_OUTLIER_MIN_MC
+    # Gerbang hanya bisa di-override lewat FILE $STATE_DIR/GB_OUTLIER_MIN_MC
     # (isi: angka mC). Env ALPHA_GB_OUTLIER_MIN_MC sengaja DIBUANG (v46):
     # env tidak pernah sampai ke proses monitor di device (dijalankan dari
     # service.sh), dan knob yang sama sudah ada lewat file — jadi env cuma

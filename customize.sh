@@ -69,6 +69,19 @@ if [ -f "$WORK_DIR/native_boost.conf" ]; then
     fi
 fi
 
+# v49: dua flag ini DEFAULT AKTIF, dibuatkan SEKALI saja saat flash (tidak perlu
+# touch manual). GB_COOLDOWN_EXTREME: setelah step-down termal, boost kembali
+# penuh (bukan diam-diam restore-only). GB_FASRS_OWNS_CPU: bila fas-rs hidup,
+# Alpha tidak menulis lantai/uclamp/stune CPU (fas-rs satu-satunya pemilik).
+# Penanda .flags_v49_seeded: kalau user sengaja menghapus flag (A/B), flash
+# berikutnya TIDAK membuatnya lagi.
+if [ ! -e "$WORK_DIR/.flags_v49_seeded" ]; then
+    : > "$WORK_DIR/GB_COOLDOWN_EXTREME" 2>/dev/null
+    : > "$WORK_DIR/GB_FASRS_OWNS_CPU" 2>/dev/null
+    : > "$WORK_DIR/.flags_v49_seeded" 2>/dev/null
+    ui_print "- Default aktif: GB_COOLDOWN_EXTREME + GB_FASRS_OWNS_CPU"
+fi
+
 # ---------------------------------------------------------
 # 3. Pilih config Uperf sesuai chipset (subsistem thread/cgroup classifier saja)
 # ---------------------------------------------------------
