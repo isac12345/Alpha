@@ -56,6 +56,9 @@ public final class HomeCards {
     }
 
     private static void attachInner(Activity a) throws Throwable {
+        // UI v2 (kartu injeksi + kembalikan gaya tombol): sekali pas attach.
+        // Dipanggil di sini agar tidak tergantung MainActivity (smali, di luar repo).
+        try { DashboardInject.inject(a); } catch (Throwable t) { Log.w(TAG, "inject v2: " + t); }
         View content = a.findViewById(android.R.id.content);
         if (!(content instanceof ViewGroup)) {
             Log.w(TAG, "attach: content bukan ViewGroup");

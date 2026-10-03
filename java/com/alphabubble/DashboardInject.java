@@ -16,6 +16,9 @@ public final class DashboardInject {
 
     public static void inject(Activity a) {
         if (a == null) return;
+        // Cegah kartu ganda bila attach dipanggil ulang (mis. recreate ganti bahasa):
+        // lewati hanya bila view kita masih nempel di activity INI.
+        try { if (DashViews.tvStatus != null && DashViews.tvStatus.getParent() != null) return; } catch (Throwable t) { /* lanjut */ }
         try {
             ViewGroup root = (ViewGroup) a.findViewById(android.R.id.content);
             if (root == null) return;
