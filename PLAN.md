@@ -195,3 +195,30 @@ Decode APK `AlphaBubble.apk` (run `35436973720`, `/usr/tmp/opencode/decode`, jan
 - [x] Modul31: guard set_perm .bin + cleanup state saat timpa + uninstall bersih (kill watchdog/restore/timeout) (CI 35959277271).
 - [x] Zip modul31 (vCode 31, md5 45a4a55) di /sdcard/alpha, sisa 1 file.
 - [ ] L2: tes HP flash-timpa + WuWa 2-3 mnt (TUNGGU user, tanpa desak).
+
+## APP v2 — Alpha Control (2026-10-03, STATUS: PLAN — garap HANYA setelah user OK)
+- Pemilik: USER = dev app. Rilis GitHub NUNGGU approve user. Versi APK
+  mentok v2 (DILARANG bump). Cabang kerja: work/v2-app via git worktree
+  (DILARANG checkout/reset HEAD utama).
+- Scope FINAL user (13 fitur): 1,2,5,6,11,12,13,15,18,20,21,22,24.
+  Catatan: #20 = mode fas-rs PER-GAME (fast/performance/balance per
+  package, apply saat game foreground — spt modul lama); #22 = daftar
+  app TERMASUK system app.
+- F1 Monitoring (1,2,5,6): kartu status (uperf/fas-rs/monitor hidup-mati
+  + mode fas-rs + boost ON/OFF), versi modul (versionCode), snapshot
+  terakhir. Sumber via RootShell: pidof, /dev/fas_rs/mode,
+  module.prop, alpha.log. Timeout+exit code+quoting wajib.
+- F2 Kontrol (18,20,21): toggle flag (EXTREME, FORCE_ALPHA, FORCE_OWNS),
+  mode fas-rs per-game, profil uperf balance/performance. Tulis file/
+  node saja; DILARANG ubah skrip modul (common/, service.sh = dev-modul).
+- F3 Util (22,24,11): tutup-app include system (refresh render),
+  kirim-log 1 ketuk (alpha.log + snapshot), riwayat FPS per game
+  (sederhana dulu).
+- F4 Tampil (12,13,15): tema hitam-putih, bubble ukuran/posisi +
+  transparan pas game, bahasa ID/EN. DILARANG ubah ikon/launcher/
+  notif/banner default (sudah final).
+- Verifikasi: L1 per fase = android-static-verify + CI Actions hijau
+  (build lokal Termux 403, JANGAN coba) + review diff leader. L2 = user
+  tes di HP + OK. Maks 2 putaran revisi per fase. Gagal 2x -> NOTES.
+- Urutan: F1 -> F2 -> F3 -> F4. Selesai = 13 fitur L2 + CI hijau +
+  diff minimal + tanpa file sampah. Baru minta approve rilis.
