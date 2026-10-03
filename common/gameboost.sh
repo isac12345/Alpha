@@ -593,7 +593,12 @@ _gb_apply_cpu() {
     fi
 
     # --- uclamp (extreme 60, performance 30) ---
-    if [ -d "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}" ]; then
+    # Di bawah GB_FASRS_OWNS_CPU: Alpha tidak menulis boost CPU apa pun (lantai,
+    # uclamp, stune); fas-rs satu-satunya pemilik performa CPU. cpuset (penempatan
+    # thread, bukan frekuensi) tetap diatur NO_CPUSET.
+    if _gb_fasrs_owns_cpu; then
+        _gb_log "SKIPPED" "UCLAMP dilewati: fas-rs pemilik CPU (GB_FASRS_OWNS_CPU)"
+    elif [ -d "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}" ]; then
         case "$_level" in
             extreme)     _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.min" "60" "UCLAMP"
                          _gb_write "${DEV_CPUCTL_PREFIX:-/dev/cpuctl}/foreground/cpu.uclamp.max" "100" "UCLAMP" ;;
@@ -603,7 +608,9 @@ _gb_apply_cpu() {
     fi
 
     # --- stune (rasa v20: extreme 100, performance 40) ---
-    if [ -d "${DEV_STUNE_PREFIX:-/dev/stune}" ]; then
+    if _gb_fasrs_owns_cpu; then
+        _gb_log "SKIPPED" "STUNE dilewati: fas-rs pemilik CPU (GB_FASRS_OWNS_CPU)"
+    elif [ -d "${DEV_STUNE_PREFIX:-/dev/stune}" ]; then
         case "$_level" in
             extreme)     _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "100" "STUNE" ;;
             performance) _gb_write "${DEV_STUNE_PREFIX:-/dev/stune}/top-app/schedtune.boost" "40" "STUNE" ;;
