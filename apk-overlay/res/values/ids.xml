@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item type="id" name="tvStatus"/>
+    <item type="id" name="indBoost"/>
+    <item type="id" name="tvSnapshot"/>
+    <item type="id" name="tvModule"/>
+    <item type="id" name="cardGameControls"/>
+    <item type="id" name="btnF18_1"/>
+    <item type="id" name="btnF18_2"/>
+    <item type="id" name="btnF18_3"/>
+    <item type="id" name="btnF20_fast"/>
+    <item type="id" name="btnF20_bal"/>
+    <item type="id" name="btnF20_perf"/>
+    <item type="id" name="btnF21_bal"/>
+    <item type="id" name="btnF21_perf"/>
+    <item type="id" name="tvFpsLog"/>
+    <item type="id" name="cardCustom"/>
+    <item type="id" name="btnThemeBW"/>
+    <item type="id" name="btnLangId"/>
+    <item type="id" name="btnLangEn"/>
+    <item type="id" name="btnBubblePosLeft"/>
+    <item type="id" name="btnBubblePosRight"/>
+    <item type="id" name="tvCustomStatus"/>
+    <item type="id" name="btnKillApps"/>
+    <item type="id" name="tvKillResult"/>
+    <item type="id" name="btnSendLog"/>
+    <item type="id" name="tvSendLogResult"/>
+</resources>

@@ -124,14 +124,10 @@ public final class MonitorStatus {
                 final String snap = lastSnapshot();
                 new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
                     try {
-                        android.widget.TextView tvStatus = a.findViewById(
-                            a.getResources().getIdentifier("tvStatus", "id", a.getPackageName()));
-                        android.widget.TextView indBoost = a.findViewById(
-                            a.getResources().getIdentifier("indBoost", "id", a.getPackageName()));
-                        android.widget.TextView tvSnapshot = a.findViewById(
-                            a.getResources().getIdentifier("tvSnapshot", "id", a.getPackageName()));
-                        android.widget.TextView tvModule = a.findViewById(
-                            a.getResources().getIdentifier("tvModule", "id", a.getPackageName()));
+                        android.widget.TextView tvStatus = DashViews.tvStatus;
+                        android.widget.TextView indBoost = DashViews.indBoost;
+                        android.widget.TextView tvSnapshot = DashViews.tvSnapshot;
+                        android.widget.TextView tvModule = DashViews.tvModule;
                         if (tvStatus != null) tvStatus.setText(
                             "uperf: " + (u ? "hidup" : "mati") +
                             " | fas-rs: " + (f.equals("-") ? "mati" : f) +
