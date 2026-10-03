@@ -3,4 +3,7 @@
     <string name="app_name">Alpha Control</string>
     <string name="status_bar_notification_info_overflow">999+</string>
     <string name="bubble_settings_shortcut">Pengaturan Bubble</string>
+    <string name="lang_en">English</string>
+    <string name="lang_id">Bahasa Indonesia</string>
+    <string name="theme_bw">Tema Hitam-Putih</string>
 </resources>
