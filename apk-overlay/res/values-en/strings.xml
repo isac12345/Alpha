@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Alpha Control</string>
-    <string name="status_bar_notification_info_overflow">999+</string>
-    <string name="bubble_settings_shortcut">Bubble Settings</string>
-    <string name="theme_bw">Black &amp; White Theme</string>
-    <string name="lang_id">Indonesian</string>
-    <string name="lang_en">English</string>
-</resources>
