@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?><resources>
+<color name="alpha_bg">#232325</color><color name="alpha_dark">#0A0A0A</color>
+<color name="alpha_dark2">#161616</color><color name="alpha_dark3">#1E1E1E</color>
+<color name="alpha_ink">#F4F2EE</color><color name="alpha_ink_dim">#87878A</color>
+<color name="alpha_accent">#FF4433</color><color name="alpha_accent_glow">#33FF4433</color>
+<color name="alpha_line">#17FFFFFF</color><color name="alpha_seg_bg">#0FFFFFFF</color>
+<color name="teal">#6FD6C8</color>
+</resources>

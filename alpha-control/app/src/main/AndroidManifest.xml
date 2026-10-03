@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.alphabubble">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <application android:name=".AlphaApp" android:label="Alpha Control" android:icon="@drawable/ic_launcher_src" android:theme="@style/Theme.AlphaControl" android:allowBackup="false">
+        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity>
+        <service android:name=".ProfileTileService" android:permission="android.permission.BIND_QUICK_SETTINGS_TILE" android:exported="true" />
+        <service android:name=".BubbleService" android:exported="false" android:foregroundServiceType="specialUse" />
+        <receiver android:name=".BubbleBootReceiver" android:exported="true"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver>
+    </application>
+</manifest>
