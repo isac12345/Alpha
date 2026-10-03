@@ -80,6 +80,9 @@ public final class DashboardInject {
 
             // Set id untuk referensi (pakai ids.xml, tapi view baru perlu id agar bisa diupdate)
             DashViews.tvStatus.setId(android.R.id.content); // placeholder; sebenarnya kita pakai field statik
+
+            // Kembalikan gaya tombol bawaan (hilang saat overlay layout dibuang)
+            StyleRestore.apply(a);
         } catch (Throwable t) { Log.w(TAG, "inject gagal: "+t); }
     }
 
