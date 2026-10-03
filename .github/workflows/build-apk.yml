@@ -21,7 +21,8 @@ jobs:
       uses: gradle/actions/setup-gradle@v4
       with: { gradle-version: 8.7 }
     - name: Decode keystore from secret
-      env: { KS_B64: ${{ secrets.KEYSTORE_B64 }} }
+      env:
+        KS_B64: ${{ secrets.KEYSTORE_B64 }}
       run: |
         echo "$KS_B64" | base64 -d > alpha-release.p12
     - name: Build release APK (gradlew tidak tersedia di runner; pakai gradle langsung)
