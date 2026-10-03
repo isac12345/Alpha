@@ -31,12 +31,12 @@ jobs:
         KEY_ALIAS: alpha
         KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         GITHUB_RUN_NUMBER: ${{ github.run_number }}
-      run: |
-        ./gradlew :app:assembleRelease --no-daemon --project-dir .
+      run: gradle :app:assembleRelease --no-daemon
     - name: Verify APK
       run: |
-        ls -l app/build/outputs/apk/release/*.apk
-        $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk || $ANDROID_HOME/cmdline-tools/latest/bin/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk || echo "skip verify (no build-tools path)"
+        cd alpha-control && ls -l app/build/outputs/apk/release/*.apk
+        APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+        $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs "$APK"
     - name: Upload artifact
       uses: actions/upload-artifact@v4
-      with: { name: alpha-control-apk, path: app/build/outputs/apk/release/app-release.apk }
+      with: { name: alpha-control-apk, path: alpha-control/app/build/outputs/apk/release/*.apk }
