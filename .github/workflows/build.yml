@@ -1,0 +1,69 @@
+name: Build Alpha Control + modul
+
+on:
+  push:
+    branches: [ app-v51 ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: SDK 34 (pakai SDK bawaan runner; terbukti works di repo ini)
+        run: |
+          set -e
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls "$ANDROID_SDK_ROOT/platforms" 2>/dev/null || true
+          if ! ls -d "$ANDROID_SDK_ROOT"/platforms/android-34 >/dev/null 2>&1; then
+            SDKM=$(ls "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+            if [ -n "$SDKM" ]; then
+              yes | "$SDKM" --licenses >/dev/null 2>&1 || true
+              "$SDKM" "platforms;android-34" "build-tools;34.0.0" || echo "lanjut pakai SDK yang ada"
+            fi
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Cek sintaks script modul
+        run: bash tools/check_module.sh
+
+      - name: Keystore dari Secrets (JANGAN commit .jks ke repo)
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          echo "::add-mask::$KS_B64"
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+          ls -l "$RUNNER_TEMP/release.p12"
+
+      - name: Build APK release
+        env:
+          ALPHA_KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
+          ALPHA_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ALPHA_KEY_ALIAS: alpha
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Rakit zip modul (APK ikut di companion/)
+        run: |
+          VER=$(cat version.txt | tr -d '[:space:]')
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          cp "$APK" module/companion/AlphaBubble.apk
+          mkdir -p dist
+          cp "$APK" "dist/AlphaControl-v${VER}.apk"
+          (cd module && zip -r9 -q "../dist/Alpha-Fusion-v${VER}.zip" . -x '*.git*')
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-fusion-v${{ github.run_number }}
+          path: dist/*
