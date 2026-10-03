@@ -1306,3 +1306,14 @@
   ada di repo (cek semua branch). Butuh source 4-tab dari user
   (push project Android Studio, atau kirim APK-nya) → save ke repo,
   baru v2 bisa di-merge di atasnya.
+- APP-REWRITE-CI-HIJAU (2026-10-03, run 37104551558 SUCCESS): tulis
+  ulang app sebagai proyek Gradle+Kotlin di `alpha-control/` (branch
+  `alpha-control`, push ke isac12345/Alpha). Nol library eksternal (sesuai
+  spec "tanpa library berat"): tema platform, tanpa material/appcompat/
+  recyclerview/constraintlayout. RootShell (findSu+ProcessBuilder, timeout
+  10 dtk). Beta/Tile/BOOT receiver + MainActivity masih SCAFFOLD (belum
+  ada 4 tab) -> artifact 935KB, signed, package com.alphabubble.
+  CI教训: (1) workflow hanya dibaca di ROOT .github/workflows; (2) ${{ }} tak
+  boleh di flow mapping YAML { }; (3) gradle -p <subdir>; (4) signing
+  lewat apksigner di workflow (AGP hasilkan *-unsigned.apk); (5) base64 -d
+  butuh redirect. L2: TUNGGU user.
