@@ -32,3 +32,17 @@ Bahasa sederhana biar gampang diingat.
   tidak bisa dicek ulang; tag lokal `v7-tested` ada).
 - L2: user tes di HP: lolos.
 - Arsip: tag `v7-tested` + merge ke master (riwayat lama).
+
+## 2026-10-03 — Alpha Control v2 rebuilt (4 tab) — L2 LOLOS
+- Apa: app ditulis ulang dari nol (Kotlin, tanpa AndroidX) dengan 4 tab
+  DASH/GAMES/CUSTOM/TOOLS, UI dari kode, R8 + shrink. 377 KB (dari 2,3 MB).
+- Bukti L1: CI GitHub Actions run 37106755499 SUCCESS (branch app-control,
+  repo isac12345/Alpha). Verifikasi: package com.alphabubble,
+  versionCode=20 (cocok ALPHA_COMPANION_VER), signed (apksigner verify),
+  banner+ikon ada (res/8b.webp, res/3e.jpg), string 4 tab + apply_now.sh
+  ada di classes.dex, nol dependency.
+- Bukti L2: user pasang di HP — "jalan smua jir modenya". Semua tombol
+  modul (profil, flag, log, render, resolusi) berfungsi.
+- Catatan: versionCode sengaja 20 = sama dengan app lama, jadi WAJIB
+  uninstall com.alphabubble dulu sebelum pasang (data app ikut hilang).
+- File APK: ~/storage/downloads/AlphaControl-apk/AlphaBubble-v2.apk (377 KB).
