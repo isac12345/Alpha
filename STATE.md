@@ -1,4 +1,8 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- APPv2-STYLE (2026-10-03, CI 37098571283 SUCCESS): 12 tombol abu2
+  (gaya inline ikut kebuang dgn overlay) -> StyleRestore balikin via kode
+  (getIdentifier, tanpa R). File sdcard DITIMPA (apk 00e3c5fa). L2 tunggu user.
+
 - APPv2-FIX-LAYOUT (2026-10-03, CI 37097836510 SUCCESS): overlay
   activity_main (1-scroll kuno) menimpa layout 4-page asli -> app 1 halaman.
   Fix: HAPUS file overlay tsb (base utuh) + UI v2 jadi injeksi programatik
