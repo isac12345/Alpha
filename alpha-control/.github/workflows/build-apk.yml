@@ -32,7 +32,7 @@ jobs:
         KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         GITHUB_RUN_NUMBER: ${{ github.run_number }}
       run: |
-        gradle :app:assembleRelease --no-daemon --project-dir .
+        ./gradlew :app:assembleRelease --no-daemon --project-dir .
     - name: Verify APK
       run: |
         ls -l app/build/outputs/apk/release/*.apk
