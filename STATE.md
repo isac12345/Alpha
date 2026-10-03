@@ -1,4 +1,14 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- V49-BUILD (2026-10-03, leader): zip v49 Claude dibedah, diambil
+  SELEKTIF. TERIMA: seed 2 flag sekali saat flash (customize.sh +
+  .flags_v49_seeded, hapus A/B dihormati). TOLAK: uperf SIGTERM-wait
+  (v46 bangkit lagi tanpa patch terpisah; bukti worker-fork tetap).
+  + backslash monitor.sh:300 dibuang BENERAN (fix kemarin tidak tuntas).
+  Zip build SENDIRI: /sdcard/alpha/Alpha-Fusion-v49-flags-default.zip
+  (176 entri, vCode 49, md5 di bawah, sh-n 28/28 FAIL 0).
+  CATATAN: flash v49 = kedua flag ON otomatis (Arm B). Utk Arm A:
+  rm GB_FASRS_OWNS_CPU setelah flash (marker cegah seed ulang).
+
 - V48-BUILD (2026-10-03, leader): patch Claude v48-uclamp-stune, gw
   verifikasi 4 hal (apply-check OK, /dev/stune tidak ada = no-op,
   restore baca NATIVE_CONF unconditional = skip-safe, powercfg tidak
