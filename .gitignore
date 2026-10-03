@@ -1,21 +1,8 @@
-# Build outputs & artifacts
-build-output/
-*.apk
-*.zip
-# Payload modul yang WAJIB terlacak (pengecualian):
-!companion/AlphaBubble.apk
-!uperf/modules/asoulopt.zip
-
-# Temp / editor leftovers
-*.tmp
-*.bak
-*~
-.DS_Store
-Thumbs.db
-
-# Keys & secrets — JANGAN commit
-*.jks
-*.keystore
-keystore.properties
+.gradle/
+build/
+app/build/
 local.properties
-*.orig
+*.iml
+.idea/
+dist/
+module/companion/AlphaBubble.apk
