@@ -34,7 +34,7 @@ jobs:
         KEY_ALIAS: alpha
         KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         GITHUB_RUN_NUMBER: ${{ github.run_number }}
-      run: gradle :app:assembleRelease --no-daemon
+      run: gradle -p alpha-control :app:assembleRelease --no-daemon
     - name: Verify APK
       run: |
         cd alpha-control && ls -l app/build/outputs/apk/release/*.apk
