@@ -1,4 +1,12 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- APPv2-BUILD-HIJAU (2026-10-03, CI 37096432787 SUCCESS): push
+  work/v2-app -> origin -> package.yml hijau (gagal 1x: @id baru aapt2,
+  revisi worker + tvModule susulan). Artifact: AlphaBubble-signed.apk
+  (signed ALPHA.RSA, classes5.dex 76KB = kode F1-F4, vCode 21 via CI) +
+  module zip (vCode 50, companion APK v2 di dalam, uninstall-first).
+  File di /sdcard/alpha/: AlphaBubble-v2-signed.apk +
+  Alpha-Fusion-v50-appv2.zip. L2: TUNGGU user flash + tes.
+
 - V50-AUTO (2026-10-03, leader): user minta bebas flag selamanya.
   _gb_fasrs_owns_cpu() jadi AUTO runtime: FORCE_ALPHA=paksa assist,
   FORCE_OWNS/OWNS_CPU=paksa skip, tanpa file = node readable ? skip.
