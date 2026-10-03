@@ -1,4 +1,12 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- V48-BUILD (2026-10-03, leader): patch Claude v48-uclamp-stune, gw
+  verifikasi 4 hal (apply-check OK, /dev/stune tidak ada = no-op,
+  restore baca NATIVE_CONF unconditional = skip-safe, powercfg tidak
+  nyentuh uclamp). Flag ON = NOL tulis CPU (lantai+uclamp+stune), cuma
+  cpuset. Zip build SENDIRI (zip prebuilt Claude tidak dipakai):
+  /sdcard/alpha/Alpha-Fusion-v48-fasrs-ownscpu.zip (176 entri, vCode 48,
+  md5 c5586fea). Device: GB_FASRS_OWNS_CPU DIHAPUS (arm A), EXTREME ada.
+
 - V47-CLEAN-REBUILD (2026-10-02 19:00, leader): Claude review zip v47,
   gw verifikasi sendiri di hasil ekstrak. 3 temuan, 2 gw kerjakan, 1 gw TOLAK:
   1. common/monitor.sh.orig ikut ter-zip (54KB) - BENAR. Penyebab: .orig
