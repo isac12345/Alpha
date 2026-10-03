@@ -1,4 +1,10 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- APPv2-FIX-LAYOUT (2026-10-03, CI 37097836510 SUCCESS): overlay
+  activity_main (1-scroll kuno) menimpa layout 4-page asli -> app 1 halaman.
+  Fix: HAPUS file overlay tsb (base utuh) + UI v2 jadi injeksi programatik
+  (DashboardInject/DashViews, 16 listener, pola HomeCards). File di sdcard
+  DITIMPA versi bener. L2: TUNGGU user tes halaman.
+
 - APPv2-BUILD-HIJAU (2026-10-03, CI 37096432787 SUCCESS): push
   work/v2-app -> origin -> package.yml hijau (gagal 1x: @id baru aapt2,
   revisi worker + tvModule susulan). Artifact: AlphaBubble-signed.apk
