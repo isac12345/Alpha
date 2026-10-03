@@ -23,9 +23,11 @@ jobs:
     - name: Diagnose AAR / merged res (A)
       run: |
         echo "=== AAR caches ==="
-        find ~/.gradle/caches/modules-2 -type d \( -name 'material-1.11.0*' -o -name 'appcompat-1.6.1*' \) 2>/dev/null | head -n 6 || echo "no AAR dirs (mungkin belum terunduh/terekstrak)"
+        find ~/.gradle/caches/modules-2 -type f \( -name '*material-1.11.0*.aar' -o -name '*appcompat-1.6.1*.aar' \) 2>/dev/null | head -n 6 || echo "no .aar (AAR belum terunduh / pakai cache)"
+        echo "=== exploded-aar ==="
+        find ~/.gradle/caches/ -type d -name 'material-1.11.0' 2>/dev/null | head -n 3 || echo "no exploded-aar dir"
         echo "=== merged_res ==="
-        ls REDACTED/app/build/intermediates/merged_res/release/ 2>/dev/null | grep -i -E 'material|appcompat' | head -n 6 || echo "merged_res tidak ada / kosong"
+        ls app/build/intermediates/merged_res/release/ 2>/dev/null | grep -i -E 'material|appcompat' | head -n 6 || echo "merged_res tidak ada / kosong"
     - name: Decode keystore
       env: { KS_B64: ${{ secrets.KEYSTORE_B64 }} }
       run: echo "$KS_B64" | base64 -d > alpha-release.p12
@@ -37,10 +39,10 @@ jobs:
         KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         GITHUB_RUN_NUMBER: ${{ github.run_number }}
       run: |
-        cd REDACTED && gradle :app:assembleRelease --no-daemon --project-dir .
+        gradle :REDACTED:app:assembleRelease --no-daemon --project-dir .
     - name: Verify APK
       run: |
-        ls -l REDACTED/app/build/outputs/apk/release/*.apk || ls -l app/build/outputs/apk/release/*.apk || echo "apk not at expected path"
+        ls -l app/build/outputs/apk/release/*.apk || ls -l app/build/outputs/apk/release/*.apk || echo "apk not at expected path"
     - name: Upload artifact
       uses: actions/upload-artifact@v4
-      with: { name: REDACTED-apk, path: REDACTED/app/build/outputs/apk/release/app-release.apk }
+      with: { name: REDACTED-apk, path: app/build/outputs/apk/release/app-release.apk }
