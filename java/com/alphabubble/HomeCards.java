@@ -111,7 +111,6 @@ public final class HomeCards {
         bOv.setVisibility(ov ? View.GONE : View.VISIBLE);
         bNt.setVisibility(nt ? View.GONE : View.VISIBLE);
         guardBatteryLab(a);
-        MonitorStatus.refresh(a);
     }
 
     private static void guardBatteryLab(Activity a) throws Throwable {
