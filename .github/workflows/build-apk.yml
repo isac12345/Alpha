@@ -35,7 +35,7 @@ jobs:
       - name: Decode keystore
         env:
           KS_B64: ${{ secrets.KEYSTORE_B64 }}
-        run: echo "$KS_B64" | base64 -d "$RUNNER_TEMP/alpha-release.p12"
+        run: echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/alpha-release.p12" && ls -l "$RUNNER_TEMP/alpha-release.p12"
       - name: Build release APK
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/alpha-release.p12
