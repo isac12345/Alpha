@@ -1,4 +1,12 @@
 # STATE.md — Alpha Fusion v2 (branch fusion-v2)
+- V50-AUTO (2026-10-03, leader): user minta bebas flag selamanya.
+  _gb_fasrs_owns_cpu() jadi AUTO runtime: FORCE_ALPHA=paksa assist,
+  FORCE_OWNS/OWNS_CPU=paksa skip, tanpa file = node readable ? skip.
+  Mode TIDAK dipakai (diputus sblm di-set + restore reset powersave).
+  customize seed EXTREME saja. L1: bash-n, shellcheck 0, fn-test 4/4.
+  Zip: /sdcard/alpha/Alpha-Fusion-v50-auto.zip (176, vCode 50, md5 bawah,
+  sh-n 28/28). L2: TUNGGU user flash + main.
+
 - V49-BUILD (2026-10-03, leader): zip v49 Claude dibedah, diambil
   SELEKTIF. TERIMA: seed 2 flag sekali saat flash (customize.sh +
   .flags_v49_seeded, hapus A/B dihormati). TOLAK: uperf SIGTERM-wait
