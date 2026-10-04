@@ -41,9 +41,9 @@ di `module/common/companion_install.sh`. `tools/check_module.sh` memeriksa ketig
 ## Yang belum terverifikasi
 Kode Kotlin ditulis tanpa Android SDK di sandbox, jadi belum pernah dikompilasi. Script modul sudah
 dites di sandbox (alphactl, autoctl). Jika build gagal, perbaiki error kompilasi dulu; logika sudah lengkap.
-Tanda tangan APK memakai `keystore/alpha-release.jks` (password default di `app/build.gradle.kts`,
-bisa dioverride via env `ALPHA_*`). Kalau APK lama terpasang dengan tanda tangan berbeda,
-uninstall sekali sebelum memasang yang baru.
+Tanda tangan APK: keystore dan password TIDAK disimpan di repo. CI membacanya dari GitHub Secrets
+`ALPHA_KEYSTORE_BASE64`, `ALPHA_STORE_PASSWORD`, `ALPHA_KEY_ALIAS`, `ALPHA_KEY_PASSWORD`; build gagal bila kosong.
+Kalau APK lama terpasang dengan tanda tangan berbeda, uninstall sekali sebelum memasang yang baru.
 
 ## Perubahan UI (pembersihan)
 - Tag NEW dan border mint dibuang; teks penjelasan kecil dibuang, sisa hanya yang fungsional.

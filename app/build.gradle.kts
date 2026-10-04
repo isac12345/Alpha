@@ -21,16 +21,18 @@ android {
         versionName = "2.0-fusion-$alphaVersionCode"
     }
 
+    // Keystore dan password TIDAK ada di repo. CI mengisinya dari GitHub Secrets
+    // (lihat .github/workflows/build.yml). Tanpa env ini, build memakai debug key
+    // (hanya untuk uji lokal; APK-nya tidak bisa menimpa APK rilis).
+    val ksPath: String? = System.getenv("ALPHA_KEYSTORE_PATH")
     signingConfigs {
-        create("alpha") {
-            // Rilis memakai secret CI bila ada; kalau tidak, keystore tetap di repo
-            // supaya tanda tangan SAMA di tiap build (update APK lewat pm install -r
-            // tidak gagal karena beda signature).
-            val ksPath = System.getenv("ALPHA_KEYSTORE_PATH") ?: "${rootDir}/keystore/alpha-release.jks"
-            storeFile = file(ksPath)
-            storePassword = System.getenv("ALPHA_STORE_PASSWORD") ?: "REDACTED"
-            keyAlias = System.getenv("ALPHA_KEY_ALIAS") ?: "alpha"
-            keyPassword = System.getenv("ALPHA_KEY_PASSWORD") ?: "REDACTED"
+        if (ksPath != null) {
+            create("alpha") {
+                storeFile = file(ksPath)
+                storePassword = System.getenv("ALPHA_STORE_PASSWORD")
+                keyAlias = System.getenv("ALPHA_KEY_ALIAS")
+                keyPassword = System.getenv("ALPHA_KEY_PASSWORD")
+            }
         }
     }
 
@@ -38,10 +40,7 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("alpha")
-        }
-        debug {
-            signingConfig = signingConfigs.getByName("alpha")
+            signingConfig = signingConfigs.findByName("alpha") ?: signingConfigs.getByName("debug")
         }
     }
 
