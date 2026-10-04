@@ -67,7 +67,3 @@ uninstall sekali sebelum memasang yang baru.
 ## Perbaikan banner berkedip
 - Penyebab: Banner ada di dalam `key(vm.route)` sehingga dibuat ulang tiap pindah tab, lalu gambar custom di-decode ulang dari null (sempat tampil banner bawaan).
 - Perbaikan: bitmap banner dan background di-decode sekali di AppViewModel (`bannerBmp`, `bgBmp`, `bannerReady`) dan dipakai langsung oleh Banner/Backdrop. Banner bawaan baru tampil setelah dipastikan tidak ada gambar custom.
-
-## Penamaan rilis
-- Rilis publik: v1, v2, v3, dst (`version=` di module.prop dan tag GitHub Release). Build ini = rilis **v2**.
-- Angka 51 = versionCode internal (urutan varian uji). Jangan diubah saat rilis, hanya naik untuk build uji berikutnya.
