@@ -51,3 +51,15 @@ uninstall sekali sebelum memasang yang baru.
 - Dash: peringatan bila versi modul != versi app atau modul tidak punya alphactl; label "Dikunci game" saat game aktif.
 - Tutup semua app: konfirmasi lebih tegas, opsi app sistem default mati, Termux dan manager root dilindungi.
 - Workflow: `mkdir -p module/companion` (folder kosong tidak ikut git).
+
+## Perubahan setelah uji di HP
+- Suhu di Dash, notifikasi, dan bubble = suhu baterai (`temp_mc`). Suhu sensor terpanas (`soc_temp_mc`) hanya dipakai di layar Proteksi thermal karena batasnya dibandingkan ke sensor itu.
+- Bubble: panel pilih profil vertikal di samping bubble (seperti rancangan awal), bukan pil horizontal.
+- Notifikasi: judul "Profil aktif: X", isi baterai dan suhu baterai, baris game saat game jalan, tombol profil aktif diberi tanda ●.
+- Modul (`engine.sh` apply_tweak): kernel menolak nilai / node tidak bisa ditulis / node tulis-saja tidak lagi dicatat FAILED. Jadi SKIPPED atau APPLIED agar filter ERROR bersih dan counter failed jujur.
+
+## Perbaikan dari log perangkat (Unisoc T606)
+- engine.sh `alpha_rd`: pembacaan ulang pakai `cat`, bukan builtin `read`. Di kernel ini `read` dari /proc/sys cuma mengembalikan 1 karakter (300 terbaca 3), sehingga muncul FAILED dan WARN palsu padahal nilai sudah masuk.
+- engine.sh: node pilihan seperti scheduler ("mq-deadline kyber [bfq] none") dianggap berhasil bila nilai target ada di dalam tanda [ ].
+- service.sh (M2b): fas-rs baru hidup setelah tahap tuning, jadi boot jatuh ke fallback Alpha (CPU dibatasi 75%). Sekarang pemilik CPU dievaluasi ulang begitu /dev/fas_rs/mode siap.
+- autoctl.sh: puncak suhu sesi memakai suhu baterai (sebelumnya sensor terpanas).

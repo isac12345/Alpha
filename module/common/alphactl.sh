@@ -69,6 +69,13 @@ max_temp_mc() {
     printf '%s' "$_max"
 }
 
+# suhu baterai dalam mC (sysfs battery/temp = per 0.1 C). Dipakai untuk tampilan di app.
+batt_temp_mc() {
+    _bt=$(rd "$SYS_POWER/battery/temp")
+    case "$_bt" in ''|*[!0-9-]*) printf '%s' "$(max_temp_mc)"; return ;; esac
+    printf '%s' $((_bt * 100))
+}
+
 valid_profile() { case "$1" in battery|balanced|performance) return 0 ;; *) return 1 ;; esac; }
 valid_pkg() {
     case "$1" in ''|*[!A-Za-z0-9._]*) return 1 ;; esac
@@ -110,7 +117,8 @@ cmd_status() {
         echo fasrs_mode=
         if pidof fas-rs >/dev/null 2>&1; then echo cpu_owner=fas-rs; else echo cpu_owner=alpha; fi
     fi
-    printf 'temp_mc=%s\n' "$(max_temp_mc)"
+    printf 'temp_mc=%s\n' "$(batt_temp_mc)"
+    printf 'soc_temp_mc=%s\n' "$(max_temp_mc)"
     printf 'batt=%s\n' "$(rd "$SYS_POWER/battery/capacity")"
     printf 'batt_status=%s\n' "$(rd "$SYS_POWER/battery/status")"
     printf 'gb_active=%s\n' "$(rd "$STATE_DIR/.gb_active")"

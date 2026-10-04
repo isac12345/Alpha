@@ -369,6 +369,18 @@ else
 fi
 echo "[BOOT] tahap fas-rs distart" >> "$LOG_FILE"
 
+# M2b: fas-rs baru hidup SETELAH tahap tuning. Kalau tadi jatuh ke fallback Alpha
+# (CPU dibatasi persen), evaluasi ulang begitu node /dev/fas_rs/mode siap supaya
+# fas-rs yang memegang CPU seperti seharusnya.
+if [ "${CPU_OWNER:-}" = "alpha" ] && [ "$_fasrs_ok" = "0" ] 2>/dev/null; then
+    _o=0
+    while [ "$_o" -lt 15 ] && [ ! -r /dev/fas_rs/mode ]; do sleep 1; _o=$((_o + 1)); done
+    if [ -r /dev/fas_rs/mode ] && command -v cpu_detect_owner >/dev/null 2>&1; then
+        cpu_detect_owner
+        echo "[M2] CPU_OWNER=$CPU_OWNER (dievaluasi ulang setelah fas-rs hidup)" >> "$LOG_FILE"
+    fi
+fi
+
 # 10. Re-apply render backend pilihan user (persist di render_backend.conf).
 if [ -f "$MODDIR/common/render_manager.sh" ]; then
     sh "$MODDIR/common/render_manager.sh" apply >> "$LOG_FILE" 2>&1

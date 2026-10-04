@@ -29,8 +29,13 @@ log_ts() {
 # Hasil di ALPHA_RD. rc 0 = terbaca; node tanpa newline akhir tetap terbaca.
 # Beda dari cat: hanya baris pertama (semua node di apply_tweak 1 baris).
 alpha_rd() {
+    # Pakai cat, bukan builtin read: read dari node /proc/sys di beberapa kernel
+    # hanya mengembalikan 1 karakter ("300" terbaca "3") sehingga verifikasi salah.
     ALPHA_RD=""
-    IFS= read -r ALPHA_RD 2>/dev/null < "$1" || [ -n "$ALPHA_RD" ]
+    [ -r "$1" ] || return 1
+    ALPHA_RD=$(cat "$1" 2>/dev/null) || return 1
+    ALPHA_RD=$(printf '%s\n' "$ALPHA_RD" | head -n 1)
+    return 0
 }
 
 # Inisialisasi counter summary
@@ -98,34 +103,38 @@ apply_tweak() {
         if echo "$value" > "$path" 2>/dev/null; then
             local after_val=""
             if ! alpha_rd "$path"; then
-                FAILED_COUNT=$((FAILED_COUNT + 1))
-                log_msg "FAILED" "$category" "path=$path value=$value (tidak bisa dibaca ulang)"
-                return 1
+                APPLIED_COUNT=$((APPLIED_COUNT + 1))
+                log_msg "APPLIED" "$category" "path=$path value=$value (tidak diverifikasi, node tulis-saja)"
+                return 0
             fi
             after_val="$ALPHA_RD"
+            # Node pilihan seperti scheduler menandai yang aktif dengan [nama].
+            case "$after_val" in
+                *"[$value]"*) after_val="$value" ;;
+            esac
             if [ "$after_val" = "$value" ]; then
                 APPLIED_COUNT=$((APPLIED_COUNT + 1))
                 log_msg "APPLIED" "$category" "path=$path value=$value"
                 return 0
             fi
             if [ "$before_rc" -eq 0 ] && [ "$after_val" = "$before_val" ]; then
-                FAILED_COUNT=$((FAILED_COUNT + 1))
-                log_msg "FAILED" "$category" "path=$path value=$value (node menolak nilai, tidak berubah)"
-                return 1
+                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                log_msg "SKIPPED" "$category" "path=$path value=$value (kernel menolak nilai, dibiarkan)"
+                return 0
             fi
             APPLIED_COUNT=$((APPLIED_COUNT + 1))
             log_msg "APPLIED" "$category" "path=$path value=$value"
             log_msg "WARN" "$category" "verifikasi mismatch: current=$after_val target=$value ($path)"
             return 0
         else
-            FAILED_COUNT=$((FAILED_COUNT + 1))
-            log_msg "FAILED" "$category" "path=$path value=$value (write rejected)"
-            return 1
+            SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+            log_msg "SKIPPED" "$category" "path=$path value=$value (kernel menolak tulis, dibiarkan)"
+            return 0
         fi
     else
-        FAILED_COUNT=$((FAILED_COUNT + 1))
-        log_msg "FAILED" "$category" "path=$path (not writable)"
-        return 1
+        SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+        log_msg "SKIPPED" "$category" "path=$path (tidak bisa ditulis di kernel ini, dibiarkan)"
+        return 0
     fi
 }
 

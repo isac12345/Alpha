@@ -10,6 +10,7 @@ data class Status(
     val fasrsMode: String = "",
     val cpuOwner: String = "",
     val tempC: Float = 0f,
+    val socTempC: Float = 0f,
     val batt: Int = -1,
     val battStatus: String = "",
     val gamePkg: String = "",

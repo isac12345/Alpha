@@ -69,6 +69,7 @@ class BubbleService : Service() {
     private var profile = "none"
     private var tempC = 0f
     private var batt = -1
+    private var gamePkg = ""
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key != null && key.startsWith("bubble_") && key != "bubble_x" && key != "bubble_y") {
@@ -92,7 +93,7 @@ class BubbleService : Service() {
             while (isActive) {
                 val s = Alpha.status()
                 if (s != null) {
-                    profile = s.profile; tempC = s.tempC; batt = s.batt
+                    profile = s.profile; tempC = s.tempC; batt = s.batt; gamePkg = s.gamePkg
                     bubble?.text = profileShort(profile)
                     if (panel != null) showPanel(true)
                     updateNotification()
@@ -132,7 +133,7 @@ class BubbleService : Service() {
                 if (r.ok) "Profil ${profileLabel(p)}" else "Gagal ganti profil",
                 Toast.LENGTH_SHORT,
             ).show()
-            Alpha.status()?.let { profile = it.profile; tempC = it.tempC; batt = it.batt }
+            Alpha.status()?.let { profile = it.profile; tempC = it.tempC; batt = it.batt; gamePkg = it.gamePkg }
             bubble?.text = profileShort(profile)
             updateNotification()
         }
@@ -158,15 +159,21 @@ class BubbleService : Service() {
                 flags,
             )
         }
-        val info = buildString {
-            if (tempC > 0f) append("%.0f°C".format(tempC))
-            if (batt >= 0) { if (isNotEmpty()) append(" · "); append("$batt%") }
+        val line1 = buildString {
+            if (batt >= 0) append("Baterai $batt%")
+            if (tempC > 0f) { if (isNotEmpty()) append(" · "); append("suhu baterai %.0f°C".format(tempC)) }
         }
-        val text = if (hidden) "Bubble disembunyikan · ketuk untuk memunculkan" else info.ifEmpty { "Alpha Fusion" }
+        val gameName = if (gamePkg.isNotEmpty()) {
+            try { packageManager.getApplicationLabel(packageManager.getApplicationInfo(gamePkg, 0)).toString() } catch (_: Exception) { gamePkg }
+        } else ""
+        val line2 = if (gameName.isNotEmpty()) "Game jalan: $gameName (profil game dipakai)" else ""
+        val text = if (hidden) "Bubble disembunyikan · ketuk untuk memunculkan" else line1.ifEmpty { "Alpha Fusion" }
+        val big = listOf(text, line2).filter { it.isNotEmpty() }.joinToString("\n")
         val b = NotificationCompat.Builder(this, CH)
             .setSmallIcon(R.drawable.ic_stat_alpha)
-            .setContentTitle("Alpha · ${profileLabel(profile)}")
+            .setContentTitle("Profil aktif: ${profileLabel(profile)}")
             .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(big))
             .setContentIntent(content)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -177,7 +184,7 @@ class BubbleService : Service() {
                 Intent(this, BubbleService::class.java).setAction(ACT_SET).putExtra(EXTRA_P, k),
                 flags,
             )
-            b.addAction(0, PROFILE_LABELS[i], pi)
+            b.addAction(0, (if (k == profile) "● " else "") + PROFILE_LABELS[i], pi)
         }
         return b.build()
     }
@@ -313,55 +320,55 @@ class BubbleService : Service() {
         anim.start()
     }
 
-    // ---------- panel pilih profil ----------
+    // ---------- panel pilih profil (vertikal, di samping bubble) ----------
     private fun showPanel(refresh: Boolean) {
         val bp = bubbleLp ?: return
         if (refresh) removePanel()
         if (panel != null) return
         val dm = resources.displayMetrics
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(dp(6), dp(6), dp(6), dp(6))
             background = GradientDrawable().apply {
-                setColor(0xF0181A1D.toInt()); cornerRadius = dp(24).toFloat()
+                setColor(0xF2181A1D.toInt()); cornerRadius = dp(18).toFloat()
                 setStroke(dp(1), 0x33FFFFFF)
             }
         }
         PROFILE_KEYS.forEachIndexed { i, k ->
             val on = k == profile
-            val b = TextView(this).apply {
+            val item = TextView(this).apply {
                 text = PROFILE_LABELS[i]
                 textSize = 12f
-                typeface = Typeface.MONOSPACE
+                typeface = Typeface.create(Typeface.MONOSPACE, if (on) Typeface.BOLD else Typeface.NORMAL)
                 gravity = Gravity.CENTER
-                setPadding(dp(14), dp(10), dp(14), dp(10))
+                setPadding(dp(10), dp(11), dp(10), dp(11))
                 setTextColor(if (on) 0xFF111111.toInt() else 0xFFE8E6E1.toInt())
                 background = GradientDrawable().apply {
-                    cornerRadius = dp(20).toFloat()
+                    cornerRadius = dp(14).toFloat()
                     setColor(if (on) 0xFFE8E6E1.toInt() else 0x00000000)
                 }
                 setOnClickListener { setProfile(k); removePanel() }
             }
-            row.addView(b)
+            box.addView(item, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
-        row.setOnTouchListener { _, e ->
+        box.setOnTouchListener { _, e ->
             if (e.action == MotionEvent.ACTION_OUTSIDE) { removePanel(); true } else false
         }
-        val pw = dp(300)
+        val pw = dp(128)
         val p = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
+            pw, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT,
         )
         p.gravity = Gravity.TOP or Gravity.START
-        p.x = ((dm.widthPixels - pw) / 2).coerceAtLeast(0)
-        val below = bp.y + (bubble?.height ?: bp.height) + dp(8)
-        p.y = if (below + dp(60) < dm.heightPixels) below else (bp.y - dp(64)).coerceAtLeast(0)
+        val bw = bp.width
+        p.x = if (bp.x + bw / 2 < dm.widthPixels / 2) bp.x + bw + dp(8) else (bp.x - pw - dp(8)).coerceAtLeast(0)
+        p.y = bp.y.coerceAtMost((dm.heightPixels - dp(150)).coerceAtLeast(0))
         try {
-            wm.addView(row, p)
-            panel = row
+            wm.addView(box, p)
+            panel = box
         } catch (_: Exception) {
             panel = null
         }

@@ -48,6 +48,7 @@ object Alpha {
             fasrsMode = m["fasrs_mode"].orEmpty(),
             cpuOwner = m["cpu_owner"].orEmpty(),
             tempC = (m["temp_mc"]?.toLongOrNull() ?: 0L) / 1000f,
+            socTempC = (m["soc_temp_mc"]?.toLongOrNull() ?: 0L) / 1000f,
             batt = m["batt"]?.toIntOrNull() ?: -1,
             battStatus = m["batt_status"].orEmpty(),
             gamePkg = m["game_pkg"].orEmpty(),

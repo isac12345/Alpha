@@ -81,7 +81,7 @@ fun DashScreen(vm: AppViewModel) {
             }
         }
     }
-    AlphaCard { ToggleRow("Tampilkan bubble", null, vm.bubbleOn) { vm.updateBubbleOn(it) } }
+    AlphaCard { ToggleRow("Tampilkan bubble", null, vm.bubbleOn) { vm.setBubbleOn(it) } }
 
     AlphaCard {
         Label("Current profile")
@@ -104,7 +104,7 @@ fun DashScreen(vm: AppViewModel) {
 
     AlphaCard {
         Label("Status game")
-        KV("Suhu", "%.1f°C".format(st.tempC))
+        KV("Suhu baterai", "%.1f°C".format(st.tempC))
         Divider()
         KV("Mode fas-rs", st.fasrsMode.ifEmpty { "—" })
         Divider()
@@ -171,16 +171,16 @@ fun ThermScreen(vm: AppViewModel) {
     val warmEff = if (perf) w + 10 else w
     val highEff = if (perf) w + 15 else w + 10
     val state = when {
-        st.tempC >= 95 -> "KRITIS"
-        st.tempC >= highEff -> "PANAS"
-        st.tempC >= warmEff -> "HANGAT"
+        st.socTempC >= 95 -> "KRITIS"
+        st.socTempC >= highEff -> "PANAS"
+        st.socTempC >= warmEff -> "HANGAT"
         else -> "AMAN"
     }
     val stateColor = when (state) { "AMAN" -> Mint; "HANGAT" -> Amber; else -> Coral }
     AlphaCard {
-        Label("Suhu sekarang")
+        Label("Suhu sensor terpanas")
         Row(verticalAlignment = Alignment.Bottom) {
-            txt("%.1f°C".format(st.tempC), 28.sp, weight = FontWeight.Medium)
+            txt("%.1f°C".format(st.socTempC), 28.sp, weight = FontWeight.Medium)
             Box(Modifier.width(12.dp))
             txt(state, 12.sp, stateColor, spacing = 1.sp, modifier = Modifier.padding(bottom = 4.dp))
         }

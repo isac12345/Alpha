@@ -97,18 +97,18 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var bubbleOpacity by mutableStateOf(prefs.bubbleOpacity)
     var autostart by mutableStateOf(prefs.autostart)
 
-    fun updateCardAlpha(v: Float) { cardAlpha = v; prefs.cardAlpha = v }
-    fun updateFit(v: Int) { fit = v; prefs.fit = v }
-    fun updateAccent(v: Int) { accent = v; prefs.accent = v }
-    fun updateBlur(v: Int) { blur = v; prefs.blur = v }
-    fun updateContrast(v: Int) { contrast = v; prefs.contrast = v }
-    fun updateSaver(v: Boolean) { saver = v; prefs.saver = v }
-    fun updateBubbleSize(v: Int) { bubbleSize = v; prefs.bubbleSize = v }
-    fun updateBubbleShape(v: Int) { bubbleShape = v; prefs.bubbleShape = v }
-    fun updateBubbleOpacity(v: Int) { bubbleOpacity = v; prefs.bubbleOpacity = v }
-    fun updateAutostart(v: Boolean) { autostart = v; prefs.autostart = v }
+    fun setCardAlpha(v: Float) { cardAlpha = v; prefs.cardAlpha = v }
+    fun setFit(v: Int) { fit = v; prefs.fit = v }
+    fun setAccent(v: Int) { accent = v; prefs.accent = v }
+    fun setBlur(v: Int) { blur = v; prefs.blur = v }
+    fun setContrast(v: Int) { contrast = v; prefs.contrast = v }
+    fun setSaver(v: Boolean) { saver = v; prefs.saver = v }
+    fun setBubbleSize(v: Int) { bubbleSize = v; prefs.bubbleSize = v }
+    fun setBubbleShape(v: Int) { bubbleShape = v; prefs.bubbleShape = v }
+    fun setBubbleOpacity(v: Int) { bubbleOpacity = v; prefs.bubbleOpacity = v }
+    fun setAutostart(v: Boolean) { autostart = v; prefs.autostart = v }
 
-    fun updateBubbleOn(on: Boolean) {
+    fun setBubbleOn(on: Boolean) {
         if (on) {
             if (!Settings.canDrawOverlays(app)) {
                 askOverlay = true

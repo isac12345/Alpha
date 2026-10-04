@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -141,11 +142,11 @@ fun Banner(vm: AppViewModel) {
     val custom = rememberFileBitmap(Imaging.bannerFile(ctx), vm.bannerVer)
     Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp).height(124.dp).clip(RoundedCornerShape(22.dp))) {
         if (custom != null) {
-            Image(custom.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Image(custom.asImageBitmap(), null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
         } else {
-            Image(painterResource(R.drawable.banner_default), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Image(painterResource(R.drawable.banner_default), null, Modifier.matchParentSize(), contentScale = ContentScale.Crop)
         }
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)))))
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)))))
         Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
             txt("ALPHA CONTROL", 21.sp, Paper, FontWeight.Medium, spacing = 4.sp)
             txt("V2 · FUSION", 11.sp, Color.White.copy(alpha = 0.7f), spacing = 3.sp)
@@ -271,7 +272,7 @@ fun AlphaApp(vm: AppViewModel) {
                 val b = vm.busy
                 if (b != null) {
                     Box(
-                        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f))
+                        Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.55f))
                             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
                         contentAlignment = Alignment.Center,
                     ) {

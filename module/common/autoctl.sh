@@ -59,6 +59,13 @@ conf_get() {
 
 valid_profile() { case "$1" in battery|balanced|performance) return 0 ;; *) return 1 ;; esac; }
 
+# suhu baterai (mC), dipakai untuk puncak sesi. Fallback ke sensor terpanas bila node tidak ada.
+batt_temp_mc() {
+    _bt=$(rdf "$SYS_POWER/battery/temp")
+    case "$_bt" in ''|*[!0-9]*) max_temp_mc; return ;; esac
+    printf '%s' $((_bt * 100))
+}
+
 max_temp_mc() {
     _max=0
     for _z in "$SYS_THERMAL"/thermal_zone*; do
@@ -147,7 +154,7 @@ ses_tick() {
             SES_B0=$(rdf "$SYS_POWER/battery/capacity")
             case "$SES_B0" in ''|*[!0-9]*) SES_B0=0 ;; esac
         fi
-        _tm=$(max_temp_mc)
+        _tm=$(batt_temp_mc)
         [ "$_tm" -gt "$SES_PEAK" ] 2>/dev/null && SES_PEAK=$_tm
     elif [ -n "$SES_PKG" ]; then
         ses_end
