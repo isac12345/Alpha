@@ -66,9 +66,9 @@ fun BgBannerScreen(vm: AppViewModel) {
     }
     AlphaCard {
         val t = 1f - vm.cardAlpha
-        SliderRow("Transparansi kartu", t, 0f..0.9f, "${(t * 100).toInt()}%", { vm.setCardAlpha(1f - it) })
+        SliderRow("Transparansi kartu", t, 0f..0.9f, "${(t * 100).toInt()}%", { vm.updateCardAlpha(1f - it) })
         Label("Penyesuaian gambar", Modifier.padding(top = 10.dp))
-        Seg(listOf("CROP", "FIT", "FILL"), vm.fit, { vm.setFit(it) })
+        Seg(listOf("CROP", "FIT", "FILL"), vm.fit, { vm.updateFit(it) })
     }
 }
 
@@ -77,10 +77,10 @@ fun BubbleScreen(vm: AppViewModel) {
     BackBtn { vm.back() }
     AlphaCard {
         Label("Floating bubble")
-        SliderRow("Ukuran", vm.bubbleSize.toFloat(), 36f..80f, "${vm.bubbleSize} dp", { vm.setBubbleSize(it.toInt()) })
-        SliderRow("Opacity", vm.bubbleOpacity.toFloat(), 30f..100f, "${vm.bubbleOpacity}%", { vm.setBubbleOpacity(it.toInt()) })
+        SliderRow("Ukuran", vm.bubbleSize.toFloat(), 36f..80f, "${vm.bubbleSize} dp", { vm.updateBubbleSize(it.toInt()) })
+        SliderRow("Opacity", vm.bubbleOpacity.toFloat(), 30f..100f, "${vm.bubbleOpacity}%", { vm.updateBubbleOpacity(it.toInt()) })
         Label("Bentuk", Modifier.padding(top = 10.dp))
-        Seg(listOf("BULAT", "KOTAK", "PIL"), vm.bubbleShape, { vm.setBubbleShape(it) })
+        Seg(listOf("BULAT", "KOTAK", "PIL"), vm.bubbleShape, { vm.updateBubbleShape(it) })
     }
 }
 
@@ -96,17 +96,17 @@ fun ThemeScreen(vm: AppViewModel) {
                 Box(
                     Modifier.size(36.dp).clip(CircleShape).background(Color(c))
                         .border(BorderStroke(2.dp, if (on) Color.White else Color.Transparent), CircleShape)
-                        .clickable { vm.setAccent(c) },
+                        .clickable { vm.updateAccent(c) },
                 )
             }
         }
         Box(
             Modifier.padding(top = 12.dp).clip(CircleShape).background(LocalUi.current.accent).padding(horizontal = 18.dp, vertical = 8.dp),
         ) { txt("PRATINJAU AKSEN", 12.sp, Ink, spacing = 1.2.sp) }
-        SliderRow("Blur background", vm.blur.toFloat(), 0f..100f, "${vm.blur}%", { vm.setBlur(it.toInt()) })
+        SliderRow("Blur background", vm.blur.toFloat(), 0f..100f, "${vm.blur}%", { vm.updateBlur(it.toInt()) })
         if (Build.VERSION.SDK_INT < 31) txt("Blur butuh Android 12 ke atas.", 12.sp, Amber)
-        SliderRow("Kontras teks", vm.contrast.toFloat(), 30f..100f, "${vm.contrast}%", { vm.setContrast(it.toInt()) })
-        ToggleRow("Mode hemat", null, vm.saver) { vm.setSaver(it) }
+        SliderRow("Kontras teks", vm.contrast.toFloat(), 30f..100f, "${vm.contrast}%", { vm.updateContrast(it.toInt()) })
+        ToggleRow("Mode hemat", null, vm.saver) { vm.updateSaver(it) }
     }
 }
 
@@ -195,7 +195,7 @@ fun ToolsScreen(vm: AppViewModel) {
     }
 
     AlphaCard {
-        ToggleRow("Auto-start saat boot", null, vm.autostart) { vm.setAutostart(it) }
+        ToggleRow("Auto-start saat boot", null, vm.autostart) { vm.updateAutostart(it) }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f)) { Pill("REFRESH", { vm.refreshButton() }) }
             Box(Modifier.weight(1f)) { Pill("CARI MODULE", { vm.findModule() }) }
