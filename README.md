@@ -63,3 +63,7 @@ uninstall sekali sebelum memasang yang baru.
 - engine.sh: node pilihan seperti scheduler ("mq-deadline kyber [bfq] none") dianggap berhasil bila nilai target ada di dalam tanda [ ].
 - service.sh (M2b): fas-rs baru hidup setelah tahap tuning, jadi boot jatuh ke fallback Alpha (CPU dibatasi 75%). Sekarang pemilik CPU dievaluasi ulang begitu /dev/fas_rs/mode siap.
 - autoctl.sh: puncak suhu sesi memakai suhu baterai (sebelumnya sensor terpanas).
+
+## Perbaikan banner berkedip
+- Penyebab: Banner ada di dalam `key(vm.route)` sehingga dibuat ulang tiap pindah tab, lalu gambar custom di-decode ulang dari null (sempat tampil banner bawaan).
+- Perbaikan: bitmap banner dan background di-decode sekali di AppViewModel (`bannerBmp`, `bgBmp`, `bannerReady`) dan dipakai langsung oleh Banner/Backdrop. Banner bawaan baru tampil setelah dipastikan tidak ada gambar custom.
