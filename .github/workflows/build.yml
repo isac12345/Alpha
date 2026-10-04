@@ -36,6 +36,25 @@ jobs:
       - name: Cek sintaks script modul
         run: bash tools/check_module.sh
 
+      - name: Siapkan keystore dari GitHub Secrets
+        env:
+          KS_B64: ${{ secrets.ALPHA_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ALPHA_STORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ALPHA_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ALPHA_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ] || [ -z "$KS_ALIAS" ] || [ -z "$KEY_PASS" ]; then
+            echo "Secret keystore belum lengkap (ALPHA_KEYSTORE_BASE64, ALPHA_STORE_PASSWORD, ALPHA_KEY_ALIAS, ALPHA_KEY_PASSWORD)."
+            exit 1
+          fi
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/alpha.jks"
+          {
+            echo "ALPHA_KEYSTORE_PATH=$RUNNER_TEMP/alpha.jks"
+            echo "ALPHA_STORE_PASSWORD=$KS_PASS"
+            echo "ALPHA_KEY_ALIAS=$KS_ALIAS"
+            echo "ALPHA_KEY_PASSWORD=$KEY_PASS"
+          } >> "$GITHUB_ENV"
+
       - name: Build APK release
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
