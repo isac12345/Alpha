@@ -1,7 +1,8 @@
-# Artefak lokal — jangan commit
-*.tmp
-*.bak
-*~
-.DS_Store
-Thumbs.db
-build-output/
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+.idea/
+dist/
+module/companion/AlphaBubble.apk

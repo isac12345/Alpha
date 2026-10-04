@@ -1,56 +1,73 @@
-# Alpha Fusion v1
+# Alpha Fusion v51 + Alpha Control v2 (APK)
 
-Modul Magisk: Alpha + Uperf + fas-rs fusion. `versionName=v1`, `versionCode=20`.
+Satu repo: modul root (`module/`) dan aplikasi pengendali (`app/`). Build lewat GitHub Actions
+(`.github/workflows/build.yml`) menghasilkan `AlphaControl-v51.apk` dan `Alpha-Fusion-v51.zip`
+(zip modul sudah berisi APK di `companion/AlphaBubble.apk`, nama yang dicari `customize.sh`/`service.sh`).
 
-Syarat: perangkat ARM64, Magisk terpasang. fas-rs nonaktif bila API <= 30.
+## Prinsip
+APK hanya remote. Semua logika di modul. APK memanggil `common/alphactl.sh` lewat `su -c`
+(`Root.kt` -> `Alpha.kt`). Tidak ada tuning di sisi APK kecuali `wm size/density`, `cmd package compile`,
+`am force-stop` (alat bantu, bukan tuning engine).
 
-## Instalasi
-
-1. Flash `Alpha-Fusion-v1-release-clean.zip` via Magisk, reboot.
-2. APK companion dipasang otomatis saat flash; Android mungkin meminta konfirmasi instal manual tergantung setelan device (`companion/AlphaBubble.apk`, Alpha Control v1, `versionCode=20`).
-3. Konfigurasi fas-rs: `/sdcard/Android/fas-rs/games.toml` (format: lihat `fasrs/README_EN.md`).
-
-## Kompatibilitas
-
-| Target | Status |
+## Peta tombol -> modul
+| UI | Perintah |
 |---|---|
-| Unisoc T615 (ums9230), GPU Mali, Android 14 / SDK 34, 720x1600 density 320 | Teruji hardware |
-| Adreno / Snapdragon | belum diverifikasi hardware — cap GPU memakai pola Mali, hanya sandbox |
-| MediaTek | belum diverifikasi hardware — hanya sandbox |
-| PowerVR / Xclipse | belum diverifikasi hardware — di-skip oleh detect (UNKNOWN) |
-| Non-ARM64 | Ditolak installer (abort) |
-| API <= 30 | Terpasang, fas-rs nonaktif |
+| Ganti profil (Dash, bubble, notifikasi, tile) | `alphactl profile <battery\|balanced\|performance>` -> `apply_now.sh <p> manual` |
+| Status Dash / Thermal / bubble | `alphactl status` |
+| Auto-profile (aturan baterai / charging) | `alphactl conf set AUTO_*`, dijalankan `common/autoctl.sh` (daemon baru) |
+| Proteksi thermal | flag `THERMAL_GUARD_OFF`, file `THERMAL_WARM_C` via `alphactl thermal set 60-90`; dibaca `monitor.sh` (`thermal_user_thr`). Batas kritis 95C tetap |
+| Statistik sesi | `autoctl.sh` menulis `/data/adb/alpha/sessions.log`; dibaca `alphactl sessions` |
+| Games (list/tambah/edit/hapus/auto-detect) | `alphactl games`, `game add`, `game remove` -> `game_add.sh` |
+| Render | `alphactl render get/set` -> `render_manager.sh` |
+| Toggle Mesin | flag `GB_FASRS_FORCE_ALPHA` (toggle "fas-rs pegang CPU" = flag TIDAK ada), `GB_COOLDOWN_EXTREME`, `NO_CPUSET` (toggle "Cpuset dipersempit" = flag TIDAK ada) |
+| Boot guard | flag `BOOT_GUARD_OFF` (dibaca `service.sh`) |
+| Health check | `alphactl health` |
+| Device / Deteksi ulang | `alphactl device` / `redetect` |
+| Resolusi + DPI | `wm size` + `wm density`; pengaman auto-revert di sisi perangkat (`.res_keep`) |
+| Dexopt (pilih mode) | `cmd package compile -m <speed-profile\|speed\|everything\|verify> -f <pkg>` atau `--reset` |
+| Tutup semua app | `am force-stop` daftar app; opsi app sistem hanya yang punya ikon launcher dan bukan layanan inti |
+| Battery Lab | sysfs `power_supply/battery/*` |
 
-## Kredit & Lisensi
+## Perubahan modul (v50 -> v51)
+- baru: `common/alphactl.sh`, `common/autoctl.sh`
+- `monitor.sh`: ambang suhu bisa diatur (`thermal_user_thr`), default tanpa file = perilaku lama
+- `service.sh`: start `autoctl.sh` saat boot, sakelar `BOOT_GUARD_OFF`
+- `uninstall.sh`, `customize.sh`, `companion_install.sh`, `module.prop`: ikut versi 51
 
-- Alpha (kode integrasi: `service.sh`, `customize.sh`, `uninstall.sh`, `common/`, `system.prop`, docs) — GPL-3.0 (`LICENSE`).
-- fas-rs — GPL-3.0, upstream shadow3aaa (`fasrs/LICENSE`).
-- Uperf — Apache-2.0, upstream Matt Yang, disertakan sesuai lisensi aslinya (`uperf/LICENSE`).
+## Build / ubah versi
+Naikkan `version.txt` (sumber tunggal), samakan `module.prop` versionCode dan `ALPHA_COMPANION_VER`
+di `module/common/companion_install.sh`. `tools/check_module.sh` memeriksa ketiganya.
 
-<details>
-<summary>Komponen</summary>
+## Yang belum terverifikasi
+Kode Kotlin ditulis tanpa Android SDK di sandbox, jadi belum pernah dikompilasi. Script modul sudah
+dites di sandbox (alphactl, autoctl). Jika build gagal, perbaiki error kompilasi dulu; logika sudah lengkap.
+Tanda tangan APK memakai `keystore/alpha-release.jks` (password default di `app/build.gradle.kts`,
+bisa dioverride via env `ALPHA_*`). Kalau APK lama terpasang dengan tanda tangan berbeda,
+uninstall sekali sebelum memasang yang baru.
 
-- Alpha: hardware detection, profile management, monitor, watchdog, gameboost.
-- Uperf: thread/cgroup classifier, config JSON per chipset di `uperf/config/`.
-- fas-rs: frame-aware CPU scheduler, biner `fasrs/fas-rs`.
+## Perubahan UI (pembersihan)
+- Tag NEW dan border mint dibuang; teks penjelasan kecil dibuang, sisa hanya yang fungsional.
+- Teks lebih besar, kontras default 85.
+- Dash: peringatan bila versi modul != versi app atau modul tidak punya alphactl; label "Dikunci game" saat game aktif.
+- Tutup semua app: konfirmasi lebih tegas, opsi app sistem default mati, Termux dan manager root dilindungi.
+- Workflow: `mkdir -p module/companion` (folder kosong tidak ikut git).
 
-</details>
+## Perubahan setelah uji di HP
+- Suhu di Dash, notifikasi, dan bubble = suhu baterai (`temp_mc`). Suhu sensor terpanas (`soc_temp_mc`) hanya dipakai di layar Proteksi thermal karena batasnya dibandingkan ke sensor itu.
+- Bubble: panel pilih profil vertikal di samping bubble (seperti rancangan awal), bukan pil horizontal.
+- Notifikasi: judul "Profil aktif: X", isi baterai dan suhu baterai, baris game saat game jalan, tombol profil aktif diberi tanda ●.
+- Modul (`engine.sh` apply_tweak): kernel menolak nilai / node tidak bisa ditulis / node tulis-saja tidak lagi dicatat FAILED. Jadi SKIPPED atau APPLIED agar filter ERROR bersih dan counter failed jujur.
 
-<details>
-<summary>Guard</summary>
+## Perbaikan dari log perangkat (Unisoc T606)
+- engine.sh `alpha_rd`: pembacaan ulang pakai `cat`, bukan builtin `read`. Di kernel ini `read` dari /proc/sys cuma mengembalikan 1 karakter (300 terbaca 3), sehingga muncul FAILED dan WARN palsu padahal nilai sudah masuk.
+- engine.sh: node pilihan seperti scheduler ("mq-deadline kyber [bfq] none") dianggap berhasil bila nilai target ada di dalam tanda [ ].
+- service.sh (M2b): fas-rs baru hidup setelah tahap tuning, jadi boot jatuh ke fallback Alpha (CPU dibatasi 75%). Sekarang pemilik CPU dievaluasi ulang begitu /dev/fas_rs/mode siap.
+- autoctl.sh: puncak suhu sesi memakai suhu baterai (sebelumnya sensor terpanas).
 
-- Installer abort bila bukan ARM64.
-- fas-rs nonaktif bila API <= 30.
+## Perbaikan banner berkedip
+- Penyebab: Banner ada di dalam `key(vm.route)` sehingga dibuat ulang tiap pindah tab, lalu gambar custom di-decode ulang dari null (sempat tampil banner bawaan).
+- Perbaikan: bitmap banner dan background di-decode sekali di AppViewModel (`bannerBmp`, `bgBmp`, `bannerReady`) dan dipakai langsung oleh Banner/Backdrop. Banner bawaan baru tampil setelah dipastikan tidak ada gambar custom.
 
-</details>
-
-<details>
-<summary>Catatan build</summary>
-
-8 file shell di-encode ke biner aarch64-only (`.bin`) + wrapper `.sh` tipis:
-
-`common/monitor.sh`, `common/watchdog.sh`, `common/apply_now.sh`, `common/game_add.sh`, `common/engine_manager.sh`, `common/game_manager.sh`, `common/sync_uperf_exclusion.sh`, `bin/pgr-log`.
-
-`common/render_manager.sh` tetap plaintext. Biner hanya jalan di ARM64.
-
-</details>
+## Penamaan rilis
+- Rilis publik: v1, v2, v3, dst (`version=` di module.prop dan tag GitHub Release). Build ini = rilis **v2**.
+- Angka 51 = versionCode internal (urutan varian uji). Jangan diubah saat rilis, hanya naik untuk build uji berikutnya.
