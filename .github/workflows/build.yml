@@ -1,0 +1,46 @@
+name: Build Alpha Control + modul
+
+on:
+  push:
+    branches: [ main, master, fusion-v2, v51-clean ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Cek sintaks script modul
+        run: bash tools/check_module.sh
+
+      - name: Build APK release
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Rakit zip modul (APK ikut di companion/)
+        run: |
+          VER=$(cat version.txt | tr -d '[:space:]')
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -f "$APK"
+          mkdir -p module/companion
+          cp "$APK" module/companion/AlphaBubble.apk
+          mkdir -p dist
+          cp "$APK" "dist/AlphaControl-v${VER}.apk"
+          (cd module && zip -r9 -q "../dist/Alpha-Fusion-v${VER}.zip" . -x '*.git*')
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alpha-fusion-v${{ github.run_number }}
+          path: dist/*
