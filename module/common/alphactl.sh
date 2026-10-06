@@ -5,6 +5,7 @@
 #
 # Pemakaian: alphactl.sh <perintah> [argumen]
 #   status                    key=value kondisi live (profil, suhu, baterai, game)
+#   brief                     ringan: profile dan game_pkg saja (tanpa fork, untuk polling bubble)
 #   profile <battery|balanced|performance>
 #   flag get|set|clear <NAMA> flag fitur di STATE_DIR (daftar putih)
 #   flags                     status semua flag
@@ -99,6 +100,14 @@ conf_set() {
     grep -v "^${_k}=" "$CONF_FILE" > "$_t" 2>/dev/null
     printf '%s=%s\n' "$_k" "$_v" >> "$_t"
     mv -f "$_t" "$CONF_FILE" && echo "OK: $_k=$_v"
+}
+
+cmd_brief() {
+    _cur=""; _t0=""; _gp=""
+    [ -r "$STATE_DIR/current_state" ] && read -r _cur < "$STATE_DIR/current_state"
+    [ -n "$_cur" ] || _cur=none
+    [ -f "$STATE_DIR/.game_t0" ] && read -r _t0 _gp < "$STATE_DIR/.game_t0"
+    printf 'profile=%s\ngame_pkg=%s\n' "$_cur" "$_gp"
 }
 
 cmd_status() {
@@ -291,6 +300,7 @@ cmd_log() {
 
 case "$1" in
     status) cmd_status ;;
+    brief) cmd_brief ;;
     profile) cmd_profile "$2" ;;
     flag) cmd_flag "$2" "$3" ;;
     flags) cmd_flags ;;

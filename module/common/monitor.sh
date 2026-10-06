@@ -8,9 +8,15 @@ MAP_FILE="$STATE_DIR/game_profile_map.conf"
 ACTIVE_PROFILE_FILE="$STATE_DIR/active_profile"
 CURRENT_STATE_FILE="$STATE_DIR/current_state"
 LOG_FILE="${ALPHA_LOG_FILE:-$STATE_DIR/alpha.log}"
+# Hemat CPU: saat game aktif dan prosesnya masih hidup, dumpsys (layar + app depan) hanya
+# dijalankan penuh tiap FG_FULLCHK_SECS detik; di antaranya cukup pidof (murah).
+FG_FULLCHK_SECS="${ALPHA_FG_FULLCHK_SECS:-12}"
+case "$FG_FULLCHK_SECS" in ''|*[!0-9]*) FG_FULLCHK_SECS=12 ;; esac
+monitor_fg_cache_pkg=""
+monitor_fg_cache_ts=0
 SCREEN_ON_INTERVAL="${ALPHA_SCREEN_ON_INTERVAL:-7}"
 SCREEN_OFF_INTERVAL="${ALPHA_SCREEN_OFF_INTERVAL:-60}"
-GAME_POLL_INTERVAL_SECS="${ALPHA_GAME_POLL_INTERVAL_SECS:-2}"
+GAME_POLL_INTERVAL_SECS="${ALPHA_GAME_POLL_INTERVAL_SECS:-4}"
 case "$GAME_POLL_INTERVAL_SECS" in
     ''|*[!0-9]*) GAME_POLL_INTERVAL_SECS="$SCREEN_ON_INTERVAL" ;;
     *) [ "$GAME_POLL_INTERVAL_SECS" -gt 0 ] 2>/dev/null || GAME_POLL_INTERVAL_SECS="$SCREEN_ON_INTERVAL" ;;
@@ -1209,6 +1215,22 @@ run_polling_loop() {
         fi
         monitor_cycle=$((monitor_cycle + 1))
 
+        monitor_use_cache=0
+        if [ -n "$monitor_fg_cache_pkg" ]; then
+            read -r monitor_now_up _ 2>/dev/null < /proc/uptime
+            monitor_now_up=${monitor_now_up%%.*}
+            case "$monitor_now_up" in ''|*[!0-9]*) monitor_now_up=0 ;; esac
+            case "$monitor_fg_cache_ts" in ''|*[!0-9]*) monitor_fg_cache_ts=0 ;; esac
+            if [ "$monitor_now_up" -gt 0 ] && [ "$monitor_fg_cache_ts" -gt 0 ] \
+                && [ $((monitor_now_up - monitor_fg_cache_ts)) -lt "$FG_FULLCHK_SECS" ] \
+                && [ -n "$(pidof "$monitor_fg_cache_pkg" 2>/dev/null)" ]; then
+                monitor_use_cache=1
+            fi
+        fi
+
+        if [ "$monitor_use_cache" -eq 1 ]; then
+            monitor_foreground_package="$monitor_fg_cache_pkg"
+        else
         monitor_screen_state=$(get_screen_state)
         if [ "$?" -ne 0 ]; then
             monitor_log "WARNING" "dumpsys power failed; skipping cycle=$monitor_cycle"
@@ -1217,6 +1239,7 @@ run_polling_loop() {
         fi
 
         if [ "$monitor_screen_state" != "ON" ]; then
+            monitor_fg_cache_pkg=""
             sleep "$SCREEN_OFF_INTERVAL"
             continue
         fi
@@ -1224,14 +1247,23 @@ run_polling_loop() {
         monitor_foreground_package=$(get_foreground_package)
         if [ "$?" -ne 0 ] || [ -z "$monitor_foreground_package" ]; then
             monitor_log "WARNING" "foreground package unavailable; skipping cycle=$monitor_cycle"
+            monitor_fg_cache_pkg=""
             sleep "$SCREEN_ON_INTERVAL"
             continue
+        fi
         fi
 
         monitor_poll_interval="$SCREEN_ON_INTERVAL"
         if [ -n "$(get_game_profile "$monitor_foreground_package")" ]; then
             monitor_loop_override
             monitor_poll_interval="${MONITOR_LOOP_OVR:-$GAME_POLL_INTERVAL_SECS}"
+            if [ "$monitor_use_cache" -eq 0 ]; then
+                read -r monitor_fg_cache_ts _ 2>/dev/null < /proc/uptime
+                monitor_fg_cache_ts=${monitor_fg_cache_ts%%.*}
+                monitor_fg_cache_pkg="$monitor_foreground_package"
+            fi
+        else
+            monitor_fg_cache_pkg=""
         fi
 
         handle_foreground_event "$monitor_foreground_package" "poll"

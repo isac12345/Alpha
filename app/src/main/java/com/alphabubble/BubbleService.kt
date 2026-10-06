@@ -7,6 +7,9 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
+import android.os.PowerManager
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
@@ -90,15 +93,22 @@ class BubbleService : Service() {
         prefs.sp.registerOnSharedPreferenceChangeListener(prefListener)
         rebuild()
         scope.launch {
+            val pm = getSystemService(POWER_SERVICE) as PowerManager
             while (isActive) {
-                val s = Alpha.status()
-                if (s != null) {
-                    profile = s.profile; tempC = s.tempC; batt = s.batt; gamePkg = s.gamePkg
-                    bubble?.text = profileShort(profile)
-                    if (panel != null) showPanel(true)
-                    updateNotification()
+                // Layar mati: jangan panggil root sama sekali, cukup cek ringan tiap 5 dtk.
+                if (!pm.isInteractive) { delay(5000); continue }
+                readBattery()
+                // Modul lama tanpa 'brief': jatuh ke status penuh (lebih berat).
+                val b = Alpha.brief()
+                if (b != null) {
+                    profile = b.first; gamePkg = b.second
+                } else {
+                    Alpha.status()?.let { s -> profile = s.profile; gamePkg = s.gamePkg }
                 }
-                delay(8000)
+                bubble?.text = profileShort(profile)
+                if (panel != null) showPanel(true)
+                updateNotification()
+                delay(if (gamePkg.isNotEmpty()) 15000L else 10000L)
             }
         }
     }
@@ -189,7 +199,23 @@ class BubbleService : Service() {
         return b.build()
     }
 
+    private var lastNotifKey = ""
+
+    // Baterai dan suhu dari broadcast sistem (sticky): tanpa root, tanpa fork.
+    private fun readBattery() {
+        val i = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return
+        val l = i.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val sc = i.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        if (l >= 0 && sc > 0) batt = l * 100 / sc
+        val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
+        if (t > 0) tempC = t / 10f
+    }
+
+    // Notifikasi hanya diperbarui kalau isinya berubah.
     private fun updateNotification() {
+        val key = "$profile|$batt|${tempC.toInt()}|$gamePkg"
+        if (key == lastNotifKey) return
+        lastNotifKey = key
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NID, buildNotification())
     }

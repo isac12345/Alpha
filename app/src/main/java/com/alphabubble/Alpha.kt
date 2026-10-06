@@ -34,6 +34,13 @@ object Alpha {
 
     private fun b(m: Map<String, String>, k: String) = m[k] == "1"
 
+    /** Ringan: hanya profil dan game aktif (satu pemanggilan su tanpa fork di sisi modul). */
+    suspend fun brief(): Pair<String, String>? {
+        val m = kv(ctl("brief", 8_000L).out)
+        val p = m["profile"] ?: return null
+        return Pair(p, m["game_pkg"].orEmpty())
+    }
+
     suspend fun status(): Status? {
         val r = ctl("status")
         val m = kv(r.out)

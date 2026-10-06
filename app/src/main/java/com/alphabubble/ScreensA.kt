@@ -81,7 +81,7 @@ fun DashScreen(vm: AppViewModel) {
             }
         }
     }
-    AlphaCard { ToggleRow("Tampilkan bubble", null, vm.bubbleOn) { vm.updateBubbleOn(it) } }
+    AlphaCard { ToggleRow("Tampilkan bubble", null, vm.bubbleOn) { vm.setBubbleOn(it) } }
 
     AlphaCard {
         Label("Current profile")

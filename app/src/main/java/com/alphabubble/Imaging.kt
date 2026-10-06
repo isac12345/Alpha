@@ -30,6 +30,13 @@ object Imaging {
         }
     }
 
-    fun decode(file: File): Bitmap? =
-        if (file.exists()) try { BitmapFactory.decodeFile(file.absolutePath) } catch (_: Throwable) { null } else null
+    /** rgb565 = setengah memori (cukup untuk background yang digelapkan). */
+    fun decode(file: File, rgb565: Boolean = false): Bitmap? {
+        if (!file.exists()) return null
+        return try {
+            val o = BitmapFactory.Options()
+            if (rgb565) o.inPreferredConfig = Bitmap.Config.RGB_565
+            BitmapFactory.decodeFile(file.absolutePath, o)
+        } catch (_: Throwable) { null }
+    }
 }

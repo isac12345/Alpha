@@ -2,7 +2,7 @@ name: Build Alpha Control + modul
 
 on:
   push:
-    branches: [ main, master, fusion-v2, release-v2 ]
+    branches: [ main, master, fusion-v2 ]
   workflow_dispatch:
 
 jobs:
@@ -16,18 +16,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: SDK 34 (SDK bawaan runner; setup-android@v3 gagal di repo ini)
-        run: |
-          set -e
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls "$ANDROID_SDK_ROOT/platforms" 2>/dev/null || true
-          if ! ls -d "$ANDROID_SDK_ROOT"/platforms/android-34 >/dev/null 2>&1; then
-            SDKM=$(ls "$ANDROID_SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
-            if [ -n "$SDKM" ]; then
-              yes | "$SDKM" --licenses >/dev/null 2>&1 || true
-              "$SDKM" "platforms;android-34" "build-tools;34.0.0" || echo "lanjut pakai SDK yang ada"
-            fi
-          fi
+      - uses: android-actions/setup-android@v3
 
       - uses: gradle/actions/setup-gradle@v4
         with:
