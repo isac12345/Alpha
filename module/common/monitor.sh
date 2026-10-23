@@ -98,6 +98,13 @@ else
 fi
 # Restore monitor.sh LOG_FILE (gameboost.sh redefines it).
 LOG_FILE="$_gb_monitor_save_log"
+# gamehooks.sh: prioritas proses, DND, refresh rate, render per game saat game aktif.
+# Library murni fungsi (prefix gh_ / _gh_), tidak menyentuh variabel monitor.
+if [ -f "$MODDIR/gamehooks.sh" ]; then
+    . "$MODDIR/gamehooks.sh" 2>/dev/null
+else
+    monitor_log "GAMEHOOK" "WARN: gamehooks.sh tidak ada, ekstra game dilewati"
+fi
 # CPU_POLICIES untuk gb_apply: service.sh tidak mengekspornya ke proses
 # ini; tanpa ini lantai CPU diam-diam skip (for kosong, tanpa log).
 # detected.conf murni assignment (dari detect.sh sendiri) jadi aman.
@@ -552,6 +559,9 @@ handle_foreground_event() {
     local game_promote=0
     local _mapped_prof=""
     _mapped_prof=$(get_game_profile "$handle_pkg")
+    if command -v gh_foreground >/dev/null 2>&1; then
+        gh_foreground "$handle_pkg" "$_mapped_prof"
+    fi
     if [ -n "$_mapped_prof" ] && [ "$_mapped_prof" != "performance" ] && [ "$handle_current" = "battery" ]; then
         game_promote=1
         handle_target="balanced"
@@ -940,6 +950,11 @@ log_game_snapshot() {
 check_gb_grace_period() {
     local now
     now=$(date +%s 2>/dev/null)
+
+    # Ekstra game (prioritas proses, DND, refresh rate): grace keluar game, ulang prioritas, bersih-bersih
+    if command -v gh_tick >/dev/null 2>&1; then
+        gh_tick
+    fi
     
     # Check pending restore
     if [ -f "$GB_PENDING_FILE" ]; then

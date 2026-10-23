@@ -15,6 +15,8 @@ data class Status(
     val battStatus: String = "",
     val gamePkg: String = "",
     val gameSecs: Long = 0L,
+    val hudPkg: String = "",
+    val rec: Boolean = false,
     val thermalWarmC: Int = 75,
     val ver: Int = 0,
 )

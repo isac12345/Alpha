@@ -70,10 +70,15 @@ class BubbleService : Service() {
     private var tempC = 0f
     private var batt = -1
     private var gamePkg = ""
+    private var hud: HudOverlay? = null
+    private var hudPkg = ""
+    private var recOn = false
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key != null && key.startsWith("bubble_") && key != "bubble_x" && key != "bubble_y") {
             handler.post { rebuild() }
+        } else if (key == "hud_on") {
+            handler.post { hud?.update(hudPkg, recOn) }
         }
     }
 
@@ -88,12 +93,16 @@ class BubbleService : Service() {
         if (Build.VERSION.SDK_INT >= 34) startForeground(NID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(NID, n)
         prefs.sp.registerOnSharedPreferenceChangeListener(prefListener)
+        hud = HudOverlay(this, prefs)
         rebuild()
         scope.launch {
             while (isActive) {
                 val s = Alpha.status()
                 if (s != null) {
                     profile = s.profile; tempC = s.tempC; batt = s.batt; gamePkg = s.gamePkg
+                    hudPkg = s.hudPkg.ifEmpty { s.gamePkg }
+                    recOn = s.rec
+                    hud?.update(hudPkg, recOn)
                     bubble?.text = profileShort(profile)
                     if (panel != null) showPanel(true)
                     updateNotification()
@@ -116,6 +125,8 @@ class BubbleService : Service() {
         handler.removeCallbacksAndMessages(null)
         removePanel()
         removeBubble()
+        hud?.release()
+        hud = null
         scope.cancel()
         super.onDestroy()
     }
@@ -212,7 +223,7 @@ class BubbleService : Service() {
         removePanel()
         removeBubble()
         updateNotification()
-        if (prefs.bubbleHidden || !Settings.canDrawOverlays(this)) return
+        if (prefs.bubbleHidden || !prefs.bubbleOn || !Settings.canDrawOverlays(this)) return
 
         val size = dp(prefs.bubbleSize)
         val shape = prefs.bubbleShape

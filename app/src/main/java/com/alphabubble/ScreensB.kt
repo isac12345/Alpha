@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -166,6 +167,30 @@ fun ToolsScreen(vm: AppViewModel) {
         ToggleRow("Boost penuh setelah dingin", null, vm.flag("GB_COOLDOWN_EXTREME")) { vm.setFlag("GB_COOLDOWN_EXTREME", it) }
         Divider()
         ToggleRow("Cpuset game dipersempit", null, !vm.flag("NO_CPUSET")) { vm.setFlag("NO_CPUSET", !it) }
+    }
+
+    AlphaCard {
+        Label("Game extras")
+        ToggleRow("Prioritas proses game", "nice, ionice, oom adj", !vm.flag("GAME_PRIO_OFF")) { vm.setFlag("GAME_PRIO_OFF", !it) }
+        Divider()
+        ToggleRow("DND otomatis saat game", "mode prioritas, dikembalikan saat keluar", vm.flag("GAME_DND_ON")) { vm.setFlag("GAME_DND_ON", it) }
+        Divider()
+        Label("Refresh rate saat game")
+        val hzKeys = listOf("off") + vm.refreshRates.map { it.toString() }
+        Seg(
+            hzKeys.map { if (it == "off") "OFF" else "${it}Hz" },
+            hzKeys.indexOf(vm.refreshHz).coerceAtLeast(0),
+            { vm.setRefreshHz(hzKeys[it]) },
+        )
+        txt("Dikunci ke angka itu selama game, lalu dikembalikan. Tidak semua ROM menurut.", 11.sp, muted())
+    }
+
+    AlphaCard {
+        Label("HUD & rekam layar")
+        ToggleRow("HUD FPS saat game", "FPS, GPU, CPU, suhu. Butuh izin overlay", vm.hudOn) { vm.updateHudOn(it) }
+        Spacer(Modifier.height(6.dp))
+        Pill(if (vm.recOn) "STOP REKAM" else "MULAI REKAM", { vm.toggleRec() }, solid = vm.recOn)
+        txt("Hasil di Movies/Alpha, tanpa audio. Tombol REC juga ada di HUD.", 11.sp, muted())
     }
 
     AlphaCard {

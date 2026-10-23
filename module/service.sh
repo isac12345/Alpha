@@ -191,6 +191,13 @@ echo "Applied: $APPLIED_COUNT | Skipped: $SKIPPED_COUNT | Failed: $FAILED_COUNT"
 echo "======================================" >> "$LOG_FILE"
 echo "[BOOT] tahap tuning selesai (applied=$APPLIED_COUNT skipped=$SKIPPED_COUNT failed=$FAILED_COUNT)" >> "$LOG_FILE"
 
+# 6.9 Sisa state ekstra game dari sesi sebelumnya (DND, refresh rate, render, rekaman) dibersihkan
+# saat boot supaya tidak ada pengaturan yang tertinggal kalau HP mati di tengah game.
+if [ -f "$MODDIR/common/gamehooks.sh" ]; then
+    ALPHA_STATE_DIR="$WORK_DIR" sh -c '. "$1/common/gamehooks.sh"; gh_recover' _ "$MODDIR" >/dev/null 2>&1
+fi
+rm -f "$WORK_DIR/.rec_pid" "$WORK_DIR/.rec_stop" "$WORK_DIR/.rec_file" "$WORK_DIR/.hud_layer" 2>/dev/null
+
 # 7. Start monitor once, without blocking late_start service
 MONITOR_PID_FILE="$WORK_DIR/monitor.pid"
 monitor_running=0

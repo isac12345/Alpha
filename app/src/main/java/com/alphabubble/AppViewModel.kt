@@ -115,6 +115,10 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var bubbleShape by mutableStateOf(prefs.bubbleShape)
     var bubbleOpacity by mutableStateOf(prefs.bubbleOpacity)
     var autostart by mutableStateOf(prefs.autostart)
+    var hudOn by mutableStateOf(prefs.hudOn)
+    var recOn by mutableStateOf(false)
+    var refreshRates by mutableStateOf<List<Int>>(emptyList())
+    var refreshHz by mutableStateOf("off")
 
     fun updateCardAlpha(v: Float) { cardAlpha = v; prefs.cardAlpha = v }
     fun updateFit(v: Int) { fit = v; prefs.fit = v }
@@ -126,6 +130,54 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun updateBubbleShape(v: Int) { bubbleShape = v; prefs.bubbleShape = v }
     fun updateBubbleOpacity(v: Int) { bubbleOpacity = v; prefs.bubbleOpacity = v }
     fun updateAutostart(v: Boolean) { autostart = v; prefs.autostart = v }
+
+    fun updateHudOn(on: Boolean) {
+        if (on && !Settings.canDrawOverlays(app)) {
+            askOverlay = true
+            toast("Izinkan 'tampil di atas app lain' dulu")
+            return
+        }
+        hudOn = on
+        prefs.hudOn = on
+        // HUD hidup di dalam BubbleService; pastikan service jalan
+        if (on) BubbleService.start(app)
+        else if (!prefs.bubbleOn) BubbleService.stop(app)
+    }
+
+    fun setRefreshHz(v: String) {
+        viewModelScope.launch {
+            val r = Alpha.setRefresh(v)
+            if (r.code == 0) {
+                refreshHz = v
+                toast(if (v == "off") "Refresh rate game: ikut sistem" else "Refresh rate game: $v Hz")
+            } else toast(r.out.lines().firstOrNull { it.isNotBlank() } ?: "Gagal")
+            refreshHz = Alpha.refreshGet()
+        }
+    }
+
+    fun toggleRec() {
+        viewModelScope.launch {
+            val r = if (recOn) Alpha.recStop() else Alpha.recStart()
+            toast(r.out.lines().firstOrNull { it.isNotBlank() } ?: "Gagal")
+            refreshStatus()
+            recOn = status.rec
+        }
+    }
+
+    fun launchGame(pkg: String) {
+        viewModelScope.launch {
+            val r = Alpha.launchGame(pkg)
+            toast(r.out.lines().firstOrNull { it.isNotBlank() } ?: "Gagal")
+        }
+    }
+
+    fun setGameRender(pkg: String, v: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            val r = Alpha.setGameRender(pkg, v)
+            if (r.code != 0) toast(r.out.lines().firstOrNull { it.isNotBlank() } ?: "Gagal")
+            onDone()
+        }
+    }
 
     fun updateBubbleOn(on: Boolean) {
         if (on) {
@@ -141,7 +193,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         } else {
             prefs.bubbleOn = false
             bubbleOn = false
-            BubbleService.stop(app)
+            // HUD hidup di service yang sama: jangan dimatikan kalau HUD masih dipakai
+            if (!prefs.hudOn) BubbleService.stop(app)
         }
     }
 
@@ -185,7 +238,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             if (modPath.isNotEmpty()) refreshAll()
         }
         loaded = true
-        if (prefs.bubbleOn && Settings.canDrawOverlays(app)) BubbleService.start(app)
+        if ((prefs.bubbleOn || prefs.hudOn) && Settings.canDrawOverlays(app)) BubbleService.start(app)
     }
 
     suspend fun refreshAll() {
@@ -197,6 +250,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         Alpha.health()?.let { health = it }
         device = Alpha.device()
         Alpha.render()?.let { render = it; renderChoice = it.current }
+        refreshRates = Alpha.refreshList()
+        refreshHz = Alpha.refreshGet()
+        recOn = status.rec
         refreshRes()
         loadRecentLog()
     }

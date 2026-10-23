@@ -20,6 +20,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -361,6 +362,21 @@ fun EditScreen(vm: AppViewModel) {
         Label("FPS target (opsional, mis. 30,60,90)")
         Field(fps, { fps = it.filter { c -> c.isDigit() || c == ',' } }, "30,60", numeric = false)
         Pill("SIMPAN", { vm.addGame(pkg, fps, PROFILE_KEYS[prof]) { vm.back() } }, solid = true)
+    }
+
+    val rKeys = listOf("default") + vm.render.available.filter { it != "default" }
+    var rend by remember(pkg) { mutableStateOf("default") }
+    LaunchedEffect(pkg) { rend = Alpha.gameRender(pkg) }
+    AlphaCard {
+        Label("Render khusus game")
+        Seg(
+            rKeys.map { if (it == "default") "GLOBAL" else it.uppercase() },
+            rKeys.indexOf(rend).coerceAtLeast(0),
+            { i -> rend = rKeys[i]; vm.setGameRender(pkg, rKeys[i]) },
+        )
+        txt("Berlaku hanya jika game dibuka lewat tombol di bawah. Game yang sedang jalan tidak berubah; tutup dulu.", 11.sp, muted())
+        Spacer(Modifier.height(6.dp))
+        Pill("LUNCURKAN", { vm.launchGame(pkg) })
     }
 }
 

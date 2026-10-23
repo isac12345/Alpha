@@ -17,6 +17,11 @@
 #   device                    isi detected.conf
 #   redetect                  deteksi ulang hardware
 #   render get | render set <default|skiagl|skiavk>
+#   gamerender get <pkg> | set <pkg> <default|skiagl|skiavk> | list    render per game
+#   game launch <pkg>         pasang render per game lalu buka game
+#   refresh list | get | set <off|Hz> | modes   refresh rate yang dikunci selama game (modes = "indeks_SF Hz")
+#   hud sample <pkg>          satu sampel metrik HUD (FPS, GPU, CPU, suhu)
+#   rec start|stop|status|list   rekam layar (screenrecord)
 #   autoctl start|stop|status daemon auto-profile
 #   log [N]                   N baris terakhir alpha.log
 #   modinfo                   module.prop
@@ -30,8 +35,10 @@ SYS_THERMAL="${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"
 SYS_POWER="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}"
 FASRS_NODE="${ALPHA_FASRS_MODE_NODE:-/dev/fas_rs/mode}"
 mkdir -p "$STATE_DIR" 2>/dev/null
+ALPHA_STATE_DIR="$STATE_DIR"
+[ -f "$COMMON/gamehooks.sh" ] && . "$COMMON/gamehooks.sh"
 
-FLAG_WHITELIST="GB_FASRS_FORCE_ALPHA GB_COOLDOWN_EXTREME NO_CPUSET THERMAL_GUARD_OFF BOOT_GUARD_OFF"
+FLAG_WHITELIST="GB_FASRS_FORCE_ALPHA GB_COOLDOWN_EXTREME NO_CPUSET THERMAL_GUARD_OFF BOOT_GUARD_OFF GAME_PRIO_OFF GAME_DND_ON"
 
 rd() { [ -r "$1" ] && tr -d '\r\n' < "$1" 2>/dev/null; }
 
@@ -131,6 +138,8 @@ cmd_status() {
         [ "$_gs" -ge 0 ] 2>/dev/null || _gs=0
     fi
     printf 'game_pkg=%s\ngame_secs=%s\n' "$_gp" "$_gs"
+    printf 'hud_pkg=%s\n' "$(rd "$STATE_DIR/.gh_active")"
+    pid_alive "$STATE_DIR/.rec_pid" screenrec.sh && echo rec=1 || echo rec=0
     printf 'thermal_warm_c=%s\n' "$(cmd_thermal_get)"
     printf 'ver=%s\n' "$(sed -n 's/^versionCode=//p' "$MODDIR/module.prop" 2>/dev/null | head -n 1)"
 }
@@ -230,7 +239,61 @@ cmd_game() {
             valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
             sh "$COMMON/game_add.sh" remove "$2"
             ;;
-        *) echo "Usage: game add <pkg> <fps_csv> <profile> | game remove <pkg>"; return 1 ;;
+        launch)
+            valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+            gh_launch "$2"
+            ;;
+        *) echo "Usage: game add <pkg> <fps_csv> <profile> | game remove <pkg> | game launch <pkg>"; return 1 ;;
+    esac
+}
+
+cmd_gamerender() {
+    case "$1" in
+        get)
+            valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+            _gr=$(gh_render_get "$2"); printf '%s\n' "${_gr:-default}"
+            ;;
+        set)
+            valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+            gh_render_set "$2" "$3"
+            ;;
+        list) gh_render_list ;;
+        *) echo "Usage: gamerender get <pkg> | set <pkg> <default|skiagl|skiavk> | list"; return 1 ;;
+    esac
+}
+
+cmd_refresh() {
+    case "$1" in
+        list) gh_refresh_list ;;
+        modes) gh_sf_modes ;;
+        get) conf_get GAME_REFRESH_HZ off; echo ;;
+        set)
+            case "$2" in
+                off) ;;
+                ''|*[!0-9]*) echo "ERROR: isi off atau angka Hz"; return 1 ;;
+                *)
+                    if [ "$2" -lt 30 ] || [ "$2" -gt 240 ]; then echo "ERROR: rentang 30-240 Hz"; return 1; fi
+                    _rl=$(gh_refresh_list)
+                    if [ -n "$_rl" ]; then
+                        case " $(echo $_rl) " in *" $2 "*) ;; *) echo "ERROR: layar ini tidak mendukung $2 Hz"; return 1 ;; esac
+                    fi
+                    ;;
+            esac
+            conf_set GAME_REFRESH_HZ "$2" || return 1
+            # game sedang jalan: terapkan langsung
+            if [ -f "$STATE_DIR/.gh_active" ]; then _gh_refresh_off; _gh_refresh_on; fi
+            ;;
+        *) echo "Usage: refresh list | get | set <off|Hz>"; return 1 ;;
+    esac
+}
+
+cmd_hud() {
+    case "$1" in
+        sample)
+            valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+            sh "$COMMON/hud_sample.sh" --once "$2"
+            ;;
+        *) echo "Usage: hud sample <pkg>"; return 1 ;;
     esac
 }
 
@@ -310,8 +373,12 @@ case "$1" in
     device) cmd_device ;;
     redetect) cmd_redetect ;;
     render) sh "$COMMON/render_manager.sh" "$2" "$3" ;;
+    gamerender) cmd_gamerender "$2" "$3" "$4" ;;
+    refresh) cmd_refresh "$2" "$3" ;;
+    hud) cmd_hud "$2" "$3" ;;
+    rec) sh "$COMMON/screenrec.sh" "$2" "$3" ;;
     autoctl) cmd_autoctl "$2" ;;
     log) cmd_log "$2" ;;
     modinfo) cat "$MODDIR/module.prop" ;;
-    *) sed -n '2,28p' "$0" ;;
+    *) sed -n '2,34p' "$0" ;;
 esac

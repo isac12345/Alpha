@@ -28,6 +28,15 @@ class Prefs(ctx: Context) {
     var bubbleY: Int
         get() = sp.getInt("bubble_y", 400)
         set(v) { sp.edit().putInt("bubble_y", v).apply() }
+    var hudOn: Boolean
+        get() = sp.getBoolean("hud_on", false)
+        set(v) { sp.edit().putBoolean("hud_on", v).apply() }
+    var hudX: Int
+        get() = sp.getInt("hud_x", 24)
+        set(v) { sp.edit().putInt("hud_x", v).apply() }
+    var hudY: Int
+        get() = sp.getInt("hud_y", 120)
+        set(v) { sp.edit().putInt("hud_y", v).apply() }
     var autostart: Boolean
         get() = sp.getBoolean("autostart", true)
         set(v) { sp.edit().putBoolean("autostart", v).apply() }

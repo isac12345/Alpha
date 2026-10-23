@@ -53,6 +53,8 @@ object Alpha {
             battStatus = m["batt_status"].orEmpty(),
             gamePkg = m["game_pkg"].orEmpty(),
             gameSecs = m["game_secs"]?.toLongOrNull() ?: 0L,
+            hudPkg = m["hud_pkg"].orEmpty(),
+            rec = b(m, "rec"),
             thermalWarmC = m["thermal_warm_c"]?.toIntOrNull() ?: 75,
             ver = m["ver"]?.toIntOrNull() ?: 0,
         )
@@ -91,6 +93,42 @@ object Alpha {
         if (profile !in PROFILE_KEYS) return Root.Res(1, "ERROR: profil tidak valid")
         return ctl("game add $pkg $f $profile", 60_000L)
     }
+
+    // ---- ekstra game (gamehooks.sh), HUD, rekam layar ----
+    private val RENDER_KEYS = setOf("default", "skiagl", "skiavk")
+
+    suspend fun gameRender(pkg: String): String {
+        if (!PKG_RE.matches(pkg)) return "default"
+        val v = ctl("gamerender get $pkg").out.trim()
+        return if (v in RENDER_KEYS) v else "default"
+    }
+
+    suspend fun setGameRender(pkg: String, v: String): Root.Res {
+        if (!PKG_RE.matches(pkg)) return Root.Res(1, "ERROR: package tidak valid")
+        if (v !in RENDER_KEYS) return Root.Res(1, "ERROR: backend tidak valid")
+        return ctl("gamerender set $pkg $v")
+    }
+
+    suspend fun launchGame(pkg: String): Root.Res {
+        if (!PKG_RE.matches(pkg)) return Root.Res(1, "ERROR: package tidak valid")
+        return ctl("game launch $pkg", 20_000L)
+    }
+
+    suspend fun refreshList(): List<Int> =
+        ctl("refresh list").out.lines().mapNotNull { it.trim().toIntOrNull() }.filter { it in 30..240 }
+
+    suspend fun refreshGet(): String {
+        val v = ctl("refresh get").out.trim()
+        return if (v == "off" || v.toIntOrNull() != null) v else "off"
+    }
+
+    suspend fun setRefresh(v: String): Root.Res {
+        if (v != "off" && v.toIntOrNull() == null) return Root.Res(1, "ERROR: nilai tidak valid")
+        return ctl("refresh set $v")
+    }
+
+    suspend fun recStart(): Root.Res = ctl("rec start", 15_000L)
+    suspend fun recStop(): Root.Res = ctl("rec stop", 30_000L)
 
     suspend fun removeGame(pkg: String): Root.Res {
         if (!PKG_RE.matches(pkg)) return Root.Res(1, "ERROR: package tidak valid")

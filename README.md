@@ -27,6 +27,11 @@ APK hanya remote. Semua logika di modul. APK memanggil `common/alphactl.sh` lewa
 | Dexopt (pilih mode) | `cmd package compile -m <speed-profile\|speed\|everything\|verify> -f <pkg>` atau `--reset` |
 | Tutup semua app | `am force-stop` daftar app; opsi app sistem hanya yang punya ikon launcher dan bukan layanan inti |
 | Battery Lab | sysfs `power_supply/battery/*` |
+| Prioritas proses game, DND otomatis | `common/gamehooks.sh` (di-source `monitor.sh`); flag `GAME_PRIO_OFF` (default aktif, flag = mati) dan `GAME_DND_ON` (default mati) |
+| Refresh rate saat game | `alphactl refresh list/get/set <off\|Hz>/modes`; conf `GAME_REFRESH_HZ`. Cara utama = `service call SurfaceFlinger 1035 i32 <indeks>` (sama dengan Rairin), dicek lewat mode aktif SF lalu dibatalkan bila salah; pelapis = `settings put system min/peak_refresh_rate`. Restore: SF -1, tendang 60Hz, nilai settings asli (termasuk `user_refresh_rate`). Indeks bisa dipaksa dengan conf `GAME_REFRESH_SF_IDX`; lihat tabel `alphactl refresh modes` ("indeks Hz") |
+| Render per game | `alphactl gamerender get/set/list`, file `game_render.conf`; dipasang lewat `alphactl game launch <pkg>` (tombol LUNCURKAN) |
+| HUD FPS / GPU / CPU / suhu | `common/hud_sample.sh --loop` dibaca `HudOverlay.kt` (hidup di `BubbleService`); pref `hud_on` |
+| Rekam layar | `alphactl rec start/stop/status/list` -> `screenrec.sh` (`screenrecord`, hasil `/sdcard/Movies/Alpha`) |
 
 ## Perubahan modul (v50 -> v51)
 - baru: `common/alphactl.sh`, `common/autoctl.sh`
@@ -34,13 +39,28 @@ APK hanya remote. Semua logika di modul. APK memanggil `common/alphactl.sh` lewa
 - `service.sh`: start `autoctl.sh` saat boot, sakelar `BOOT_GUARD_OFF`
 - `uninstall.sh`, `customize.sh`, `companion_install.sh`, `module.prop`: ikut versi 51
 
+## Perubahan (v51 -> v52)
+Terinspirasi perbandingan dengan modul lain; yang diambil hanya bagian yang aman di semua chipset.
+- baru: `common/gamehooks.sh`, `common/hud_sample.sh`, `common/screenrec.sh`; APK: `HudOverlay.kt`
+- `monitor.sh`: `gh_foreground` saat pindah foreground, `gh_tick` tiap siklus (grace keluar game 12 dtk, sama dengan game boost)
+- `service.sh` dan `uninstall.sh`: `gh_recover` membersihkan sisa DND / refresh rate / render
+- Prioritas game: `renice -10` proses utama, `-8` thread render (RenderThread, UnityMain, dst), `ionice -c2 -n0`, `oom_score_adj -300`.
+  Hanya diterapkan bila nice sekarang masih di atasnya, diulang tiap 45 dtk selama game.
+- DND: hanya bila DND belum menyala; hanya dimatikan bila masih mode yang dipasang modul.
+- Render per game memakai `debug.hwui.renderer`, yang cuma dibaca proses yang BARU dimulai. Karena itu hanya berlaku
+  bila game dibuka lewat tombol LUNCURKAN; game yang sedang jalan ditolak. Nilai asli dikembalikan saat game selesai
+  (atau 90 dtk setelah peluncuran bila game tidak pernah masuk foreground).
+- Refresh rate memakai backdoor SurfaceFlinger seperti Rairin (indeks mode dicari dari `dumpsys SurfaceFlinger`), bukan hanya `settings`.
+  Format dump beda antar versi Android dan belum dites di HP; kalau salah baca, set `GAME_REFRESH_SF_IDX` manual.
+- Sengaja TIDAK diambil: bypass charging, tombol Action / idle RAM / color boost, spoof device Zygisk, thermal relax.
+
 ## Build / ubah versi
 Naikkan `version.txt` (sumber tunggal), samakan `module.prop` versionCode dan `ALPHA_COMPANION_VER`
 di `module/common/companion_install.sh`. `tools/check_module.sh` memeriksa ketiganya.
 
 ## Yang belum terverifikasi
 Kode Kotlin ditulis tanpa Android SDK di sandbox, jadi belum pernah dikompilasi. Script modul sudah
-dites di sandbox (alphactl, autoctl). Jika build gagal, perbaiki error kompilasi dulu; logika sudah lengkap.
+dites di sandbox dengan stub (alphactl, autoctl, gamehooks, hud_sample, screenrec); belum dites di HP. Jika build gagal, perbaiki error kompilasi dulu; logika sudah lengkap.
 Tanda tangan APK: keystore dan password TIDAK disimpan di repo. CI membacanya dari GitHub Secrets
 `ALPHA_KEYSTORE_BASE64`, `ALPHA_STORE_PASSWORD`, `ALPHA_KEY_ALIAS`, `ALPHA_KEY_PASSWORD`; build gagal bila kosong.
 Kalau APK lama terpasang dengan tanda tangan berbeda, uninstall sekali sebelum memasang yang baru.
