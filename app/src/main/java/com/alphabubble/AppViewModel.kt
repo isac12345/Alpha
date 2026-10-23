@@ -144,7 +144,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         else if (!prefs.bubbleOn) BubbleService.stop(app)
     }
 
-    fun setRefreshHz(v: String) {
+    fun updateRefreshHz(v: String) {
         viewModelScope.launch {
             val r = Alpha.setRefresh(v)
             if (r.code == 0) {

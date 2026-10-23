@@ -180,7 +180,7 @@ fun ToolsScreen(vm: AppViewModel) {
         Seg(
             hzKeys.map { if (it == "off") "OFF" else "${it}Hz" },
             hzKeys.indexOf(vm.refreshHz).coerceAtLeast(0),
-            { vm.setRefreshHz(hzKeys[it]) },
+            { vm.updateRefreshHz(hzKeys[it]) },
         )
         txt("Dikunci ke angka itu selama game, lalu dikembalikan. Tidak semua ROM menurut.", 11.sp, muted())
     }
