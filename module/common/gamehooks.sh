@@ -313,6 +313,7 @@ _gh_render_restore() {
     _ghx=$(sed -n '1p' "$GH_REND_PREV" 2>/dev/null)
     rm -f "$GH_REND_PREV"
     _ghx=${_ghx%%|*}
+    [ -n "$_ghx" ] || return 0
     command -v setprop >/dev/null 2>&1 || return 0
     setprop debug.hwui.renderer "$_ghx" >/dev/null 2>&1
     _gh_log RESTORED "debug.hwui.renderer dikembalikan"
