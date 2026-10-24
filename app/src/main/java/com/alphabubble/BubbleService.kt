@@ -32,19 +32,15 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.math.abs
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 /**
- * Notifikasi ongoing (profil aktif) + satu overlay mengambang gabungan:
- * profil + (bila HUD aktif) FPS/GPU/CPU/suhu + tombol REC.
- * Tap: panel pilih profil. Tahan: sembunyikan (munculkan lagi lewat notifikasi).
+ * Notifikasi ongoing (profil aktif) + bubble mengambang.
+ * Tap bubble: panel pilih profil. Tahan: sembunyikan (munculkan lagi lewat notifikasi).
+ * Ukuran/bentuk/opacity dibaca dari Prefs dan berlaku langsung tanpa force stop.
  */
 class BubbleService : Service() {
     companion object {
@@ -67,34 +63,22 @@ class BubbleService : Service() {
     private lateinit var prefs: Prefs
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val handler = Handler(Looper.getMainLooper())
-    private var box: LinearLayout? = null
-    private var boxLp: WindowManager.LayoutParams? = null
+    private var bubble: TextView? = null
+    private var bubbleLp: WindowManager.LayoutParams? = null
     private var panel: LinearLayout? = null
     private var profile = "none"
     private var tempC = 0f
+    private var batt = -1
     private var gamePkg = ""
+    private var hud: HudOverlay? = null
     private var hudPkg = ""
     private var recOn = false
 
-    // --- HUD stream (dipindah dari HudOverlay) ---
-    private class Sample(val fps: Float?, val gpu: Int?, val cpu: Int?, val tempC: Float?)
-    private var fpsTv: TextView? = null
-    private var infoTv: TextView? = null
-    private var recTv: TextView? = null
-    private var game = ""
-    private var recording = false
-    private var streamJob: Job? = null
-    @Volatile private var proc: Process? = null
-    @Volatile private var prevTs = ""
-    @Volatile private var prevCpuTotal = 0L
-    @Volatile private var prevCpuIdle = 0L
-    private val pkgRe = Regex("^[A-Za-z0-9._]+\\.[A-Za-z0-9._]+$")
-
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key != null && (key.startsWith("bubble_") && key != "bubble_x" && key != "bubble_y")) {
+        if (key != null && key.startsWith("bubble_") && key != "bubble_x" && key != "bubble_y") {
             handler.post { rebuild() }
         } else if (key == "hud_on") {
-            handler.post { rebuild() }
+            handler.post { hud?.update(hudPkg, recOn) }
         }
     }
 
@@ -109,6 +93,7 @@ class BubbleService : Service() {
         if (Build.VERSION.SDK_INT >= 34) startForeground(NID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(NID, n)
         prefs.sp.registerOnSharedPreferenceChangeListener(prefListener)
+        hud = HudOverlay(this, prefs)
         rebuild()
         scope.launch {
             while (isActive) {
@@ -117,26 +102,8 @@ class BubbleService : Service() {
                     profile = s.profile; tempC = s.tempC; batt = s.batt; gamePkg = s.gamePkg
                     hudPkg = s.hudPkg.ifEmpty { s.gamePkg }
                     recOn = s.rec
-                    if (prefs.hudOn) recording = s.rec
-                    if (prefs.hudOn) {
-                        val want = hudPkg.isNotEmpty() && pkgRe.matches(hudPkg)
-                        if (want) {
-                            if (game != hudPkg || fpsTv == null) {
-                                stopStream()
-                                game = hudPkg
-                                startStream(hudPkg)
-                            }
-                        } else {
-                            stopStream()
-                            game = ""
-                        }
-                        updateRecLabel()
-                    } else {
-                        stopStream()
-                        game = ""
-                    }
-                    box?.let { /* noop: views already wired */ }
-                    bubbleText()?.text = profileShort(profile)
+                    hud?.update(hudPkg, recOn)
+                    bubble?.text = profileShort(profile)
                     if (panel != null) showPanel(true)
                     updateNotification()
                 }
@@ -144,8 +111,6 @@ class BubbleService : Service() {
             }
         }
     }
-
-    private var batt = -1
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -159,101 +124,138 @@ class BubbleService : Service() {
         prefs.sp.unregisterOnSharedPreferenceChangeListener(prefListener)
         handler.removeCallbacksAndMessages(null)
         removePanel()
-        removeBox()
+        removeBubble()
+        hud?.release()
+        hud = null
         scope.cancel()
         super.onDestroy()
     }
-
-    private fun bubbleText(): TextView? = box?.getChildAt(0) as? TextView
 
     // ---------- profil ----------
     private fun setProfile(p: String) {
         if (p !in PROFILE_KEYS) return
         profile = p
-        bubbleText()?.text = profileShort(p)
+        bubble?.text = profileShort(p)
         updateNotification()
         scope.launch {
             val r = Alpha.setProfile(p)
-            if (r.code != 0) toast(r.out.lines().firstOrNull { it.isNotBlank() } ?: "Gagal")
+            Toast.makeText(
+                this@BubbleService,
+                if (r.ok) "Profil ${profileLabel(p)}" else "Gagal ganti profil",
+                Toast.LENGTH_SHORT,
+            ).show()
+            Alpha.status()?.let { profile = it.profile; tempC = it.tempC; batt = it.batt; gamePkg = it.gamePkg }
+            bubble?.text = profileShort(profile)
+            updateNotification()
         }
     }
 
-    private fun profileShort(p: String): String = when (p) {
-        "battery" -> "BAT"; "balanced" -> "BAL"; "performance" -> "PERF"; else -> "—"
+    // ---------- notifikasi ----------
+    private fun createChannel() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val ch = NotificationChannel(CH, "Profil Alpha", NotificationManager.IMPORTANCE_LOW)
+        ch.setShowBadge(false)
+        nm.createNotificationChannel(ch)
     }
 
-    // ---------- rebuild ----------
-    private fun removeBox() {
-        stopStream()
-        box?.let { try { wm.removeView(it) } catch (_: Exception) { } }
-        box = null; boxLp = null
-        fpsTv = null; infoTv = null; recTv = null
+    private fun buildNotification(): Notification {
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val hidden = prefs.bubbleHidden
+        val content: PendingIntent = if (hidden) {
+            PendingIntent.getService(this, 90, Intent(this, BubbleService::class.java).setAction(ACT_SHOW), flags)
+        } else {
+            PendingIntent.getActivity(
+                this, 91,
+                Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                flags,
+            )
+        }
+        val line1 = buildString {
+            if (batt >= 0) append("Baterai $batt%")
+            if (tempC > 0f) { if (isNotEmpty()) append(" · "); append("suhu baterai %.0f°C".format(tempC)) }
+        }
+        val gameName = if (gamePkg.isNotEmpty()) {
+            try { packageManager.getApplicationLabel(packageManager.getApplicationInfo(gamePkg, 0)).toString() } catch (_: Exception) { gamePkg }
+        } else ""
+        val line2 = if (gameName.isNotEmpty()) "Game jalan: $gameName (profil game dipakai)" else ""
+        val text = if (hidden) "Bubble disembunyikan · ketuk untuk memunculkan" else line1.ifEmpty { "Alpha Fusion" }
+        val big = listOf(text, line2).filter { it.isNotEmpty() }.joinToString("\n")
+        val b = NotificationCompat.Builder(this, CH)
+            .setSmallIcon(R.drawable.ic_stat_alpha)
+            .setContentTitle("Profil aktif: ${profileLabel(profile)}")
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(big))
+            .setContentIntent(content)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+        PROFILE_KEYS.forEachIndexed { i, k ->
+            val pi = PendingIntent.getService(
+                this, 100 + i,
+                Intent(this, BubbleService::class.java).setAction(ACT_SET).putExtra(EXTRA_P, k),
+                flags,
+            )
+            b.addAction(0, (if (k == profile) "● " else "") + PROFILE_LABELS[i], pi)
+        }
+        return b.build()
+    }
+
+    private fun updateNotification() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(NID, buildNotification())
+    }
+
+    // ---------- bubble ----------
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+    private fun removeBubble() {
+        bubble?.let { try { wm.removeView(it) } catch (_: Exception) { } }
+        bubble = null
+        bubbleLp = null
+    }
+
+    private fun removePanel() {
+        panel?.let { try { wm.removeView(it) } catch (_: Exception) { } }
+        panel = null
     }
 
     private fun rebuild() {
-        if (prefs.bubbleHidden) { removeBox(); return }
-        removeBox()
-        val size = prefs.bubbleSize
+        removePanel()
+        removeBubble()
+        updateNotification()
+        if (prefs.bubbleHidden || !prefs.bubbleOn || !Settings.canDrawOverlays(this)) return
+
+        val size = dp(prefs.bubbleSize)
         val shape = prefs.bubbleShape
-        val w = (size * if (shape == 2) 0.78f else 1f).toInt()
+        val w = if (shape == 2) (size * 1.5f).toInt() else size
         val h = if (shape == 2) (size * 0.78f).toInt() else size
-        val hudOn = prefs.hudOn
 
         val bg = GradientDrawable().apply {
-            setColor(0xB3101214.toInt())
-            cornerRadius = dp(10).toFloat()
+            setColor(0xFFE8E6E1.toInt())
+            when (shape) {
+                0 -> this.shape = GradientDrawable.OVAL
+                1 -> { this.shape = GradientDrawable.RECTANGLE; cornerRadius = dp(10).toFloat() }
+                else -> { this.shape = GradientDrawable.RECTANGLE; cornerRadius = h.toFloat() }
+            }
         }
-        val b = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(9), dp(6), dp(9), dp(6))
+        val tv = TextView(this).apply {
+            text = profileShort(profile)
+            gravity = Gravity.CENTER
+            setTextColor(0xFF111111.toInt())
+            textSize = 11f
+            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
             background = bg
             alpha = prefs.bubbleOpacity / 100f
         }
-        val profileTv = TextView(this).apply {
-            text = profileShort(profile)
-            setTextColor(0xFFE8E6E1.toInt())
-            textSize = 14f
-            typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-            gravity = Gravity.CENTER
-        }
-        b.addView(profileTv, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-        if (hudOn) {
-            val fps = TextView(this).apply {
-                text = "-- FPS"
-                setTextColor(0xFFE8E6E1.toInt())
-                textSize = 16f
-                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-            }
-            val info = TextView(this).apply {
-                text = "GPU --  CPU --"
-                setTextColor(0xFFB9B7B0.toInt())
-                textSize = 10f
-                typeface = Typeface.MONOSPACE
-            }
-            val rec = TextView(this).apply {
-                textSize = 10f
-                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
-                setPadding(0, dp(4), 0, 0)
-                setOnClickListener { toggleRec() }
-            }
-            b.addView(fps, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-            b.addView(info, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-            b.addView(rec, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-            fpsTv = fps; infoTv = info; recTv = rec
-            updateRecLabel()
-        }
-
         val dm = resources.displayMetrics
         val p = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            w, h, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         )
         p.gravity = Gravity.TOP or Gravity.START
-        p.x = prefs.bubbleX.coerceIn(0, (dm.widthPixels - dp(40)).coerceAtLeast(0))
-        p.y = prefs.bubbleY.coerceIn(0, (dm.heightPixels - dp(40)).coerceAtLeast(0))
+        p.x = prefs.bubbleX.coerceIn(0, (dm.widthPixels - w).coerceAtLeast(0))
+        p.y = prefs.bubbleY.coerceIn(0, (dm.heightPixels - h).coerceAtLeast(0))
 
         val slop = ViewConfiguration.get(this).scaledTouchSlop
         var downX = 0f; var downY = 0f; var startX = 0; var startY = 0
@@ -265,7 +267,7 @@ class BubbleService : Service() {
                 Toast.makeText(this, "Bubble disembunyikan. Munculkan lagi lewat notifikasi.", Toast.LENGTH_LONG).show()
             }
         }
-        b.setOnTouchListener { v, e ->
+        tv.setOnTouchListener { v, e ->
             when (e.action) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = e.rawX; downY = e.rawY; startX = p.x; startY = p.y
@@ -290,30 +292,52 @@ class BubbleService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     handler.removeCallbacks(longRun)
-                    if (!moved && !longPressed) {
-                        if (panel == null) showPanel(false) else removePanel()
-                    }
-                    if (moved) { prefs.bubbleX = p.x; prefs.bubbleY = p.y }
+                    if (moved) snapToEdge(v, p, w, h)
+                    else if (!longPressed) { if (panel != null) removePanel() else showPanel(false) }
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(longRun)
                     true
                 }
                 else -> false
             }
         }
         try {
-            wm.addView(b, p)
-            box = b; boxLp = p
+            wm.addView(tv, p)
+            bubble = tv
+            bubbleLp = p
         } catch (_: Exception) {
-            box = null
+            bubble = null
         }
     }
 
-    // ---------- panel pilih profil ----------
+    private fun snapToEdge(v: View, p: WindowManager.LayoutParams, w: Int, h: Int) {
+        val dm = resources.displayMetrics
+        val target = if (p.x + w / 2 < dm.widthPixels / 2) 0 else (dm.widthPixels - w).coerceAtLeast(0)
+        p.y = p.y.coerceIn(0, (dm.heightPixels - h).coerceAtLeast(0))
+        val anim = ValueAnimator.ofInt(p.x, target)
+        anim.duration = 180
+        anim.addUpdateListener {
+            p.x = it.animatedValue as Int
+            if (v.isAttachedToWindow) try { wm.updateViewLayout(v, p) } catch (_: Exception) { }
+        }
+        anim.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                prefs.bubbleX = p.x
+                prefs.bubbleY = p.y
+            }
+        })
+        anim.start()
+    }
+
+    // ---------- panel pilih profil (vertikal, di samping bubble) ----------
     private fun showPanel(refresh: Boolean) {
-        val bp = boxLp ?: return
+        val bp = bubbleLp ?: return
         if (refresh) removePanel()
         if (panel != null) return
         val dm = resources.displayMetrics
-        val boxp = LinearLayout(this).apply {
+        val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(6), dp(6), dp(6), dp(6))
             background = GradientDrawable().apply {
@@ -336,9 +360,9 @@ class BubbleService : Service() {
                 }
                 setOnClickListener { setProfile(k); removePanel() }
             }
-            boxp.addView(item, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            box.addView(item, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
-        boxp.setOnTouchListener { _, e ->
+        box.setOnTouchListener { _, e ->
             if (e.action == MotionEvent.ACTION_OUTSIDE) { removePanel(); true } else false
         }
         val pw = dp(128)
@@ -354,151 +378,10 @@ class BubbleService : Service() {
         p.x = if (bp.x + bw / 2 < dm.widthPixels / 2) bp.x + bw + dp(8) else (bp.x - pw - dp(8)).coerceAtLeast(0)
         p.y = bp.y.coerceAtMost((dm.heightPixels - dp(150)).coerceAtLeast(0))
         try {
-            wm.addView(boxp, p)
-            panel = boxp
+            wm.addView(box, p)
+            panel = box
         } catch (_: Exception) {
             panel = null
         }
     }
-
-    private fun removePanel() {
-        panel?.let { try { wm.removeView(it) } catch (_: Exception) { } }
-        panel = null
-    }
-
-    private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val c = NotificationChannel(CH, "Alpha Fusion", NotificationManager.IMPORTANCE_LOW)
-            c.description = "Profil aktif"; c.setShowBadge(false)
-            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(c)
-        }
-    }
-
-    private fun buildNotification(): Notification {
-        val pi = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        return NotificationCompat.Builder(this, CH)
-            .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .setContentTitle("Alpha Fusion")
-            .setContentText("Profil: ${profileShort(profile)}")
-            .setContentIntent(pi)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
-    }
-
-    private fun updateNotification() {
-        (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(NID, buildNotification())
-    }
-
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
-    private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
-
-    // ---------- HUD stream (single overlay) ----------
-    private fun updateRecLabel() {
-        recTv?.apply {
-            text = if (recording) "■ STOP" else "● REC"
-            setTextColor(if (recording) 0xFFFF6B6B.toInt() else 0xFF8FD6B5.toInt())
-        }
-    }
-
-    private fun toggleRec() {
-        scope.launch {
-            val r = if (recording) Alpha.recStop() else Alpha.recStart()
-            val ok = r.out.startsWith("OK")
-            recording = if (recording) !ok else ok
-            updateRecLabel()
-            Toast.makeText(this@BubbleService, r.out.lines().firstOrNull { it.isNotBlank() } ?: "Gagal", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun render(s: Sample) {
-        fpsTv?.apply {
-            text = if (s.fps == null) "-- FPS" else "%.0f FPS".format(s.fps)
-            setTextColor(
-                when {
-                    s.fps == null -> 0xFFB9B7B0.toInt()
-                    s.fps >= 55f -> 0xFF8FD6B5.toInt()
-                    s.fps >= 30f -> 0xFFE8E6E1.toInt()
-                    else -> 0xFFEF9F27.toInt()
-                },
-            )
-        }
-        infoTv?.text = buildString {
-            append("GPU ").append(s.gpu?.let { "$it%" } ?: "--")
-            append("  CPU ").append(s.cpu?.let { "$it%" } ?: "--")
-            if (s.tempC != null && s.tempC > 0f) append("  ").append("%.0f°C".format(s.tempC))
-        }
-    }
-
-    private fun parse(lines: List<String>): Sample {
-        val m = HashMap<String, String>()
-        for (l in lines) {
-            val i = l.indexOf('=')
-            if (i > 0) m[l.substring(0, i)] = l.substring(i + 1).trim()
-        }
-        val ts = m["last_ts"].orEmpty()
-        val x10 = m["fps_x10"]?.toIntOrNull()
-        val fps: Float? = when {
-            x10 == null || ts.isEmpty() -> null
-            ts == prevTs -> 0f
-            else -> x10 / 10f
-        }
-        if (ts.isNotEmpty()) prevTs = ts
-        var cpu: Int? = null
-        val parts = m["cpu"].orEmpty().split(Regex("\\s+")).filter { it.isNotEmpty() }
-        if (parts.size >= 8 && parts[0] == "cpu") {
-            val v = parts.drop(1).take(8).map { it.toLongOrNull() ?: 0L }
-            val total = v.sum()
-            val idle = v[3] + v[4]
-            val dt = total - prevCpuTotal
-            val di = idle - prevCpuIdle
-            if (prevCpuTotal > 0L && dt > 0L) cpu = (((dt - di) * 100) / dt).toInt().coerceIn(0, 100)
-            prevCpuTotal = total
-            prevCpuIdle = idle
-        }
-        val gpu = m["gpu"]?.toIntOrNull()?.coerceIn(0, 100)
-        val soc = m["soc_mc"]?.toIntOrNull() ?: 0
-        val bat = m["temp_mc"]?.toIntOrNull() ?: 0
-        val t = (if (soc > 0) soc else bat) / 1000f
-        return Sample(fps, gpu, cpu, if (t > 0f) t else null)
-    }
-
-    private fun startStream(pkg: String) {
-        prevTs = ""; prevCpuTotal = 0L; prevCpuIdle = 0L
-        streamJob = scope.launch {
-            val mod = Root.modPath()
-            if (mod.isEmpty()) return@launch
-            withContext(Dispatchers.IO) {
-                var p: Process? = null
-                try {
-                    p = ProcessBuilder("su", "-c", "sh $mod/common/hud_sample.sh --loop $pkg")
-                        .redirectErrorStream(true).start()
-                    proc = p
-                    val br = BufferedReader(InputStreamReader(p.inputStream))
-                    val block = ArrayList<String>()
-                    while (true) {
-                        val line = br.readLine() ?: break
-                        if (line == "--") {
-                            val s = parse(block)
-                            block.clear()
-                            scope.launch { render(s) }
-                        } else if (block.size < 32) block.add(line)
-                    }
-                } catch (_: Exception) {
-                } finally {
-                    try { p?.destroyForcibly() } catch (_: Exception) { }
-                }
-            }
-        }
-    }
-
-    private fun stopStream() {
-        streamJob?.cancel()
-        streamJob = null
-        try { proc?.destroyForcibly() } catch (_: Exception) { }
-        proc = null
-        prevTs = ""; prevCpuTotal = 0L; prevCpuIdle = 0L
-    }
-
-        }
+}
