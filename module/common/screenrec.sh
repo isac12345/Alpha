@@ -101,7 +101,10 @@ rec_stop() {
     rec_sig 2
     rec_wait_exit 6
     if rec_alive; then rec_sig 1; rec_wait_exit 6; fi
-    if rec_alive; then kill "$(tr -d '[:space:]' < "$PID_FILE")" 2>/dev/null; fi
+    # SIGKILL ke anak screenrecord yang masih hidup (jangan yatim), tunggu 3 dtk
+    if rec_alive; then rec_sig 9; rec_wait_exit 6; fi
+    if rec_alive; then kill "$(tr -d '[:space:]' < "$PID_FILE")" 2>/dev/null; rec_wait_exit 6; fi
+    if rec_alive; then kill -9 "$(tr -d '[:space:]' < "$PID_FILE")" 2>/dev/null; rec_wait_exit 6; fi
     rm -f "$PID_FILE" "$STOP_FILE" "$CUR_FILE"
     echo "OK: rekaman berhenti, folder $OUT_DIR"
 }
