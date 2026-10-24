@@ -212,12 +212,13 @@ class HudOverlay(private val ctx: Context, private val prefs: Prefs) {
     private fun startStream(pkg: String) {
         prevTs = ""; prevCpuTotal = 0L; prevCpuIdle = 0L
         streamJob = scope.launch {
+            if (!pkg.matches(Regex("^[A-Za-z0-9._]+$"))) return@launch
             val mod = Root.modPath()
             if (mod.isEmpty()) return@launch
             withContext(Dispatchers.IO) {
                 var p: Process? = null
                 try {
-                    p = ProcessBuilder("su", "-c", "sh $mod/common/hud_sample.sh --loop $pkg")
+                    p = ProcessBuilder("su", "-c", "sh '$mod/common/hud_sample.sh' --loop '$pkg'")
                         .redirectErrorStream(true)
                         .start()
                     proc = p
