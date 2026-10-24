@@ -96,20 +96,43 @@ first_int() {
     printf '%s' "$_fi"
 }
 
+GPU_PATH=""
+gp_path() {
+    [ -n "$GPU_PATH" ] && [ -d "$GPU_PATH" ] && return 0
+    # node resmi dari deteksi Alpha (mis. /sys/class/devfreq/23100000.gpu)
+    GPU_PATH=$(sed -n 's/^GPU_DEVFREQ_PATH="\(.*\)"/\1/p' "$STATE_DIR/detected.conf" 2>/dev/null | head -n 1)
+    if [ -z "$GPU_PATH" ] || [ ! -d "$GPU_PATH" ]; then
+        for _gp_d in /sys/class/devfreq/*gpu* /sys/class/kgsl/kgsl-3d0; do
+            [ -d "$_gp_d" ] && { GPU_PATH="$_gp_d"; break; }
+        done
+    fi
+    [ -n "$GPU_PATH" ] && [ -d "$GPU_PATH" ]
+}
+
+gpu_freq_mhz() {
+    gp_path || return 1
+    _gf=$(first_int "$GPU_PATH/cur_freq") || _gf=$(first_int "$GPU_PATH/devfreq/cur_freq") || return 1
+    if [ "$_gf" -ge 10000000 ]; then _gf=$((_gf / 1000000))
+    elif [ "$_gf" -ge 10000 ]; then _gf=$((_gf / 1000)); fi
+    printf '%s' "$_gf"
+}
+
 gpu_load() {
-    _g_kg=/sys/class/kgsl/kgsl-3d0
+    _g_nodes="/sys/class/kgsl/kgsl-3d0/gpu_busy_percentage
+        /sys/class/kgsl/kgsl-3d0/devfreq/gpu_load /sys/kernel/gpu/gpu_busy
+        /sys/kernel/ged/hal/gpu_utilization /sys/kernel/debug/ged/hal/gpu_utilization
+        /sys/module/ged/parameters/gpu_loading /proc/mtk_mali/gpu_utilization
+        /sys/class/misc/mali0/device/utilization /sys/class/misc/mali0/device/gpu_utilization
+        /proc/mali/utilization"
+    gp_path && _g_nodes="$_g_nodes $GPU_PATH/load $GPU_PATH/utilization $GPU_PATH/gpu_load
+        $GPU_PATH/device/utilization $GPU_PATH/device/gpu_utilization"
+    for _g_n in $_g_nodes /sys/class/devfreq/*gpu*/load /sys/class/devfreq/*gpu*/utilisation \
+        /sys/class/devfreq/*mali*/load; do
+        _g_v=$(first_int "$_g_n") && { printf '%s' "$_g_v"; return 0; }
+    done
     # Adreno: gpubusy = "busy total" (selisih interval), lainnya persen langsung
-    for _g_n in "$_g_kg/gpu_busy_percentage" "$_g_kg/devfreq/gpu_load" "/sys/kernel/gpu/gpu_busy" \
-        /sys/kernel/ged/hal/gpu_utilization /sys/kernel/debug/ged/hal/gpu_utilization \
-        /sys/module/ged/parameters/gpu_loading /proc/mtk_mali/gpu_utilization; do
-        _g_v=$(first_int "$_g_n") && { printf '%s' "$_g_v"; return 0; }
-    done
-    for _g_n in /sys/class/devfreq/*gpu*/load /sys/class/devfreq/*gpu*/utilisation \
-        /sys/class/devfreq/*gpu*/mali_ondemand/utilisation /sys/class/devfreq/*mali*/load; do
-        _g_v=$(first_int "$_g_n") && { printf '%s' "$_g_v"; return 0; }
-    done
-    if [ -r "$_g_kg/gpubusy" ]; then
-        read -r _g_b _g_t < "$_g_kg/gpubusy" 2>/dev/null
+    if [ -r /sys/class/kgsl/kgsl-3d0/gpubusy ]; then
+        read -r _g_b _g_t < /sys/class/kgsl/kgsl-3d0/gpubusy 2>/dev/null
         case "$_g_b$_g_t" in ''|*[!0-9]*) ;; *)
             [ "$_g_t" -gt 0 ] && { printf '%s' $((_g_b * 100 / _g_t)); return 0; }
         ;; esac
@@ -186,7 +209,8 @@ sample() {
     fi
     set -- $_s_fps
     printf 'fps_x10=%s\nlast_ts=%s\n' "${1:-}" "${2:-}"
-    printf 'gpu=%s\n' "$(gpu_load)"
+    printf 'gpu=%s\n' "$(gpu_load || printf '%s' '--')"
+    printf 'gpu_freq=%s\n' "$(gpu_freq_mhz || printf '%s' '--')"
     read -r _s_cpu < /proc/stat 2>/dev/null
     printf 'cpu=%s\n' "$_s_cpu"
     printf 'temp_mc=%s\nsoc_mc=%s\n' "$(batt_temp_mc)" "$(soc_temp_mc)"
