@@ -74,7 +74,15 @@ rec_start() {
 }
 
 rec_sig() {
-    for _p in $(pidof screenrecord 2>/dev/null); do kill "-$1" "$_p" 2>/dev/null; done
+    # Hanya anak screenrecord milik loop ini (PPID = PID di PID_FILE), bukan
+    # semua screenrecord di perangkat (pidof global).
+    _rs_loop=$(tr -d '[:space:]' < "$PID_FILE" 2>/dev/null)
+    [ -n "$_rs_loop" ] || return 0
+    for _p in $(pidof screenrecord 2>/dev/null); do
+        _rs_ppid=$(sed 's/^.*) //' "/proc/$_p/stat" 2>/dev/null | cut -d' ' -f2)
+        [ "$_rs_ppid" = "$_rs_loop" ] || continue
+        kill "-$1" "$_p" 2>/dev/null
+    done
 }
 
 rec_wait_exit() {
