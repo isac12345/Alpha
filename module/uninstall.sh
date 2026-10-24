@@ -37,6 +37,7 @@ fi
 [ -f "$_alpha_mod_u/common/screenrec.sh" ] && ALPHA_STATE_DIR="$WORK_DIR" sh "$_alpha_mod_u/common/screenrec.sh" stop >/dev/null 2>&1
 unset _alpha_mod_u
 rm -f "$WORK_DIR/monitor.pid" "$WORK_DIR/watchdog.pid" "$WORK_DIR/autoctl.pid" 2>/dev/null
+rm -f "$WORK_DIR"/.gh_* "$WORK_DIR"/.rec_* "$WORK_DIR/.hud_layer" 2>/dev/null
 echo "[UNINSTALL] pid files removed"
 
 # modul31: kembalikan nilai native (best-effort, tanpa gagal).
