@@ -500,5 +500,3 @@ class BubbleService : Service() {
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 }
-EOF
-echo "written"; wc -l app/src/main/java/com/alphabubble/BubbleService.kt
