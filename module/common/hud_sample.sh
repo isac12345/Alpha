@@ -19,6 +19,27 @@ SYS_THERMAL="${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"
 SYS_POWER="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}"
 INT64_MAX=9223372036854775807
 
+# FPS cara Smollming: counter SurfaceFlinger 1013 (selisih per detik), fallback
+# ke latency per layer kalau counter gagal/diam 3x berturut-turut.
+CNT_PREV=""
+CNT_FAIL=0
+ZERO_RUN=0
+
+# Hasil lewat variabel SC_RES (bukan stdout): state counter harus hidup di
+# proses loop, sedangkan $(...) berjalan di subshell dan membuang state.
+sf_counter() {
+    SC_RES=""
+    _sc_g=""
+    _sc_out=$(service call SurfaceFlinger 1013 2>/dev/null)
+    [ -n "$_sc_out" ] && _sc_g=$(printf '%s' "$_sc_out" | sed -n 's/.*Parcel([[:space:]]*\([0-9a-fA-F]\{8\}\)[[:space:]]\+\([0-9a-fA-F]\{8\}\).*/\1 \2/p')
+    set -- $_sc_g
+    [ "$1" = "00000000" ] || { CNT_FAIL=$((CNT_FAIL + 1)); return 1; }
+    _sc_c=$((0x$2)); CNT_FAIL=0
+    _sc_p=$CNT_PREV; CNT_PREV=$_sc_c
+    [ -n "$_sc_p" ] && [ "$_sc_c" -ge "$_sc_p" ] || return 1
+    SC_RES="$(( (_sc_c - _sc_p) * 10 )) $_sc_c"
+}
+
 find_layer() {
     _fl_list=$(dumpsys SurfaceFlinger --list 2>/dev/null)
     _fl=""
@@ -62,7 +83,8 @@ EOF
     if [ "$_lf_n" -gt 1 ] && [ "$_lf_max" -gt "$_lf_min" ]; then
         printf '%s %s' $(( (_lf_n - 1) * 10000000000 / (_lf_max - _lf_min) )) "$_lf_max"
     else
-        printf '0 %s' "$_lf_max"
+        # bukan 0: data kurang = tidak tahu (HUD tampil "--", seperti Smollming)
+        return 1
     fi
 }
 
@@ -114,26 +136,55 @@ batt_temp_mc() {
     case "$_bt" in ''|*[!0-9-]*) printf '0' ;; *) printf '%s' $((_bt * 100)) ;; esac
 }
 
-sample() {
-    _s_pkg="$1"
-    _s_layer=""
-    _s_res=""
-    if [ -n "$_s_pkg" ] && command -v dumpsys >/dev/null 2>&1; then
-        if [ -f "$LAYER_CACHE" ]; then
-            IFS='|' read -r _s_cp _s_cl < "$LAYER_CACHE"
-            [ "$_s_cp" = "$_s_pkg" ] && _s_layer="$_s_cl"
-        fi
-        [ -n "$_s_layer" ] && _s_res=$(latency_fps "$_s_layer")
-        if [ -z "$_s_res" ]; then
-            # layer basi (game restart ganti nomor layer) atau belum pernah dicari
-            _s_layer=$(find_layer "$_s_pkg")
-            if [ -n "$_s_layer" ]; then
-                printf '%s|%s\n' "$_s_pkg" "$_s_layer" > "$LAYER_CACHE" 2>/dev/null
-                _s_res=$(latency_fps "$_s_layer")
-            fi
+fps_layer() {
+    _fl_pkg="$1"
+    _fl_layer="" _fl_res=""
+    command -v dumpsys >/dev/null 2>&1 || return 1
+    if [ -f "$LAYER_CACHE" ]; then
+        IFS='|' read -r _fl_cp _fl_cl < "$LAYER_CACHE"
+        [ "$_fl_cp" = "$_fl_pkg" ] && _fl_layer="$_fl_cl"
+    fi
+    [ -n "$_fl_layer" ] && _fl_res=$(latency_fps "$_fl_layer")
+    if [ -z "$_fl_res" ]; then
+        # layer basi (game restart ganti nomor layer) atau belum pernah dicari
+        _fl_layer=$(find_layer "$_fl_pkg")
+        if [ -n "$_fl_layer" ]; then
+            printf '%s|%s\n' "$_fl_pkg" "$_fl_layer" > "$LAYER_CACHE" 2>/dev/null
+            _fl_res=$(latency_fps "$_fl_layer")
         fi
     fi
-    set -- $_s_res
+    [ -n "$_fl_res" ] || return 1
+    printf '%s' "$_fl_res"
+}
+
+sample() {
+    _s_pkg="$1"
+    _s_fps=""
+    if [ -n "$_s_pkg" ]; then
+        if [ "$CNT_FAIL" -lt 3 ]; then
+            sf_counter; _s_cnt=$SC_RES
+            case "$_s_cnt" in
+                "") [ "$CNT_FAIL" -ge 3 ] && _s_fps=$(fps_layer "$_s_pkg") ;;
+                "0 "*)
+                    ZERO_RUN=$((ZERO_RUN + 1))
+                    if [ "$ZERO_RUN" -ge 3 ]; then
+                        _s_fps=$(fps_layer "$_s_pkg")
+                        case "$_s_fps" in
+                            [1-9]*) CNT_FAIL=3 ;;
+                            *) _s_fps=$_s_cnt ;;
+                        esac
+                        ZERO_RUN=0
+                    else
+                        _s_fps=$_s_cnt
+                    fi
+                    ;;
+                *) ZERO_RUN=0; _s_fps=$_s_cnt ;;
+            esac
+        else
+            _s_fps=$(fps_layer "$_s_pkg")
+        fi
+    fi
+    set -- $_s_fps
     printf 'fps_x10=%s\nlast_ts=%s\n' "${1:-}" "${2:-}"
     printf 'gpu=%s\n' "$(gpu_load)"
     read -r _s_cpu < /proc/stat 2>/dev/null
