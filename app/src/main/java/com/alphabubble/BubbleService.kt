@@ -32,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -499,14 +500,4 @@ class BubbleService : Service() {
         prevTs = ""; prevCpuTotal = 0L; prevCpuIdle = 0L
     }
 
-    private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
-    private fun updateRecLabel() {
-        recTv?.apply {
-            text = if (recording) "■ STOP" else "● REC"
-            setTextColor(if (recording) 0xFFFF6B6B.toInt() else 0xFF8FD6B5.toInt())
         }
-    }
-
-    private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
-}
