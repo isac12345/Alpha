@@ -232,7 +232,9 @@ class HudOverlay(private val ctx: Context, private val prefs: Prefs) {
                             scope.launch { render(s) }
                         } else if (block.size < 32) block.add(line)
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.e("HudOverlay", "stream gagal: ${e.message}")
+                    scope.launch(Dispatchers.Main) { fpsTv?.text = "su ditolak" }
                 } finally {
                     try { p?.destroyForcibly() } catch (_: Exception) { }
                 }
