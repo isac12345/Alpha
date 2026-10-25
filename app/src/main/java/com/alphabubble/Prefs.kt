@@ -67,4 +67,54 @@ class Prefs(ctx: Context) {
     var permAsked: Boolean
         get() = sp.getBoolean("perm_asked", false)
         set(v) { sp.edit().putBoolean("perm_asked", v).apply() }
+
+    // ---------- floating overlay (tahap 2) ----------
+    var flScale: Int
+        get() = sp.getInt("fl_scale", 100).coerceIn(70, 140)
+        set(v) { sp.edit().putInt("fl_scale", v.coerceIn(70, 140)).apply() }
+    var flAlpha: Int
+        get() = sp.getInt("fl_alpha", 88).coerceIn(40, 100)
+        set(v) { sp.edit().putInt("fl_alpha", v.coerceIn(40, 100)).apply() }
+    var flStartThin: Boolean
+        get() = sp.getBoolean("fl_start_thin", false)
+        set(v) { sp.edit().putBoolean("fl_start_thin", v).apply() }
+    var flMFps: Boolean
+        get() = sp.getBoolean("fl_m_fps", true)
+        set(v) { sp.edit().putBoolean("fl_m_fps", v).apply() }
+    var flMCpu: Boolean
+        get() = sp.getBoolean("fl_m_cpu", true)
+        set(v) { sp.edit().putBoolean("fl_m_cpu", v).apply() }
+    var flMGpu: Boolean
+        get() = sp.getBoolean("fl_m_gpu", true)
+        set(v) { sp.edit().putBoolean("fl_m_gpu", v).apply() }
+    var flMRam: Boolean
+        get() = sp.getBoolean("fl_m_ram", true)
+        set(v) { sp.edit().putBoolean("fl_m_ram", v).apply() }
+    var flMTemp: Boolean
+        get() = sp.getBoolean("fl_m_temp", true)
+        set(v) { sp.edit().putBoolean("fl_m_temp", v).apply() }
+    var flGraph: Boolean
+        get() = sp.getBoolean("fl_graph", true)
+        set(v) { sp.edit().putBoolean("fl_graph", v).apply() }
+    var flAccentFixed: Boolean
+        get() = sp.getBoolean("fl_accent_fixed", false)
+        set(v) { sp.edit().putBoolean("fl_accent_fixed", v).apply() }
+    var flAccentColor: Int
+        get() = sp.getInt("fl_accent_color", 0xFFF5A524.toInt())
+        set(v) { sp.edit().putInt("fl_accent_color", v).apply() }
+    var flXp: Int
+        get() = sp.getInt("fl_x_p", 24)
+        set(v) { sp.edit().putInt("fl_x_p", v).apply() }
+    var flYp: Int
+        get() = sp.getInt("fl_y_p", 20)
+        set(v) { sp.edit().putInt("fl_y_p", v).apply() }
+    var flXl: Int
+        get() = sp.getInt("fl_x_l", 24)
+        set(v) { sp.edit().putInt("fl_x_l", v).apply() }
+    var flYl: Int
+        get() = sp.getInt("fl_y_l", 20)
+        set(v) { sp.edit().putInt("fl_y_l", v).apply() }
+    var flPosVer: Int
+        get() = sp.getInt("fl_pos_ver", 0)
+        set(v) { sp.edit().putInt("fl_pos_ver", v).apply() }
 }

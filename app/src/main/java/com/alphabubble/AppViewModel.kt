@@ -30,6 +30,10 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     @Suppress("DEPRECATION")
     val appVer: Int = try { pm.getPackageInfo(app.packageName, 0).versionCode } catch (_: Exception) { 0 }
 
+    // ---------- floating overlay ----------
+    var flVer by mutableStateOf(0)
+    fun flChanged() { flVer++ }
+
     // ---------- navigasi ----------
     var route by mutableStateOf("dash")
     var editPkg by mutableStateOf("")
