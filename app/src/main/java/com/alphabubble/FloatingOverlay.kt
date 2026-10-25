@@ -310,7 +310,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             am.getMemoryInfo(mi)
             if (mi.totalMem > 0) {
                 val used = ((mi.totalMem - mi.availMem) * 10 / 1_073_741_824L).toInt()
-                if (lastInt[2] != used) metric(2, used, used / 10 + "." + (used % 10) + "G", (mi.totalMem - mi.availMem).toFloat() / mi.totalMem.toFloat())
+                if (lastInt[2] != used) metric(2, used, (used / 10).toString() + "." + (used % 10) + "G", (mi.totalMem - mi.availMem).toFloat() / mi.totalMem.toFloat())
             }
         }
         val tempV = s.tempC
