@@ -115,9 +115,6 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     init { reloadImages(true, true) }
     var bubbleOn by mutableStateOf(prefs.bubbleOn)
-    var bubbleSize by mutableStateOf(prefs.bubbleSize)
-    var bubbleShape by mutableStateOf(prefs.bubbleShape)
-    var bubbleOpacity by mutableStateOf(prefs.bubbleOpacity)
     var autostart by mutableStateOf(prefs.autostart)
     var hudOn by mutableStateOf(prefs.hudOn)
     var recOn by mutableStateOf(false)
@@ -130,9 +127,6 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun updateBlur(v: Int) { blur = v; prefs.blur = v }
     fun updateContrast(v: Int) { contrast = v; prefs.contrast = v }
     fun updateSaver(v: Boolean) { saver = v; prefs.saver = v }
-    fun updateBubbleSize(v: Int) { bubbleSize = v; prefs.bubbleSize = v }
-    fun updateBubbleShape(v: Int) { bubbleShape = v; prefs.bubbleShape = v }
-    fun updateBubbleOpacity(v: Int) { bubbleOpacity = v; prefs.bubbleOpacity = v }
     fun updateAutostart(v: Boolean) { autostart = v; prefs.autostart = v }
 
     fun updateHudOn(on: Boolean) {
