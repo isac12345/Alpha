@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +48,7 @@ fun relTime(ms: Long?): String {
 fun CustomScreen(vm: AppViewModel) {
     AlphaCard {
         Pill("BACKGROUND & BANNER  ›", { vm.go("bgbanner") }, modifier = Modifier.padding(top = 0.dp))
-        Pill("FLOATING BUBBLE  ›", { vm.go("bubble") })
+        Pill("FLOATING OVERLAY  ›", { vm.go("bubble") })
         Pill("TEMA WARNA  ›", { vm.go("theme") })
     }
 }
@@ -76,12 +77,68 @@ fun BgBannerScreen(vm: AppViewModel) {
 @Composable
 fun BubbleScreen(vm: AppViewModel) {
     BackBtn { vm.back() }
+    key(vm.flVer) { FloatingSettings(vm) }
+}
+
+@Composable
+private fun FloatingSettings(vm: AppViewModel) {
+    val p = vm.prefs
+    val setMetric: (Int, Boolean) -> Unit = { i, on ->
+        when (i) {
+            0 -> p.flMCpu = on
+            1 -> p.flMGpu = on
+            2 -> p.flMRam = on
+            else -> p.flMTemp = on
+        }
+        if (!p.flMFps && !p.flMCpu && !p.flMGpu && !p.flMRam && !p.flMTemp) {
+            when (i) {
+                0 -> p.flMCpu = true
+                1 -> p.flMGpu = true
+                2 -> p.flMRam = true
+                else -> p.flMTemp = true
+            }
+            vm.msg = "Minimal FPS atau satu metrik harus aktif"
+        }
+        vm.flChanged()
+    }
     AlphaCard {
-        Label("Floating bubble")
-        SliderRow("Ukuran", vm.bubbleSize.toFloat(), 36f..80f, "${vm.bubbleSize} dp", { vm.updateBubbleSize(it.toInt()) })
-        SliderRow("Opacity", vm.bubbleOpacity.toFloat(), 30f..100f, "${vm.bubbleOpacity}%", { vm.updateBubbleOpacity(it.toInt()) })
-        Label("Bentuk", Modifier.padding(top = 10.dp))
-        Seg(listOf("BULAT", "KOTAK", "PIL"), vm.bubbleShape, { vm.updateBubbleShape(it) })
+        Label("Floating overlay")
+        txt("Perubahan langsung terlihat di floating.", 11.sp, muted())
+        SliderRow("Ukuran", p.flScale.toFloat(), 70f..140f, "${p.flScale}%", { p.flScale = it.toInt(); vm.flChanged() })
+        SliderRow("Transparansi", p.flAlpha.toFloat(), 40f..100f, "${p.flAlpha}%", { p.flAlpha = it.toInt(); vm.flChanged() })
+        Label("Tampilan awal", Modifier.padding(top = 10.dp))
+        Seg(listOf("RINGKAS", "BAR TIPIS"), if (p.flStartThin) 1 else 0, { p.flStartThin = it == 1; vm.flChanged() })
+    }
+    AlphaCard {
+        Label("Metrik yang ditampilkan")
+        ToggleRow("FPS", null, p.flMFps) { p.flMFps = it; vm.flChanged() }
+        ToggleRow("CPU", null, p.flMCpu) { setMetric(0, it) }
+        ToggleRow("GPU", null, p.flMGpu) { setMetric(1, it) }
+        ToggleRow("RAM", null, p.flMRam) { setMetric(2, it) }
+        ToggleRow("Suhu", null, p.flMTemp) { setMetric(3, it) }
+        ToggleRow("Grafik FPS", null, p.flGraph) { p.flGraph = it; vm.flChanged() }
+    }
+    AlphaCard {
+        Label("Warna aksen")
+        Seg(listOf("IKUT PROFIL", "TETAP"), if (p.flAccentFixed) 1 else 0, { p.flAccentFixed = it == 1; vm.flChanged() })
+        if (p.flAccentFixed) {
+            val swatches = listOf(0xFFF5A524.toInt(), 0xFF60A5FA.toInt(), 0xFF34D399.toInt(), 0xFFE5484D.toInt())
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                swatches.forEach { c ->
+                    val on = p.flAccentColor == c
+                    Box(
+                        Modifier.size(36.dp).clip(CircleShape).background(Color(c))
+                            .border(BorderStroke(2.dp, if (on) Color.White else Color.Transparent), CircleShape)
+                            .clickable { p.flAccentColor = c; vm.flChanged() },
+                    )
+                }
+            }
+        }
+        Pill("RESET POSISI", {
+            p.flXp = 24; p.flYp = 20; p.flXl = 24; p.flYl = 20
+            p.flPosVer = p.flPosVer + 1
+            vm.flChanged()
+        }, modifier = Modifier.padding(top = 12.dp))
     }
 }
 
