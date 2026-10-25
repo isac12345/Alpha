@@ -89,7 +89,7 @@ class BubbleService : Service() {
                     hudPkg = s.hudPkg.ifEmpty { s.gamePkg }
                     recOn = s.rec
                     floating?.setProfileState(profile, recOn)
-                    if (prefs.bubbleHidden || !prefs.bubbleOn || !Settings.canDrawOverlays(this@BubbleService)) {
+                    if (prefs.bubbleHidden || (!prefs.bubbleOn && !prefs.hudOn) || !Settings.canDrawOverlays(this@BubbleService)) {
                         floating?.detach()
                     } else {
                         floating?.setGame(hudPkg)
@@ -123,7 +123,7 @@ class BubbleService : Service() {
 
     private fun rebuild() {
         updateNotification()
-        if (prefs.bubbleHidden || !prefs.bubbleOn || !Settings.canDrawOverlays(this)) {
+        if (prefs.bubbleHidden || (!prefs.bubbleOn && !prefs.hudOn) || !Settings.canDrawOverlays(this)) {
             floating?.detach()
             return
         }
