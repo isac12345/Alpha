@@ -214,7 +214,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
     private class Sample(val fps: Float?, val gpu: Int?, val cpu: Int?, val tempC: Float?)
 
-    private fun loop(pkg: String) {
+    private suspend fun loop(pkg: String) {
         try {
             val mod = Root.modPath()
             if (mod.isEmpty()) return
@@ -310,7 +310,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             am.getMemoryInfo(mi)
             if (mi.totalMem > 0) {
                 val used = ((mi.totalMem - mi.availMem) * 10 / 1_073_741_824L).toInt()
-                if (lastInt[2] != used) metric(2, used, used / 10 + "." + (used % 10) + "G", (mi.totalMem - mi.availMem).toFloat() / mi.totalMem)
+                if (lastInt[2] != used) metric(2, used, used / 10 + "." + (used % 10) + "G", (mi.totalMem - mi.availMem).toFloat() / mi.totalMem.toFloat())
             }
         }
         val tempV = s.tempC
