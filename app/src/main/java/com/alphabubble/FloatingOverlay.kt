@@ -92,6 +92,8 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private var fpsBig: TextView? = null
     private var fpsThin: TextView? = null
     private var fpsPillLbl: TextView? = null
+    private var modePillTxt: TextView? = null
+    private var idleRun = 0
     private var fpsBigLbl: TextView? = null
     private var fpsThinLbl: TextView? = null
     private val valViews = arrayOfNulls<TextView>(4)
@@ -173,6 +175,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         fpsBig = null
         fpsThin = null
         fpsPillLbl = null
+        modePillTxt = null
         fpsBigLbl = null
         fpsThinLbl = null
         panelBox = null
@@ -195,6 +198,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             for (r in rings) { r.accent = acc; r.invalidate() }
             paintSeg()
             applyRec()
+            setText(modePillTxt, modeName())
         }
         if (recOn) tickTimer()
     }
@@ -334,6 +338,12 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             s.fps == null -> "--"
             else -> s.fps.toInt().toString()
         }
+        // Layar diam (tidak ada frame baru) memang 0 FPS; 3 detik berturut-turut ditandai IDLE supaya tidak dikira error.
+        idleRun = if (s.fps != null && s.fps < 0.5f) idleRun + 1 else 0
+        val lbl = if (idleRun >= 3) "IDLE" else "FPS"
+        setText(fpsPillLbl, lbl)
+        setText(fpsThinLbl, lbl)
+        setText(fpsBigLbl, lbl)
         if (fpsText != null) {
             setText(fpsPill, fpsText)
             setText(fpsThin, fpsText)
@@ -660,7 +670,17 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         val l1 = fpsLabel(11f, 0.08f)
         fpsPillLbl = l1
         row.addView(l1, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = px(5) })
+        // FPS dimatikan: pil hanya logo + nama mode aktif.
+        val mt = textView(modeName(), 13f, TEXT, true)
+        modePillTxt = mt
+        row.addView(mt, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = px(10) })
         return row
+    }
+
+    private fun modeName(): String = when (profile) {
+        "battery" -> PROFILE_TEXT[0]
+        "balanced" -> PROFILE_TEXT[1]
+        else -> PROFILE_TEXT[2]
     }
 
     private fun buildThin(): View {
@@ -890,6 +910,8 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         fpsBigLbl?.visibility = fpsVis
         fpsThin?.visibility = fpsVis
         fpsThinLbl?.visibility = fpsVis
+        modePillTxt?.visibility = if (prefs.flMFps) View.GONE else View.VISIBLE
+        setText(modePillTxt, modeName())
     }
 
     // ---------------- komponen gambar ----------------

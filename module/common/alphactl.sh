@@ -18,6 +18,7 @@
 #   redetect                  deteksi ulang hardware
 #   render get | render set <default|skiagl|skiavk>
 #   gamerender get <pkg> | set <pkg> <default|skiagl|skiavk> | list    render per game
+#   gameopt list <pkg> | set <pkg> <PRIO|DND|LITE> <on|off|1|default>   opsi per game
 #   game launch <pkg>         pasang render per game lalu buka game
 #   refresh list | get | set <off|Hz> | modes   refresh rate yang dikunci selama game (modes = "indeks_SF Hz")
 #   hud sample <pkg>          satu sampel metrik HUD (FPS, GPU, CPU, suhu)
@@ -262,6 +263,20 @@ cmd_gamerender() {
     esac
 }
 
+cmd_gameopt() {
+    case "$1" in
+        list)
+            valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+            gh_opt_list "$2"
+            ;;
+        set)
+            valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+            gh_opt_set "$2" "$3" "$4"
+            ;;
+        *) echo "Usage: gameopt list <pkg> | set <pkg> <PRIO|DND|LITE> <on|off|1|default>"; return 1 ;;
+    esac
+}
+
 cmd_refresh() {
     case "$1" in
         list) gh_refresh_list ;;
@@ -374,6 +389,7 @@ case "$1" in
     redetect) cmd_redetect ;;
     render) sh "$COMMON/render_manager.sh" "$2" "$3" ;;
     gamerender) cmd_gamerender "$2" "$3" "$4" ;;
+    gameopt) cmd_gameopt "$2" "$3" "$4" "$5" ;;
     refresh) cmd_refresh "$2" "$3" ;;
     hud) cmd_hud "$2" "$3" ;;
     rec) sh "$COMMON/screenrec.sh" "$2" "$3" ;;

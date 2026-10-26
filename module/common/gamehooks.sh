@@ -15,6 +15,8 @@
 #   3. Refresh rate saat game                               : conf GAME_REFRESH_HZ (off | angka Hz), default off
 #                                                              (SF backdoor + settings; GAME_REFRESH_SF_IDX=<n> memaksa indeks SF)
 #   4. Render per game (hanya lewat tombol Luncurkan)       : file game_render.conf "package:backend"
+#   5. Opsi per game (prioritas/DND/mode ringan)            : file game_opts.conf "package:KEY=nilai"
+#        PRIO=on|off, DND=on|off (kosong = ikut global), LITE=1 (matikan semua ekstra untuk game ini)
 #
 # Semua perubahan disimpan nilai aslinya dan dikembalikan saat keluar game (setelah grace).
 
@@ -27,6 +29,7 @@ GH_SF_MARK="$GH_STATE/.gh_sf_set"
 GH_REND_PREV="$GH_STATE/.gh_render_prev"
 GH_PRIO_T="$GH_STATE/.gh_prio_t"
 GH_RENDER_MAP="$GH_STATE/game_render.conf"
+GH_OPTS="$GH_STATE/game_opts.conf"
 GH_CONF="$GH_STATE/app.conf"
 GH_GRACE="${ALPHA_GB_GRACE:-12}"
 GH_PRIO_EVERY=45
@@ -45,6 +48,47 @@ _gh_conf() {
     _ghc_v=""
     [ -f "$GH_CONF" ] && _ghc_v=$(sed -n "s/^$1=//p" "$GH_CONF" 2>/dev/null | tail -n 1)
     [ -n "$_ghc_v" ] && printf '%s' "$_ghc_v" || printf '%s' "$2"
+}
+
+# ---------------------------------------------------------------- 0. opsi per game
+# File game_opts.conf: satu baris "package:KEY=nilai". Tidak ada baris = ikut pengaturan global.
+_gh_opt() {
+    [ -f "$GH_OPTS" ] || return 0
+    sed -n "s/^$1:$2=//p" "$GH_OPTS" 2>/dev/null | tail -n 1 | tr -d '[:space:]'
+}
+
+# $1=pkg $2=PRIO|DND -> status 0 bila fitur itu aktif untuk game ini
+_gh_enabled() {
+    [ "$(_gh_opt "$1" LITE)" = "1" ] && return 1
+    case "$(_gh_opt "$1" "$2")" in
+        on) return 0 ;;
+        off) return 1 ;;
+    esac
+    case "$2" in
+        PRIO) [ -f "$GH_STATE/GAME_PRIO_OFF" ] && return 1; return 0 ;;
+        DND) [ -f "$GH_STATE/GAME_DND_ON" ]; return $? ;;
+    esac
+    return 1
+}
+
+# $1=pkg $2=PRIO|DND|LITE $3=on|off|1|default (default = hapus, ikut global)
+gh_opt_set() {
+    case "$1" in ''|*[!A-Za-z0-9._]*) echo "ERROR: package tidak valid"; return 1 ;; esac
+    case "$2" in
+        PRIO|DND) case "$3" in on|off|default) ;; *) echo "ERROR: nilai $2 harus on|off|default"; return 1 ;; esac ;;
+        LITE) case "$3" in 1|default) ;; *) echo "ERROR: nilai LITE harus 1|default"; return 1 ;; esac ;;
+        *) echo "ERROR: opsi tidak dikenal (PRIO|DND|LITE)"; return 1 ;;
+    esac
+    touch "$GH_OPTS" 2>/dev/null || { echo "ERROR: gagal tulis"; return 1; }
+    grep -v "^$1:$2=" "$GH_OPTS" > "$GH_OPTS.tmp.$$" 2>/dev/null
+    [ "$3" = "default" ] || printf '%s:%s=%s\n' "$1" "$2" "$3" >> "$GH_OPTS.tmp.$$"
+    mv -f "$GH_OPTS.tmp.$$" "$GH_OPTS" && echo "OK: $1 $2=$3"
+}
+
+# $1=pkg -> baris "KEY=nilai" untuk opsi yang diset khusus game ini
+gh_opt_list() {
+    [ -f "$GH_OPTS" ] || return 0
+    sed -n "s/^$1://p" "$GH_OPTS" 2>/dev/null
 }
 
 # ---------------------------------------------------------------- 1. prioritas
@@ -66,7 +110,7 @@ _gh_renice_tid() {
 }
 
 _gh_prio_apply() {
-    [ -f "$GH_STATE/GAME_PRIO_OFF" ] && return 0
+    _gh_enabled "$1" PRIO || return 0
     _ghp_pids=$(pidof "$1" 2>/dev/null)
     [ -n "$_ghp_pids" ] || return 0
     for _ghp_pid in $_ghp_pids; do
@@ -95,7 +139,7 @@ _gh_prio_apply() {
 
 # ---------------------------------------------------------------- 2. DND
 _gh_dnd_on() {
-    [ -f "$GH_STATE/GAME_DND_ON" ] || return 0
+    _gh_enabled "$1" DND || return 0
     [ -f "$GH_DND_PREV" ] && return 0
     command -v settings >/dev/null 2>&1 || return 0
     _ghd=$(settings get global zen_mode 2>/dev/null | tr -d '\r\n[:space:]')
@@ -350,8 +394,8 @@ gh_start() {
     _gh_log INFO "game aktif: $1"
     _gh_prio_apply "$1"
     _gh_now > "$GH_PRIO_T" 2>/dev/null
-    _gh_dnd_on
-    _gh_refresh_on
+    _gh_dnd_on "$1"
+    [ "$(_gh_opt "$1" LITE)" = "1" ] || _gh_refresh_on
 }
 
 gh_stop() {

@@ -109,6 +109,24 @@ object Alpha {
         return ctl("gamerender set $pkg $v")
     }
 
+    /** Opsi khusus game (PRIO/DND = on|off, LITE = 1). Kunci yang tidak ada = ikut pengaturan global. */
+    suspend fun gameOpts(pkg: String): Map<String, String> {
+        if (!PKG_RE.matches(pkg)) return emptyMap()
+        val m = HashMap<String, String>()
+        for (l in ctl("gameopt list $pkg").out.lines()) {
+            val i = l.indexOf('=')
+            if (i > 0) m[l.substring(0, i).trim()] = l.substring(i + 1).trim()
+        }
+        return m
+    }
+
+    suspend fun setGameOpt(pkg: String, key: String, v: String): Root.Res {
+        if (!PKG_RE.matches(pkg)) return Root.Res(1, "ERROR: package tidak valid")
+        if (key !in setOf("PRIO", "DND", "LITE")) return Root.Res(1, "ERROR: opsi tidak dikenal")
+        if (v !in setOf("on", "off", "1", "default")) return Root.Res(1, "ERROR: nilai tidak valid")
+        return ctl("gameopt set $pkg $key $v")
+    }
+
     suspend fun launchGame(pkg: String): Root.Res {
         if (!PKG_RE.matches(pkg)) return Root.Res(1, "ERROR: package tidak valid")
         return ctl("game launch $pkg", 20_000L)

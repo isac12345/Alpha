@@ -177,6 +177,13 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun setGameOpt(pkg: String, key: String, v: String) {
+        viewModelScope.launch {
+            val r = Alpha.setGameOpt(pkg, key, v)
+            if (r.code != 0) toast(r.out.lines().firstOrNull { it.isNotBlank() } ?: "Gagal")
+        }
+    }
+
     fun updateBubbleOn(on: Boolean) {
         if (on) {
             if (!Settings.canDrawOverlays(app)) {

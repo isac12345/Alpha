@@ -364,6 +364,31 @@ fun EditScreen(vm: AppViewModel) {
         Pill("SIMPAN", { vm.addGame(pkg, fps, PROFILE_KEYS[prof]) { vm.back() } }, solid = true)
     }
 
+    // Opsi khusus game: GLOBAL = ikut pengaturan umum, ON/OFF = timpa untuk game ini saja.
+    var opts by remember(pkg) { mutableStateOf<Map<String, String>>(emptyMap()) }
+    LaunchedEffect(pkg) { opts = Alpha.gameOpts(pkg) }
+    fun triIdx(k: String) = when (opts[k]) { "on" -> 1; "off" -> 2; else -> 0 }
+    fun setTri(k: String, i: Int) {
+        val v = when (i) { 1 -> "on"; 2 -> "off"; else -> "default" }
+        opts = if (v == "default") opts - k else opts + (k to v)
+        vm.setGameOpt(pkg, k, v)
+    }
+    val lite = opts["LITE"] == "1"
+    AlphaCard {
+        Label("Pengaturan game ini")
+        ToggleRow("Mode ringan", "matikan prioritas, DND, dan refresh rate untuk game ini; hanya profil yang jalan", lite) {
+            opts = if (it) opts + ("LITE" to "1") else opts - "LITE"
+            vm.setGameOpt(pkg, "LITE", if (it) "1" else "default")
+        }
+        if (!lite) {
+            Label("Prioritas proses")
+            Seg(listOf("GLOBAL", "ON", "OFF"), triIdx("PRIO"), { setTri("PRIO", it) })
+            Label("DND otomatis")
+            Seg(listOf("GLOBAL", "ON", "OFF"), triIdx("DND"), { setTri("DND", it) })
+            txt("GLOBAL = ikut pengaturan umum di tab Pengaturan. Berlaku saat game berikutnya dibuka.", 11.sp, muted())
+        }
+    }
+
     val rKeys = listOf("default") + vm.render.available.filter { it != "default" }
     var rend by remember(pkg) { mutableStateOf("default") }
     LaunchedEffect(pkg) { rend = Alpha.gameRender(pkg) }
