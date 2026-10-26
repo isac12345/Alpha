@@ -24,6 +24,16 @@ INT64_MAX=9223372036854775807
 CNT_PREV=""
 CNT_FAIL=0
 ZERO_RUN=0
+LAYER_FAIL=0
+LIST_WAIT=0
+TS_ON=0
+TS_PREV=""
+DBG_N=0
+DBG_LOG="$STATE_DIR/hud_debug.log"
+FL_RES=""
+PL_LAYER=""
+PL_RES=""
+TS_RES=""
 
 # Hasil lewat variabel SC_RES (bukan stdout): state counter harus hidup di
 # proses loop, sedangkan $(...) berjalan di subshell dan membuang state.
@@ -40,15 +50,23 @@ sf_counter() {
     SC_RES="$(( (_sc_c - _sc_p) * 10 )) $_sc_c"
 }
 
-find_layer() {
-    _fl_list=$(dumpsys SurfaceFlinger --list 2>/dev/null)
-    _fl=""
-    # urutan: SurfaceView BLAST (konten game) > SurfaceView > layer BLAST app > layer apa pun milik app
-    _fl=$(printf '%s\n' "$_fl_list" | grep -F "SurfaceView" | grep -F "$1" | grep -F "BLAST" | tail -n 1)
-    [ -n "$_fl" ] || _fl=$(printf '%s\n' "$_fl_list" | grep -F "SurfaceView" | grep -F "$1" | tail -n 1)
-    [ -n "$_fl" ] || _fl=$(printf '%s\n' "$_fl_list" | grep -F "$1" | grep -F "BLAST" | tail -n 1)
-    [ -n "$_fl" ] || _fl=$(printf '%s\n' "$_fl_list" | grep -F "$1" | tail -n 1)
-    printf '%s' "$_fl"
+# Daftar layer milik paket (tanpa baris pembantu "Background for"/"Bounds for"/"Dim ").
+layer_list() {
+    dumpsys SurfaceFlinger --list 2>/dev/null | grep -F "$1" | grep -v -E '^(Background for|Bounds for|Dim )'
+}
+
+# Kandidat berurut prioritas (maks 6): SurfaceView BLAST > SurfaceView > BLAST > lainnya.
+# Game bisa punya lebih dari satu SurfaceView (mis. iklan/WebView), jadi tidak cukup
+# mengambil satu saja: layer terbaik dipilih dari yang benar-benar punya frame.
+layer_candidates() {
+    _lc_all=$(layer_list "$1")
+    [ -n "$_lc_all" ] || return 1
+    {
+        printf '%s\n' "$_lc_all" | grep -F "SurfaceView" | grep -F "BLAST"
+        printf '%s\n' "$_lc_all" | grep -F "SurfaceView" | grep -v -F "BLAST"
+        printf '%s\n' "$_lc_all" | grep -F "BLAST" | grep -v -F "SurfaceView"
+        printf '%s\n' "$_lc_all" | grep -v -F "BLAST" | grep -v -F "SurfaceView"
+    } | head -n 6
 }
 
 # stdout: "<fps_x10> <last_ts>" atau kosong
@@ -159,25 +177,113 @@ batt_temp_mc() {
     case "$_bt" in ''|*[!0-9-]*) printf '0' ;; *) printf '%s' $((_bt * 100)) ;; esac
 }
 
+# Pilih layer terbaik: yang punya timestamp frame dan FPS tertinggi.
+# Hasil lewat variabel PL_LAYER / PL_RES (bukan stdout, supaya state tidak hilang di subshell).
+pick_layer() {
+    PL_LAYER=""
+    PL_RES=""
+    _pl_pkg="$1"
+    _pl_bf=-1
+    _pl_cands=$(layer_candidates "$_pl_pkg") || return 1
+    while IFS= read -r _pl_l; do
+        [ -n "$_pl_l" ] || continue
+        _pl_r=$(latency_fps "$_pl_l") || continue
+        [ -n "$_pl_r" ] || continue
+        set -- $_pl_r
+        case "$1" in ''|*[!0-9]*) continue ;; esac
+        if [ "$1" -gt "$_pl_bf" ]; then
+            _pl_bf=$1
+            PL_LAYER=$_pl_l
+            PL_RES="$_pl_r"
+        fi
+    done <<EOF
+$_pl_cands
+EOF
+    [ -n "$PL_LAYER" ]
+}
+
+# FPS dari layer app. Hasil di FL_RES ("<fps_x10> <last_ts>" atau kosong).
 fps_layer() {
     _fl_pkg="$1"
-    _fl_layer="" _fl_res=""
+    FL_RES=""
+    _fl_layer=""
     command -v dumpsys >/dev/null 2>&1 || return 1
     if [ -f "$LAYER_CACHE" ]; then
         IFS='|' read -r _fl_cp _fl_cl < "$LAYER_CACHE"
         [ "$_fl_cp" = "$_fl_pkg" ] && _fl_layer="$_fl_cl"
     fi
-    [ -n "$_fl_layer" ] && _fl_res=$(latency_fps "$_fl_layer")
-    if [ -z "$_fl_res" ]; then
-        # layer basi (game restart ganti nomor layer) atau belum pernah dicari
-        _fl_layer=$(find_layer "$_fl_pkg")
-        if [ -n "$_fl_layer" ]; then
-            printf '%s|%s\n' "$_fl_pkg" "$_fl_layer" > "$LAYER_CACHE" 2>/dev/null
-            _fl_res=$(latency_fps "$_fl_layer")
+    [ -n "$_fl_layer" ] && FL_RES=$(latency_fps "$_fl_layer")
+    if [ -z "$FL_RES" ]; then
+        # layer basi (game restart ganti nomor layer) atau belum pernah dicari.
+        # Mendaftar ulang layer itu berat: paling sering sekali per 3 sampel.
+        if [ "$LIST_WAIT" -le 0 ]; then
+            LIST_WAIT=3
+            if pick_layer "$_fl_pkg"; then
+                printf '%s|%s\n' "$_fl_pkg" "$PL_LAYER" > "$LAYER_CACHE" 2>/dev/null
+                FL_RES="$PL_RES"
+            else
+                rm -f "$LAYER_CACHE" 2>/dev/null
+            fi
+        else
+            LIST_WAIT=$((LIST_WAIT - 1))
         fi
     fi
-    [ -n "$_fl_res" ] || return 1
-    printf '%s' "$_fl_res"
+    [ -n "$FL_RES" ]
+}
+
+# Cadangan terakhir: statistik frame SurfaceFlinger per layer (--timestats), dipakai RaiRin juga.
+# totalFrames tiap layer milik paket dijumlahkan, FPS = selisih per sampel (jeda ~1 detik).
+# Hasil di TS_RES ("<fps_x10> <totalFrames>" atau kosong).
+ts_fps() {
+    TS_RES=""
+    _tf_pkg="$1"
+    if [ "$TS_ON" -eq 0 ]; then
+        dumpsys SurfaceFlinger --timestats -enable >/dev/null 2>&1
+        TS_ON=1
+    fi
+    _tf_out=$(dumpsys SurfaceFlinger --timestats -dump 2>/dev/null)
+    [ -n "$_tf_out" ] || return 1
+    _tf_max=0
+    _tf_in=0
+    while IFS= read -r _tf_l; do
+        case "$_tf_l" in
+            *layerName*) case "$_tf_l" in *"$_tf_pkg"*) _tf_in=1 ;; *) _tf_in=0 ;; esac ;;
+            *totalFrames*)
+                [ "$_tf_in" -eq 1 ] || continue
+                _tf_v=${_tf_l##*=}
+                _tf_v=$(printf '%s' "$_tf_v" | tr -cd '0-9')
+                [ -n "$_tf_v" ] && [ "$_tf_v" -gt "$_tf_max" ] && _tf_max=$_tf_v
+                ;;
+        esac
+    done <<EOF
+$_tf_out
+EOF
+    [ "$_tf_max" -gt 0 ] || return 1
+    _tf_p=$TS_PREV
+    TS_PREV=$_tf_max
+    [ -n "$_tf_p" ] && [ "$_tf_max" -ge "$_tf_p" ] || return 1
+    TS_RES="$(( (_tf_max - _tf_p) * 10 )) $_tf_max"
+    return 0
+}
+
+# Jejak diagnosa: hanya ditulis saat FPS belum terbaca, jarang (tiap 15 sampel), dan dibatasi 64 KB.
+dbg_dump() {
+    DBG_N=$((DBG_N + 1))
+    [ $((DBG_N % 15)) -eq 1 ] || return 0
+    _db_sz=$(wc -c < "$DBG_LOG" 2>/dev/null)
+    [ -n "$_db_sz" ] && [ "$_db_sz" -gt 65536 ] && return 0
+    {
+        printf '=== %s pkg=%s cnt_fail=%s layer_fail=%s\n' "$(date '+%H:%M:%S' 2>/dev/null)" "$1" "$CNT_FAIL" "$LAYER_FAIL"
+        _db_c=$(layer_candidates "$1" 2>/dev/null)
+        printf 'kandidat:\n%s\n' "$_db_c"
+        _db_first=$(printf '%s\n' "$_db_c" | head -n 1)
+        if [ -n "$_db_first" ]; then
+            printf 'latency (4 baris) layer pertama:\n'
+            dumpsys SurfaceFlinger --latency "$_db_first" 2>&1 | head -n 4
+        fi
+        printf 'timestats (baris layerName/totalFrames milik pkg):\n'
+        dumpsys SurfaceFlinger --timestats -dump 2>&1 | grep -F -A1 "$1" | head -n 6
+    } >> "$DBG_LOG" 2>/dev/null
 }
 
 sample() {
@@ -187,13 +293,13 @@ sample() {
         if [ "$CNT_FAIL" -lt 3 ]; then
             sf_counter; _s_cnt=$SC_RES
             case "$_s_cnt" in
-                "") [ "$CNT_FAIL" -ge 3 ] && _s_fps=$(fps_layer "$_s_pkg") ;;
+                "") ;;
                 "0 "*)
                     ZERO_RUN=$((ZERO_RUN + 1))
                     if [ "$ZERO_RUN" -ge 3 ]; then
-                        _s_fps=$(fps_layer "$_s_pkg")
-                        case "$_s_fps" in
-                            [1-9]*) CNT_FAIL=3 ;;
+                        fps_layer "$_s_pkg"
+                        case "$FL_RES" in
+                            [1-9]*) CNT_FAIL=3; _s_fps=$FL_RES ;;
                             *) _s_fps=$_s_cnt ;;
                         esac
                         ZERO_RUN=0
@@ -203,8 +309,19 @@ sample() {
                     ;;
                 *) ZERO_RUN=0; _s_fps=$_s_cnt ;;
             esac
-        else
-            _s_fps=$(fps_layer "$_s_pkg")
+        fi
+        if [ "$CNT_FAIL" -ge 3 ]; then
+            fps_layer "$_s_pkg"
+            _s_fps=$FL_RES
+            if [ -n "$_s_fps" ]; then
+                LAYER_FAIL=0
+            else
+                LAYER_FAIL=$((LAYER_FAIL + 1))
+                if [ "$LAYER_FAIL" -ge 3 ]; then
+                    ts_fps "$_s_pkg" && _s_fps=$TS_RES
+                    [ -n "$_s_fps" ] || dbg_dump "$_s_pkg"
+                fi
+            fi
         fi
     fi
     set -- $_s_fps
@@ -217,7 +334,7 @@ sample() {
 }
 
 case "$1" in
-    --once) sample "$2" ;;
+    --once) CNT_FAIL=3; sample "$2" ;;   # satu sampel: counter butuh dua titik, jadi langsung jalur layer
     --loop)
         while :; do
             sample "$2" || exit 0
