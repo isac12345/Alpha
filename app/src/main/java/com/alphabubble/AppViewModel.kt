@@ -380,10 +380,22 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         "com.habby.", "com.fantome.", "com.ea.", "com.gameloft.", "com.king.", "com.zhiliaoapp.musically.go",
     )
 
+    // Bank paket game (assets/gamebank.txt, sumber Encore Tweaks, Apache-2.0). Dimuat sekali, hanya saat daftar app dibuka.
+    private val gameBank: Set<String> by lazy {
+        try {
+            app.assets.open("gamebank.txt").bufferedReader().useLines { seq ->
+                seq.map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toHashSet()
+            }
+        } catch (_: Exception) {
+            emptySet()
+        }
+    }
+
     @Suppress("DEPRECATION")
     private fun isGameApp(ai: ApplicationInfo): Boolean {
         if (ai.category == ApplicationInfo.CATEGORY_GAME) return true
         if ((ai.flags and ApplicationInfo.FLAG_IS_GAME) != 0) return true
+        if (ai.packageName in gameBank) return true
         return gamePrefixes.any { ai.packageName.startsWith(it) }
     }
 
