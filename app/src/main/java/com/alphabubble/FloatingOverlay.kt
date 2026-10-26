@@ -124,6 +124,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private var prevTs = ""
     private var cpuTotal = 0L
     private var cpuIdle = 0L
+    private var gpuMaxMhz = 0
 
     // ---------------- publik ----------------
 
@@ -204,6 +205,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         prevTs = ""
         cpuTotal = 0L
         cpuIdle = 0L
+        gpuMaxMhz = 0
         for (i in lastInt.indices) lastInt[i] = -1
         if (pkg.isEmpty() || prefs.bubbleHidden) return
         attach()
@@ -212,7 +214,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
     // ---------------- data ----------------
 
-    private class Sample(val fps: Float?, val gpu: Int?, val cpu: Int?, val tempC: Float?)
+    private class Sample(val fps: Float?, val gpu: Int?, val gpuMhz: Int?, val cpu: Int?, val tempC: Float?)
 
     private suspend fun loop(pkg: String) {
         try {
@@ -278,10 +280,11 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             cpuIdle = idle
         }
         val gpu = m["gpu"]?.toIntOrNull()?.coerceIn(0, 100)
+        val gpuMhz = m["gpu_freq"]?.toIntOrNull()?.takeIf { it in 1..5000 }
         val soc = m["soc_mc"]?.toIntOrNull() ?: 0
         val bat = m["temp_mc"]?.toIntOrNull() ?: 0
         val t = (if (soc > 0) soc else bat) / 1000f
-        return Sample(fps, gpu, cpu, if (t > 0f) t else null)
+        return Sample(fps, gpu, gpuMhz, cpu, if (t > 0f) t else null)
     }
 
     private fun apply(s: Sample) {
@@ -304,7 +307,18 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         val cpuV = s.cpu
         if (prefs.flMCpu && cpuV != null && lastInt[0] != cpuV) metric(0, cpuV, cpuV.toString() + "%", cpuV / 100f)
         val gpuV = s.gpu
-        if (prefs.flMGpu && gpuV != null && lastInt[1] != gpuV) metric(1, gpuV, gpuV.toString() + "%", gpuV / 100f)
+        if (prefs.flMGpu) {
+            if (gpuV != null) {
+                if (lastInt[1] != gpuV) metric(1, gpuV, gpuV.toString() + "%", gpuV / 100f)
+            } else {
+                // Kernel tanpa node beban GPU: tampilkan frekuensi (MHz). Nilai negatif = penanda mode MHz.
+                val mhz = s.gpuMhz
+                if (mhz != null) {
+                    if (mhz > gpuMaxMhz) gpuMaxMhz = mhz
+                    if (lastInt[1] != -mhz) metric(1, -mhz, mhz.toString() + "M", mhz.toFloat() / gpuMaxMhz.toFloat())
+                }
+            }
+        }
         if (prefs.flMRam) {
             val mi = ActivityManager.MemoryInfo()
             am.getMemoryInfo(mi)

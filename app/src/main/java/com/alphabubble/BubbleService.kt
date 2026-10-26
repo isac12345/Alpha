@@ -52,6 +52,7 @@ class BubbleService : Service() {
     private var gamePkg = ""
     private var hudPkg = ""
     private var recOn = false
+    private var protectedFor = ""
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == null) return@OnSharedPreferenceChangeListener
@@ -87,6 +88,11 @@ class BubbleService : Service() {
                     batt = s.batt
                     gamePkg = s.gamePkg
                     hudPkg = s.hudPkg.ifEmpty { s.gamePkg }
+                    // Lindungi proses ini dari pembunuh memori tiap kali game baru terdeteksi (satu panggilan su, bukan tiap siklus).
+                    if (hudPkg.isNotEmpty() && hudPkg != protectedFor) {
+                        protectedFor = hudPkg
+                        protectSelf()
+                    }
                     recOn = s.rec
                     floating?.setProfileState(profile, recOn)
                     if (prefs.bubbleHidden || (!prefs.bubbleOn && !prefs.hudOn) || !Settings.canDrawOverlays(this@BubbleService)) {
@@ -98,6 +104,14 @@ class BubbleService : Service() {
                 }
                 delay(8000)
             }
+        }
+    }
+
+    /** Turunkan oom_score_adj proses ini (butuh root). Gagal diam-diam: hanya tambahan, bukan syarat jalan. */
+    private fun protectSelf() {
+        val pid = android.os.Process.myPid()
+        scope.launch {
+            Root.exec("[ -w /proc/$pid/oom_score_adj ] && echo -300 > /proc/$pid/oom_score_adj", 5_000L)
         }
     }
 
