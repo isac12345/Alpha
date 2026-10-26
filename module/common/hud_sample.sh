@@ -312,6 +312,7 @@ sample() {
     fi
     set -- $_s_fps
     printf 'fps_x10=%s\nlast_ts=%s\n' "${1:-}" "${2:-}"
+    printf 'pkg=%s\n' "$_s_pkg"
     printf 'lat=%s\n' "$_s_lat"
     printf 'gpu=%s\n' "$(gpu_load || printf '%s' '--')"
     printf 'gpu_freq=%s\n' "$(gpu_freq_mhz || printf '%s' '--')"
@@ -323,11 +324,26 @@ sample() {
 case "$1" in
     --once) CNT_FAIL=3; sample "$2" ;;   # satu sampel: counter butuh dua titik, jadi langsung jalur layer
     --loop)
+        # "--loop auto [cadangan]": paket diikuti otomatis dari app yang sedang di depan
+        # (ditulis monitor.sh ke .hud_foreground_pkg), jadi satu proses cukup untuk game
+        # maupun launcher/browser/sosmed. Ganti paket = reset cache layer, tanpa proses baru.
+        _lp_pkg="$2"; _lp_auto=0; _lp_fb="$3"; _lp_last=""
+        [ "$2" = "auto" ] && _lp_auto=1
         while :; do
-            sample "$2" || exit 0
+            if [ "$_lp_auto" = 1 ]; then
+                _lp_pkg=""
+                read -r _lp_pkg < "$STATE_DIR/.hud_foreground_pkg" 2>/dev/null
+                [ -n "$_lp_pkg" ] || _lp_pkg="$_lp_fb"
+                if [ "$_lp_pkg" != "$_lp_last" ]; then
+                    _lp_last="$_lp_pkg"
+                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0
+                    rm -f "$LAYER_CACHE" 2>/dev/null
+                fi
+            fi
+            sample "$_lp_pkg" || exit 0
             echo "--" || exit 0
             sleep 1
         done
         ;;
-    *) echo "Usage: hud_sample.sh --once|--loop <package>"; exit 1 ;;
+    *) echo "Usage: hud_sample.sh --once|--loop <package|auto>"; exit 1 ;;
 esac

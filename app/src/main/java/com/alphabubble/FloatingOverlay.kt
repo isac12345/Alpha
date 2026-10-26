@@ -122,6 +122,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private var job: Job? = null
     private var proc: Process? = null
     private var prevTs = ""
+    private var curFg = ""
     private var cpuTotal = 0L
     private var cpuIdle = 0L
     private var gpuMaxMhz = 0
@@ -260,6 +261,9 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         }
         var ts = m["last_ts"].orEmpty()
         val x10 = m["fps_x10"]?.toIntOrNull()
+        // Ganti app di depan: timestamp lama milik app sebelumnya tidak boleh dianggap "macet".
+        val fgPkg = m["pkg"].orEmpty()
+        if (fgPkg != curFg) { curFg = fgPkg; prevTs = "" }
         // Jalur layer: timestamp frame mentah dikirim script (shell ROM ini 32-bit, tidak bisa menghitung
         // angka 14 digit), FPS dihitung di sini dengan Long 64-bit seperti Smollming.
         val lat = m["lat"].orEmpty()

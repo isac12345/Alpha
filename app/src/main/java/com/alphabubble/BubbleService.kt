@@ -98,7 +98,7 @@ class BubbleService : Service() {
                     if (prefs.bubbleHidden || (!prefs.bubbleOn && !prefs.hudOn) || !Settings.canDrawOverlays(this@BubbleService)) {
                         floating?.detach()
                     } else {
-                        floating?.setGame(hudPkg)
+                        floating?.setGame("auto")
                     }
                     updateNotification()
                 }
@@ -121,7 +121,7 @@ class BubbleService : Service() {
             ACT_SHOW -> {
                 prefs.bubbleHidden = false
                 rebuild()
-                if (hudPkg.isNotEmpty()) floating?.setGame(hudPkg)
+                floating?.setGame("auto")
             }
         }
         return START_STICKY
@@ -143,7 +143,7 @@ class BubbleService : Service() {
         }
         floating?.setProfileState(profile, recOn)
         floating?.attach()
-        if (hudPkg.isNotEmpty()) floating?.setGame(hudPkg)
+        floating?.setGame("auto")
     }
 
     // ---------- profil ----------
