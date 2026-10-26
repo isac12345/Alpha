@@ -6,9 +6,14 @@
 #                                (APK membaca stream ini lewat satu proses su; berhenti sendiri
 #                                 saat pembaca menutup pipa)
 #
+# CATATAN PENTING: /system/bin/sh (mksh) di sebagian ROM berhitung 32-bit. Timestamp frame (nanodetik,
+#   14 digit) TIDAK BOLEH dihitung/dibandingkan di sini. Script hanya meneruskan timestamp mentah
+#   (satu baris "lat=<ns> <ns> ..."); FPS dihitung di aplikasi (Kotlin, 64-bit).
+#
 # Keluaran:
-#   fps_x10   FPS x10 dari timestamp frame layer game (dumpsys SurfaceFlinger --latency); kosong bila layer tidak ketemu
-#   last_ts   timestamp frame terakhir; APK memakainya untuk mendeteksi frame macet (nilai sama = fps 0)
+#   lat       timestamp frame layer game (actualPresentTime, spasi-terpisah, maks 70); APK menghitung FPS-nya
+#   fps_x10   FPS x10 dari jalur cadangan (counter/timestats), kosong bila jalur layer (lat) yang dipakai
+#   last_ts   penanda perubahan jalur cadangan; APK mendeteksi frame macet bila nilainya sama
 #   gpu       persen beban GPU, kosong bila node tidak dikenal di kernel ini
 #   cpu       baris pertama /proc/stat (APK menghitung persen dari selisih antar sampel)
 #   temp_mc   suhu baterai, soc_mc suhu zona termal terpanas (milli-derajat C)
@@ -17,7 +22,6 @@ STATE_DIR="${ALPHA_STATE_DIR:-/data/adb/alpha}"
 LAYER_CACHE="$STATE_DIR/.hud_layer"
 SYS_THERMAL="${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"
 SYS_POWER="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}"
-INT64_MAX=9223372036854775807
 
 # FPS cara Smollming: counter SurfaceFlinger 1013 (selisih per detik), fallback
 # ke latency per layer kalau counter gagal/diam 3x berturut-turut.
@@ -26,6 +30,10 @@ CNT_FAIL=0
 ZERO_RUN=0
 LAYER_FAIL=0
 LIST_WAIT=0
+LR_OUT=""
+LR_N=0
+PL_OUT=""
+FL_LAT=""
 TS_ON=0
 TS_PREV=""
 DBG_N=0
@@ -69,41 +77,25 @@ layer_candidates() {
     } | head -n 6
 }
 
-# stdout: "<fps_x10> <last_ts>" atau kosong
-latency_fps() {
-    _lf_out=$(dumpsys SurfaceFlinger --latency "$1" 2>/dev/null)
-    [ -n "$_lf_out" ] || return 1
-    _lf_max=0
-    _lf_i=0
-    while read -r _lf_a _lf_b _lf_c; do
-        _lf_i=$((_lf_i + 1))
-        [ "$_lf_i" -eq 1 ] && continue
-        case "$_lf_b" in ''|0|"$INT64_MAX"|*[!0-9]*) continue ;; esac
-        [ "$_lf_b" -gt "$_lf_max" ] && _lf_max=$_lf_b
+# Timestamp frame mentah layer: kolom 2 (actualPresentTime) dari 70 baris terakhir
+# `dumpsys SurfaceFlinger --latency`. Hanya uji teks (case), tanpa aritmetika pada nilai besar.
+# Hasil: LR_OUT = timestamp dipisah spasi (satu per frame), LR_N = jumlah baris valid.
+lat_rows() {
+    LR_OUT=""
+    LR_N=0
+    _lr_out=$(dumpsys SurfaceFlinger --latency "$1" 2>/dev/null | tail -n 70)
+    [ -n "$_lr_out" ] || return 1
+    _lr_i=0
+    while read -r _lr_a _lr_b _lr_c; do
+        _lr_i=$((_lr_i + 1))
+        [ "$_lr_i" -eq 1 ] && continue
+        case "$_lr_b" in ''|0|9223372036854775807|*[!0-9]*) continue ;; esac
+        LR_OUT="$LR_OUT $_lr_b"
+        LR_N=$((LR_N + 1))
     done <<EOF
-$_lf_out
+$_lr_out
 EOF
-    [ "$_lf_max" -gt 0 ] || return 1
-    _lf_lo=$((_lf_max - 1000000000))
-    _lf_min=$_lf_max
-    _lf_n=0
-    _lf_i=0
-    while read -r _lf_a _lf_b _lf_c; do
-        _lf_i=$((_lf_i + 1))
-        [ "$_lf_i" -eq 1 ] && continue
-        case "$_lf_b" in ''|0|"$INT64_MAX"|*[!0-9]*) continue ;; esac
-        [ "$_lf_b" -ge "$_lf_lo" ] || continue
-        _lf_n=$((_lf_n + 1))
-        [ "$_lf_b" -lt "$_lf_min" ] && _lf_min=$_lf_b
-    done <<EOF
-$_lf_out
-EOF
-    if [ "$_lf_n" -gt 1 ] && [ "$_lf_max" -gt "$_lf_min" ]; then
-        printf '%s %s' $(( (_lf_n - 1) * 10000000000 / (_lf_max - _lf_min) )) "$_lf_max"
-    else
-        # bukan 0: data kurang = tidak tahu (HUD tampil "--", seperti Smollming)
-        return 1
-    fi
+    [ "$LR_N" -ge 3 ]
 }
 
 # Bilangan bulat pertama dari isi node (format beda antar vendor: "45", "45 %", "46@800000000Hz", "36 36 4")
@@ -177,24 +169,20 @@ batt_temp_mc() {
     case "$_bt" in ''|*[!0-9-]*) printf '0' ;; *) printf '%s' $((_bt * 100)) ;; esac
 }
 
-# Pilih layer terbaik: yang punya timestamp frame dan FPS tertinggi.
-# Hasil lewat variabel PL_LAYER / PL_RES (bukan stdout, supaya state tidak hilang di subshell).
+# Pilih layer terbaik: yang punya frame terbanyak (urutan prioritas menang bila seri).
+# Hasil lewat PL_LAYER / PL_OUT (bukan stdout, supaya state tidak hilang di subshell).
 pick_layer() {
     PL_LAYER=""
-    PL_RES=""
-    _pl_pkg="$1"
-    _pl_bf=-1
-    _pl_cands=$(layer_candidates "$_pl_pkg") || return 1
+    PL_OUT=""
+    _pl_bn=0
+    _pl_cands=$(layer_candidates "$1") || return 1
     while IFS= read -r _pl_l; do
         [ -n "$_pl_l" ] || continue
-        _pl_r=$(latency_fps "$_pl_l") || continue
-        [ -n "$_pl_r" ] || continue
-        set -- $_pl_r
-        case "$1" in ''|*[!0-9]*) continue ;; esac
-        if [ "$1" -gt "$_pl_bf" ]; then
-            _pl_bf=$1
+        lat_rows "$_pl_l" || continue
+        if [ "$LR_N" -gt "$_pl_bn" ]; then
+            _pl_bn=$LR_N
             PL_LAYER=$_pl_l
-            PL_RES="$_pl_r"
+            PL_OUT=$LR_OUT
         fi
     done <<EOF
 $_pl_cands
@@ -202,25 +190,26 @@ EOF
     [ -n "$PL_LAYER" ]
 }
 
-# FPS dari layer app. Hasil di FL_RES ("<fps_x10> <last_ts>" atau kosong).
+# Timestamp frame layer app. Hasil di FL_LAT (baris "lat=...") atau kosong.
 fps_layer() {
     _fl_pkg="$1"
-    FL_RES=""
+    FL_LAT=""
     _fl_layer=""
     command -v dumpsys >/dev/null 2>&1 || return 1
     if [ -f "$LAYER_CACHE" ]; then
         IFS='|' read -r _fl_cp _fl_cl < "$LAYER_CACHE"
         [ "$_fl_cp" = "$_fl_pkg" ] && _fl_layer="$_fl_cl"
     fi
-    [ -n "$_fl_layer" ] && FL_RES=$(latency_fps "$_fl_layer")
-    if [ -z "$FL_RES" ]; then
+    if [ -n "$_fl_layer" ] && lat_rows "$_fl_layer"; then
+        FL_LAT=$LR_OUT
+    else
         # layer basi (game restart ganti nomor layer) atau belum pernah dicari.
         # Mendaftar ulang layer itu berat: paling sering sekali per 3 sampel.
         if [ "$LIST_WAIT" -le 0 ]; then
             LIST_WAIT=3
             if pick_layer "$_fl_pkg"; then
                 printf '%s|%s\n' "$_fl_pkg" "$PL_LAYER" > "$LAYER_CACHE" 2>/dev/null
-                FL_RES="$PL_RES"
+                FL_LAT=$PL_OUT
             else
                 rm -f "$LAYER_CACHE" 2>/dev/null
             fi
@@ -228,7 +217,7 @@ fps_layer() {
             LIST_WAIT=$((LIST_WAIT - 1))
         fi
     fi
-    [ -n "$FL_RES" ]
+    [ -n "$FL_LAT" ]
 }
 
 # Cadangan terakhir: statistik frame SurfaceFlinger per layer (--timestats), dipakai RaiRin juga.
@@ -289,6 +278,7 @@ dbg_dump() {
 sample() {
     _s_pkg="$1"
     _s_fps=""
+    _s_lat=""
     if [ -n "$_s_pkg" ]; then
         if [ "$CNT_FAIL" -lt 3 ]; then
             sf_counter; _s_cnt=$SC_RES
@@ -297,11 +287,8 @@ sample() {
                 "0 "*)
                     ZERO_RUN=$((ZERO_RUN + 1))
                     if [ "$ZERO_RUN" -ge 3 ]; then
-                        fps_layer "$_s_pkg"
-                        case "$FL_RES" in
-                            [1-9]*) CNT_FAIL=3; _s_fps=$FL_RES ;;
-                            *) _s_fps=$_s_cnt ;;
-                        esac
+                        # counter diam 3x: coba layer; kalau layer punya frame, counter dianggap tidak dipakai.
+                        if fps_layer "$_s_pkg"; then CNT_FAIL=3; _s_lat=$FL_LAT; else _s_fps=$_s_cnt; fi
                         ZERO_RUN=0
                     else
                         _s_fps=$_s_cnt
@@ -310,10 +297,9 @@ sample() {
                 *) ZERO_RUN=0; _s_fps=$_s_cnt ;;
             esac
         fi
-        if [ "$CNT_FAIL" -ge 3 ]; then
-            fps_layer "$_s_pkg"
-            _s_fps=$FL_RES
-            if [ -n "$_s_fps" ]; then
+        if [ "$CNT_FAIL" -ge 3 ] && [ -z "$_s_lat" ]; then
+            if fps_layer "$_s_pkg"; then
+                _s_lat=$FL_LAT
                 LAYER_FAIL=0
             else
                 LAYER_FAIL=$((LAYER_FAIL + 1))
@@ -326,6 +312,7 @@ sample() {
     fi
     set -- $_s_fps
     printf 'fps_x10=%s\nlast_ts=%s\n' "${1:-}" "${2:-}"
+    printf 'lat=%s\n' "$_s_lat"
     printf 'gpu=%s\n' "$(gpu_load || printf '%s' '--')"
     printf 'gpu_freq=%s\n' "$(gpu_freq_mhz || printf '%s' '--')"
     read -r _s_cpu < /proc/stat 2>/dev/null

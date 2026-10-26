@@ -258,9 +258,44 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             val i = l.indexOf('=')
             if (i > 0) m[l.substring(0, i)] = l.substring(i + 1).trim()
         }
-        val ts = m["last_ts"].orEmpty()
+        var ts = m["last_ts"].orEmpty()
         val x10 = m["fps_x10"]?.toIntOrNull()
+        // Jalur layer: timestamp frame mentah dikirim script (shell ROM ini 32-bit, tidak bisa menghitung
+        // angka 14 digit), FPS dihitung di sini dengan Long 64-bit seperti Smollming.
+        val lat = m["lat"].orEmpty()
+        var fpsLat: Float? = null
+        if (lat.isNotEmpty()) {
+            val arr = ArrayList<Long>(80)
+            for (tok in lat.split(' ')) {
+                val v = tok.toLongOrNull() ?: continue
+                if (v > 0L) arr.add(v)
+            }
+            if (arr.size >= 3) {
+                arr.sort()
+                val last = arr[arr.size - 1]
+                ts = last.toString()
+                if (ts == prevTs) {
+                    fpsLat = 0f
+                } else {
+                    val lo = last - 1_000_000_000L
+                    var first = last
+                    var n = 0
+                    for (v in arr) {
+                        if (v >= lo) {
+                            n++
+                            if (v < first) first = v
+                        }
+                    }
+                    val span = last - first
+                    if (n > 1 && span > 0L) {
+                        val f = ((n - 1) * 1_000_000_000.0 / span).toFloat()
+                        if (f.isFinite() && f <= 480f) fpsLat = f
+                    }
+                }
+            }
+        }
         val fps: Float? = when {
+            lat.isNotEmpty() -> fpsLat
             x10 == null || ts.isEmpty() -> null
             ts == prevTs -> 0f
             else -> x10 / 10f
