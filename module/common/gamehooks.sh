@@ -16,7 +16,8 @@
 #                                                              (SF backdoor + settings; GAME_REFRESH_SF_IDX=<n> memaksa indeks SF)
 #   4. Render per game (hanya lewat tombol Luncurkan)       : file game_render.conf "package:backend"
 #   5. Opsi per game (prioritas/DND/mode ringan)            : file game_opts.conf "package:KEY=nilai"
-#        PRIO=on|off, DND=on|off (kosong = ikut global), LITE=1 (matikan semua ekstra untuk game ini)
+#        PRIO=on|off, DND=on|off (kosong = ikut global), LITE=1 (matikan semua ekstra untuk game ini),
+#        HZ=off|<Hz> (refresh rate khusus game; kosong = ikut GAME_REFRESH_HZ global)
 #
 # Semua perubahan disimpan nilai aslinya dan dikembalikan saat keluar game (setelah grace).
 
@@ -77,7 +78,13 @@ gh_opt_set() {
     case "$2" in
         PRIO|DND) case "$3" in on|off|default) ;; *) echo "ERROR: nilai $2 harus on|off|default"; return 1 ;; esac ;;
         LITE) case "$3" in 1|default) ;; *) echo "ERROR: nilai LITE harus 1|default"; return 1 ;; esac ;;
-        *) echo "ERROR: opsi tidak dikenal (PRIO|DND|LITE)"; return 1 ;;
+        HZ)
+            case "$3" in
+                off|default) ;;
+                ''|*[!0-9]*) echo "ERROR: nilai HZ harus off|default|30-240"; return 1 ;;
+                *) [ "$3" -ge 30 ] && [ "$3" -le 240 ] || { echo "ERROR: rentang HZ 30-240"; return 1; } ;;
+            esac ;;
+        *) echo "ERROR: opsi tidak dikenal (PRIO|DND|LITE|HZ)"; return 1 ;;
     esac
     touch "$GH_OPTS" 2>/dev/null || { echo "ERROR: gagal tulis"; return 1; }
     grep -v "^$1:$2=" "$GH_OPTS" > "$GH_OPTS.tmp.$$" 2>/dev/null
@@ -230,7 +237,9 @@ _gh_sf_index_for() {
 }
 
 _gh_refresh_on() {
-    _ghh=$(_gh_conf GAME_REFRESH_HZ off)
+    # opsi HZ khusus game menimpa pengaturan global (off = game ini tidak dipaksa)
+    _ghh=$(_gh_opt "$1" HZ)
+    [ -n "$_ghh" ] || _ghh=$(_gh_conf GAME_REFRESH_HZ off)
     _gh_num "$_ghh" || return 0
     [ "$_ghh" -ge 30 ] 2>/dev/null && [ "$_ghh" -le 240 ] 2>/dev/null || return 0
     command -v settings >/dev/null 2>&1 || return 0
@@ -395,7 +404,7 @@ gh_start() {
     _gh_prio_apply "$1"
     _gh_now > "$GH_PRIO_T" 2>/dev/null
     _gh_dnd_on "$1"
-    [ "$(_gh_opt "$1" LITE)" = "1" ] || _gh_refresh_on
+    [ "$(_gh_opt "$1" LITE)" = "1" ] || _gh_refresh_on "$1"
 }
 
 gh_stop() {

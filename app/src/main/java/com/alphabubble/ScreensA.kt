@@ -385,7 +385,21 @@ fun EditScreen(vm: AppViewModel) {
             Seg(listOf("GLOBAL", "ON", "OFF"), triIdx("PRIO"), { setTri("PRIO", it) })
             Label("DND otomatis")
             Seg(listOf("GLOBAL", "ON", "OFF"), triIdx("DND"), { setTri("DND", it) })
-            txt("GLOBAL = ikut pengaturan umum di tab Pengaturan. Berlaku saat game berikutnya dibuka.", 11.sp, muted())
+            if (vm.refreshRates.isNotEmpty()) {
+                Label("Refresh rate")
+                val hzKeys = listOf("default", "off") + vm.refreshRates.map { it.toString() }
+                val cur = opts["HZ"] ?: "default"
+                Seg(
+                    hzKeys.map { when (it) { "default" -> "GLOBAL"; "off" -> "SISTEM"; else -> "$it Hz" } },
+                    hzKeys.indexOf(cur).coerceAtLeast(0),
+                    { i ->
+                        val v = hzKeys[i]
+                        opts = if (v == "default") opts - "HZ" else opts + ("HZ" to v)
+                        vm.setGameOpt(pkg, "HZ", v)
+                    },
+                )
+            }
+            txt("GLOBAL = ikut pengaturan umum di tab Pengaturan; SISTEM = layar tidak dipaksa untuk game ini. Berlaku saat game berikutnya dibuka.", 11.sp, muted())
         }
     }
 

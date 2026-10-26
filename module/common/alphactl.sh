@@ -296,7 +296,7 @@ cmd_refresh() {
             esac
             conf_set GAME_REFRESH_HZ "$2" || return 1
             # game sedang jalan: terapkan langsung
-            if [ -f "$STATE_DIR/.gh_active" ]; then _gh_refresh_off; _gh_refresh_on; fi
+            if [ -f "$STATE_DIR/.gh_active" ]; then _gh_refresh_off; _gh_refresh_on "$(cat "$STATE_DIR/.gh_active" 2>/dev/null)"; fi
             ;;
         *) echo "Usage: refresh list | get | set <off|Hz>"; return 1 ;;
     esac
