@@ -16,6 +16,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -53,11 +54,14 @@ class BubbleService : Service() {
     private var hudPkg = ""
     private var recOn = false
     private var protectedFor = ""
+    private var flJob: Job? = null
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == null) return@OnSharedPreferenceChangeListener
         if (key.startsWith("fl_") && key != "fl_x_p" && key != "fl_y_p" && key != "fl_x_l" && key != "fl_y_l") {
-            floating?.rebuild()
+            // slider mengirim puluhan perubahan per detik: gabungkan jadi satu rebuild setelah 150 ms tenang
+            flJob?.cancel()
+            flJob = scope.launch { delay(150); floating?.rebuild() }
         } else if (key.startsWith("bubble_") && key != "bubble_x" && key != "bubble_y") {
             rebuild()
         }

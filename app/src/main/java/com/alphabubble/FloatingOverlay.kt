@@ -322,6 +322,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             lat.isNotEmpty() -> fpsLat
             x10 == null || ts.isEmpty() -> null
             ts == prevTs -> 0f
+            x10 < 0 || x10 > 2400 -> null      // di atas 240 FPS = angka ngawur (mis. daftar layer berubah)
             else -> x10 / 10f
         }
         if (ts.isNotEmpty()) prevTs = ts

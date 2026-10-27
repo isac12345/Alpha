@@ -31,6 +31,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.os.SystemClock
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 fun relTime(ms: Long?): String {
     if (ms == null) return "—"
@@ -104,8 +108,18 @@ private fun FloatingSettings(vm: AppViewModel) {
     AlphaCard {
         Label("Floating overlay")
         txt("Perubahan langsung terlihat di floating.", 11.sp, muted())
-        SliderRow("Ukuran", p.flScale.toFloat(), 70f..140f, "${p.flScale}%", { p.flScale = it.toInt(); vm.flChanged() })
-        SliderRow("Transparansi", p.flAlpha.toFloat(), 40f..100f, "${p.flAlpha}%", { p.flAlpha = it.toInt(); vm.flChanged() })
+        // Nilai slider disimpan lokal supaya geseran mulus; ke pengaturan ditulis paling sering tiap 150 ms
+        // dan pasti saat dilepas. Layar ini baru dibuat ulang (flChanged) sekali, setelah slider dilepas.
+        var sz by remember { mutableStateOf(p.flScale.toFloat()) }
+        var szT by remember { mutableStateOf(0L) }
+        SliderRow("Ukuran", sz, 70f..140f, "${sz.toInt()}%",
+            { sz = it; val n = SystemClock.uptimeMillis(); if (n - szT > 150) { szT = n; p.flScale = it.toInt() } },
+            { p.flScale = sz.toInt(); vm.flChanged() })
+        var al by remember { mutableStateOf(p.flAlpha.toFloat()) }
+        var alT by remember { mutableStateOf(0L) }
+        SliderRow("Transparansi", al, 40f..100f, "${al.toInt()}%",
+            { al = it; val n = SystemClock.uptimeMillis(); if (n - alT > 150) { alT = n; p.flAlpha = it.toInt() } },
+            { p.flAlpha = al.toInt(); vm.flChanged() })
         Label("Tampilan awal", Modifier.padding(top = 10.dp))
         Seg(listOf("RINGKAS", "BAR TIPIS"), if (p.flStartThin) 1 else 0, { p.flStartThin = it == 1; vm.flChanged() })
     }

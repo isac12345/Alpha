@@ -251,6 +251,8 @@ EOF
     _tf_p=$TS_PREV
     TS_PREV=$_tf_max
     [ -n "$_tf_p" ] && [ "$_tf_max" -ge "$_tf_p" ] || return 1
+    # lompatan besar = daftar layer berubah (bukan frame sungguhan): buang, jangan tampilkan angka ngawur
+    [ $((_tf_max - _tf_p)) -le 500 ] || return 1
     TS_RES="$(( (_tf_max - _tf_p) * 10 )) $_tf_max"
     return 0
 }
@@ -336,7 +338,7 @@ case "$1" in
                 [ -n "$_lp_pkg" ] || _lp_pkg="$_lp_fb"
                 if [ "$_lp_pkg" != "$_lp_last" ]; then
                     _lp_last="$_lp_pkg"
-                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0
+                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0; TS_PREV=""
                     rm -f "$LAYER_CACHE" 2>/dev/null
                 fi
             fi
