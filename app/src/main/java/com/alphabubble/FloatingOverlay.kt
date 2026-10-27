@@ -73,6 +73,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     var onRec: (() -> Unit)? = null
     var onHidden: (() -> Unit)? = null
     var onOvd: ((Boolean) -> Unit)? = null
+    var onSession: ((FpsSession) -> Unit)? = null
 
     private val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -98,6 +99,43 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private var fpsThin: TextView? = null
     private var fpsPillLbl: TextView? = null
     private var idleRun = 0
+
+    // ---- statistik FPS: per sesi game dan per rekaman (1 sampel/detik, hanya saat ada frame)
+    private var sesPkg = ""
+    private var sesStart = 0L
+    private var sesOvdTicks = 0
+    private var sesProfile = ""
+    private val sesFps = ArrayList<Float>(1024)
+    private val recFps = ArrayList<Float>(512)
+
+    /** Dipanggil tiap polling status: pkg = game terdaftar yang aktif (kosong = tidak ada). Ganti game = sesi lama selesai. */
+    fun setSession(pkg: String) {
+        if (pkg == sesPkg) return
+        endSession()
+        sesPkg = pkg
+        sesStart = System.currentTimeMillis()
+        sesOvdTicks = 0
+        sesProfile = profile
+        sesFps.clear()
+    }
+
+    private fun endSession() {
+        if (sesPkg.isEmpty()) return
+        val st = FpsSession.stats(sesFps)
+        if (st != null) {
+            val n = sesFps.size
+            onSession?.invoke(FpsSession(sesStart, sesPkg, st.first, st.second, n,
+                ((System.currentTimeMillis() - sesStart) / 1000L).toInt(), sesOvdTicks * 100 / n, sesProfile))
+        }
+        sesFps.clear()
+        sesPkg = ""
+    }
+
+    private fun finishRecording() {
+        val st = FpsSession.stats(recFps)
+        recFps.clear()
+        if (st != null) Toast.makeText(ctx, "Rekaman: rata-rata ${st.first} FPS, 1% terendah ${st.second} FPS", Toast.LENGTH_LONG).show()
+    }
     private var fpsBigLbl: TextView? = null
     private var fpsThinLbl: TextView? = null
     private val valViews = arrayOfNulls<TextView>(4)
@@ -204,6 +242,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         val changed = p != profile || rec != recOn
         profile = p
         if (rec != recOn) {
+            if (rec) recFps.clear() else finishRecording()
             recOn = rec
             recStart = if (rec) SystemClock.elapsedRealtime() else 0L
         }
@@ -351,6 +390,11 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             !prefs.flMFps -> null
             s.fps == null -> "--"
             else -> s.fps.toInt().toString()
+        }
+        val fv = s.fps
+        if (fv != null && fv >= 1f) {
+            if (sesPkg.isNotEmpty() && sesFps.size < 7200) { sesFps.add(fv); if (odOn) sesOvdTicks++ }
+            if (recOn && recFps.size < 3600) recFps.add(fv)
         }
         // Layar diam (tidak ada frame baru) memang 0 FPS; 3 detik berturut-turut ditandai IDLE supaya tidak dikira error.
         idleRun = if (s.fps != null && s.fps < 0.5f) idleRun + 1 else 0

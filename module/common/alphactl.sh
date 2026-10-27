@@ -268,6 +268,35 @@ cmd_gamerender() {
     esac
 }
 
+# Ekspor satu berkas teks berisi semua yang dibutuhkan untuk diagnosa. Tidak berisi data pribadi (tanpa isi app/chat).
+cmd_logexport() {
+    _ld="/sdcard/Download"
+    [ -d "$_ld" ] && [ -w "$_ld" ] || _ld="$STATE_DIR"
+    _lf="$_ld/alpha-log-$(date '+%Y%m%d-%H%M%S' 2>/dev/null).txt"
+    {
+        echo "=== Alpha log export $(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null) ==="
+        echo "module versionCode: $(sed -n 's/^versionCode=//p' "$MODDIR/module.prop" 2>/dev/null | head -n 1)"
+        echo "model: $(getprop ro.product.model 2>/dev/null)  android: $(getprop ro.build.version.release 2>/dev/null)  platform: $(getprop ro.board.platform 2>/dev/null)"
+        echo "kernel: $(uname -r 2>/dev/null)"
+        echo; echo "=== status ==="; cmd_status 2>/dev/null
+        echo; echo "=== health ==="; cmd_health 2>/dev/null
+        echo; echo "=== flags ==="; cmd_flags 2>/dev/null
+        echo; echo "=== app.conf ==="; [ -f "$CONF_FILE" ] && cat "$CONF_FILE"
+        echo; echo "=== opsi per game (game_opts.conf) ==="; [ -f "$STATE_DIR/game_opts.conf" ] && cat "$STATE_DIR/game_opts.conf"
+        echo; echo "=== overdrive ==="; [ -f "$COMMON/overdrive.sh" ] && ALPHA_STATE_DIR="$STATE_DIR" sh "$COMMON/overdrive.sh" status
+        echo; echo "=== frekuensi saat ini ==="
+        for _p in /sys/devices/system/cpu/cpufreq/policy*; do
+            [ -d "$_p" ] && echo "$(basename "$_p") gov=$(cat "$_p/scaling_governor" 2>/dev/null) min=$(cat "$_p/scaling_min_freq" 2>/dev/null) max=$(cat "$_p/scaling_max_freq" 2>/dev/null) cur=$(cat "$_p/scaling_cur_freq" 2>/dev/null)"
+        done
+        for _g in /sys/class/devfreq/*gpu*; do
+            [ -d "$_g" ] && echo "gpu $(basename "$_g") min=$(cat "$_g/min_freq" 2>/dev/null) max=$(cat "$_g/max_freq" 2>/dev/null) cur=$(cat "$_g/cur_freq" 2>/dev/null)"
+        done
+        echo; echo "=== alpha.log (400 baris terakhir) ==="; tail -n 400 "$STATE_DIR/alpha.log" 2>/dev/null
+        echo; echo "=== hud_debug.log ==="; tail -n 120 "$STATE_DIR/hud_debug.log" 2>/dev/null
+    } > "$_lf" 2>&1
+    echo "OK: $_lf"
+}
+
 cmd_ovd() {
     [ -f "$COMMON/overdrive.sh" ] || { echo "ERROR: overdrive.sh tidak ada"; return 1; }
     case "$1" in
@@ -407,6 +436,7 @@ case "$1" in
     gamerender) cmd_gamerender "$2" "$3" "$4" ;;
     gameopt) cmd_gameopt "$2" "$3" "$4" "$5" ;;
     ovd) cmd_ovd "$2" "$3" ;;
+    logexport) cmd_logexport ;;
     refresh) cmd_refresh "$2" "$3" ;;
     hud) cmd_hud "$2" "$3" ;;
     rec) sh "$COMMON/screenrec.sh" "$2" "$3" ;;

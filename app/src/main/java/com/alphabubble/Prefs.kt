@@ -93,6 +93,14 @@ class Prefs(ctx: Context) {
     var flMTemp: Boolean
         get() = sp.getBoolean("fl_m_temp", true)
         set(v) { sp.edit().putBoolean("fl_m_temp", v).apply() }
+    /** App yang tidak boleh disentuh Bersihkan RAM (pilihan pengguna, di luar daftar bawaan yang selalu dilindungi). */
+    var ramKeep: Set<String>
+        get() = sp.getStringSet("ram_keep", emptySet())?.toSet() ?: emptySet()
+        set(v) { sp.edit().putStringSet("ram_keep", v.toSet()).apply() }
+    /** Riwayat sesi FPS, terbaru di atas, maksimal 12 baris (FpsSession.encode). */
+    var fpsSessions: List<FpsSession>
+        get() = (sp.getString("fps_sessions", "") ?: "").lines().mapNotNull { FpsSession.decode(it) }
+        set(v) { sp.edit().putString("fps_sessions", v.take(12).joinToString("\n") { it.encode() }).apply() }
     var flGraph: Boolean
         get() = sp.getBoolean("fl_graph", true)
         set(v) { sp.edit().putBoolean("fl_graph", v).apply() }

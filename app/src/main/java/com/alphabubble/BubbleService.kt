@@ -81,6 +81,11 @@ class BubbleService : Service() {
         f.onProfile = { p -> setProfile(p) }
         f.onRec = { toggleRec() }
         f.onOvd = { on -> toggleOvd(on) }
+        f.onSession = { st ->
+            prefs.fpsSessions = listOf(st) + prefs.fpsSessions
+            val mode = if (st.ovdPct >= 50) "Overdrive" else profileLabel(st.profile)
+            Toast.makeText(this, "Sesi selesai ($mode): rata-rata ${st.avg} FPS, 1% terendah ${st.low1} FPS", Toast.LENGTH_LONG).show()
+        }
         f.onHidden = { floating?.detach() }
         floating = f
         rebuild()
@@ -100,6 +105,7 @@ class BubbleService : Service() {
                     }
                     recOn = s.rec
                     floating?.setOvd(s.ovd, s.ovdLevel, s.gamePkg.isNotEmpty())
+                    floating?.setSession(s.gamePkg)
                     floating?.setProfileState(profile, recOn)
                     if (prefs.bubbleHidden || (!prefs.bubbleOn && !prefs.hudOn) || !Settings.canDrawOverlays(this@BubbleService)) {
                         floating?.detach()

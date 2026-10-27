@@ -213,7 +213,27 @@ fun ToolsScreen(vm: AppViewModel) {
             }
         }
         Pill("DEXOPT APP", { vm.go("dexopt") })
+        Pill("BERSIHKAN RAM", { vm.cleanRam() }, solid = true)
+        txt("Menutup proses latar belakang saja. Termux, Magisk, KernelSU, Alpha, launcher, keyboard, dan game yang sedang jalan tidak disentuh.", 11.sp, muted())
+        Pill("APP DILINDUNGI (${vm.prefs.ramKeep.size})", { vm.go("ramkeep") })
         Pill("TUTUP SEMUA APP", { vm.askCloseApps() })
+        Pill("EKSPOR LOG (1 BERKAS)", { vm.exportLog() })
+    }
+
+    val ses = vm.prefs.fpsSessions
+    if (ses.isNotEmpty()) {
+        AlphaCard {
+            Label("Riwayat FPS sesi")
+            txt("1% terendah = rata-rata 1% detik terburuk. Bandingkan sesi Performa dan Overdrive di game yang sama.", 11.sp, muted())
+            ses.take(6).forEach { x ->
+                val mode = if (x.ovdPct >= 50) "OVERDRIVE" else profileLabel(x.profile).uppercase()
+                val dur = "${x.secs / 60}m${(x.secs % 60).toString().padStart(2, '0')}d"
+                Column(Modifier.fillMaxWidth().padding(top = 10.dp)) {
+                    txt(vm.label(x.pkg), 13.sp, maxLines = 1)
+                    txt("$mode · rata-rata ${x.avg} · 1% terendah ${x.low1} · $dur", 12.sp, muted(), maxLines = 1)
+                }
+            }
+        }
     }
 
     AlphaCard {
@@ -408,6 +428,42 @@ fun DexoptScreen(vm: AppViewModel) {
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
                     txt(a.label, 13.sp, maxLines = 1)
                     txt(a.pkg, 11.sp, muted(), maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- APP DILINDUNGI (Bersihkan RAM)
+@Composable
+fun RamKeepScreen(vm: AppViewModel) {
+    BackBtn { vm.back() }
+    key(vm.ramKeepVer) {
+        AlphaCard {
+            Label("Selalu dilindungi")
+            txt("Termux, Magisk, KernelSU, APatch, Alpha Control, launcher, keyboard, dialer, dan layanan sistem tidak pernah ditutup. Pilih app lain yang juga ingin dilindungi dari Bersihkan RAM:", 12.sp, muted())
+        }
+        AlphaCard {
+            val list = vm.thirdParty
+            val keep = vm.prefs.ramKeep
+            Label("App pihak ketiga · ${list.size} · dilindungi ${keep.size}")
+            if (list.isEmpty()) txt("Membaca daftar app...", 12.sp, muted(), modifier = Modifier.padding(top = 10.dp))
+            list.forEach { a ->
+                val on = a.pkg in keep
+                Row(
+                    Modifier.fillMaxWidth().clickable { vm.toggleRamKeep(a.pkg) }.padding(top = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(if (on) Mint else Color.White.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center,
+                    ) { if (on) txt("✓", 14.sp, Color(0xFF04342C)) }
+                    Box(Modifier.width(10.dp))
+                    AppIcon(a.pkg, 36.dp)
+                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                        txt(a.label, 13.sp, maxLines = 1)
+                        txt(a.pkg, 11.sp, muted(), maxLines = 1)
+                    }
                 }
             }
         }

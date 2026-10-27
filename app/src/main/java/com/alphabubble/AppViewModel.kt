@@ -41,7 +41,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         "auto" to "dash", "therm" to "dash",
         "stats" to "games", "detect" to "games", "edit" to "games", "addgame" to "games",
         "bgbanner" to "custom", "bubble" to "custom", "theme" to "custom",
-        "dexopt" to "tools", "batlab" to "tools", "fulllog" to "tools",
+        "dexopt" to "tools", "batlab" to "tools", "fulllog" to "tools", "ramkeep" to "tools",
     )
     val tab: String get() = parents[route] ?: route
 
@@ -53,7 +53,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             "batlab" -> viewModelScope.launch { battery = Alpha.battery() }
             "fulllog" -> viewModelScope.launch { loadFullLog() }
             "addgame", "detect" -> ensureApps()
-            "dexopt" -> ensureThirdParty()
+            "dexopt", "ramkeep" -> ensureThirdParty()
             "dash", "therm" -> viewModelScope.launch { flags = Alpha.flags() }
             "auto" -> viewModelScope.launch { conf = Alpha.conf() }
         }
@@ -557,6 +557,40 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             checkDefault = false,
             onOk = { includeSystem -> closeApps(includeSystem) },
         )
+    }
+
+    fun exportLog() {
+        viewModelScope.launch {
+            busy = "Mengekspor log..."
+            val path = Alpha.exportLog()
+            busy = null
+            toast(if (path != null) "Log disimpan: $path" else "Gagal mengekspor log")
+        }
+    }
+
+    fun toggleRamKeep(pkg: String) {
+        prefs.ramKeep = if (pkg in prefs.ramKeep) prefs.ramKeep - pkg else prefs.ramKeep + pkg
+        ramKeepVer++
+    }
+    var ramKeepVer by mutableStateOf(0)
+
+    /** Bersihkan RAM: tutup proses latar belakang app pihak ketiga, kecuali yang dilindungi, yang di depan, dan game aktif. */
+    fun cleanRam() {
+        viewModelScope.launch {
+            busy = "Membersihkan RAM..."
+            val prot = protectedPackages()
+            val keep = prefs.ramKeep
+            val front = setOf(status.hudPkg, status.gamePkg).filter { it.isNotEmpty() }.toSet()
+            val targets = withContext(Dispatchers.IO) {
+                pm.getInstalledApplications(0)
+                    .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
+                    .map { it.packageName }
+                    .filter { !isProtected(it, prot) && it !in keep && it !in front }
+            }
+            val mb = Alpha.cleanRam(targets)
+            busy = null
+            toast(if (mb > 0) "RAM bebas bertambah sekitar $mb MB" else "Selesai, tidak ada RAM tambahan yang bisa dibebaskan")
+        }
     }
 
     private fun closeApps(includeSystem: Boolean) {

@@ -131,6 +131,12 @@ object Alpha {
     }
 
     /** Overdrive: hanya untuk game terdaftar yang sedang aktif. Pesan gagal ada di Res.out. */
+    /** Ekspor log diagnosa satu berkas; mengembalikan path berkas atau null bila gagal. */
+    suspend fun exportLog(): String? {
+        val r = ctl("logexport", 30_000L)
+        return r.out.lines().firstOrNull { it.startsWith("OK: ") }?.removePrefix("OK: ")?.trim()
+    }
+
     suspend fun ovdStart(): Root.Res = ctl("ovd start", 20_000L)
 
     suspend fun ovdStop(): Root.Res = ctl("ovd stop", 20_000L)
@@ -334,6 +340,23 @@ object Alpha {
         val cmd = if (mode == "reset") "cmd package compile --reset $pkg" else "cmd package compile -m $mode -f $pkg"
         val r = Root.exec(cmd, 900_000L)
         return r.out.contains("Success", ignoreCase = true)
+    }
+
+    /**
+     * Bersihkan RAM ringan: `am kill` hanya mematikan proses latar belakang yang aman dimatikan (bukan force-stop,
+     * jadi layanan foreground, alarm, dan notifikasi tidak terpotong). Mengembalikan RAM kosong yang bertambah (MB).
+     */
+    suspend fun cleanRam(pkgs: List<String>): Int {
+        val list = pkgs.filter { PKG_RE.matches(it) }
+        if (list.isEmpty()) return 0
+        val sb = StringBuilder()
+        sb.append("a=\$(sed -n 's/^MemAvailable: *\\([0-9]*\\).*/\\1/p' /proc/meminfo); ")
+        sb.append("for p in ${list.joinToString(" ")}; do am kill \"\$p\" >/dev/null 2>&1; done; sleep 1.5; ")
+        sb.append("b=\$(sed -n 's/^MemAvailable: *\\([0-9]*\\).*/\\1/p' /proc/meminfo); ")
+        sb.append("echo \"freed_kb=\$((b - a))\"")
+        val r = Root.exec(sb.toString(), 60_000L)
+        val kb = r.out.lines().firstOrNull { it.startsWith("freed_kb=") }?.removePrefix("freed_kb=")?.trim()?.toLongOrNull() ?: 0L
+        return (kb / 1024L).toInt().coerceAtLeast(0)
     }
 
     suspend fun forceStop(pkgs: List<String>): Root.Res {
