@@ -17,7 +17,8 @@
 #   4. Render per game (hanya lewat tombol Luncurkan)       : file game_render.conf "package:backend"
 #   5. Opsi per game (prioritas/DND/mode ringan)            : file game_opts.conf "package:KEY=nilai"
 #        PRIO=on|off, DND=on|off (kosong = ikut global), LITE=1 (matikan semua ekstra untuk game ini),
-#        HZ=off|<Hz> (refresh rate khusus game; kosong = ikut GAME_REFRESH_HZ global)
+#        HZ=off|<Hz> (refresh rate khusus game; kosong = ikut GAME_REFRESH_HZ global),
+#        OVD=on (Overdrive otomatis tiap game ini dibuka, lihat overdrive.sh)
 #
 # Semua perubahan disimpan nilai aslinya dan dikembalikan saat keluar game (setelah grace).
 
@@ -78,13 +79,14 @@ gh_opt_set() {
     case "$2" in
         PRIO|DND) case "$3" in on|off|default) ;; *) echo "ERROR: nilai $2 harus on|off|default"; return 1 ;; esac ;;
         LITE) case "$3" in 1|default) ;; *) echo "ERROR: nilai LITE harus 1|default"; return 1 ;; esac ;;
+        OVD) case "$3" in on|default) ;; *) echo "ERROR: nilai OVD harus on|default"; return 1 ;; esac ;;
         HZ)
             case "$3" in
                 off|default) ;;
                 ''|*[!0-9]*) echo "ERROR: nilai HZ harus off|default|30-240"; return 1 ;;
                 *) [ "$3" -ge 30 ] && [ "$3" -le 240 ] || { echo "ERROR: rentang HZ 30-240"; return 1; } ;;
             esac ;;
-        *) echo "ERROR: opsi tidak dikenal (PRIO|DND|LITE|HZ)"; return 1 ;;
+        *) echo "ERROR: opsi tidak dikenal (PRIO|DND|LITE|HZ|OVD)"; return 1 ;;
     esac
     touch "$GH_OPTS" 2>/dev/null || { echo "ERROR: gagal tulis"; return 1; }
     grep -v "^$1:$2=" "$GH_OPTS" > "$GH_OPTS.tmp.$$" 2>/dev/null
@@ -396,6 +398,25 @@ gh_launch() {
     echo "OK: launch $1${_ghl_be:+ render=$_ghl_be}"
 }
 
+# ---------------------------------------------------------------- Overdrive (mesin sendiri, overdrive.sh)
+_gh_ovd_sh() {
+    for _gc in "${COMMON:-/nonexistent}/overdrive.sh" "${MODDIR:-/nonexistent}/overdrive.sh" \
+               "${ALPHA_MOD_DIR:-/nonexistent}/common/overdrive.sh" \
+               /data/adb/modules/alpha_uperf_fasrs_fusion/common/overdrive.sh; do
+        [ -f "$_gc" ] && { printf '%s' "$_gc"; return 0; }
+    done
+    return 1
+}
+
+_gh_ovd_exists() {
+    [ -f "$GH_STATE/.ovd_active" ] || [ -f "$GH_STATE/.ovd_prev" ] || [ -f "$GH_STATE/.ovd_stopped" ]
+}
+
+_gh_ovd() {   # $1=start|stop|recover  $2=pkg/alasan
+    _gos=$(_gh_ovd_sh) || return 0
+    ALPHA_STATE_DIR="$GH_STATE" sh "$_gos" "$1" "$2" >/dev/null 2>&1
+}
+
 # ---------------------------------------------------------------- siklus hidup
 gh_start() {
     printf '%s\n' "$1" > "$GH_MARK" 2>/dev/null
@@ -405,11 +426,16 @@ gh_start() {
     _gh_now > "$GH_PRIO_T" 2>/dev/null
     _gh_dnd_on "$1"
     [ "$(_gh_opt "$1" LITE)" = "1" ] || _gh_refresh_on "$1"
+    # Overdrive otomatis untuk game ini (opsi OVD=on); mode ringan menimpa.
+    if [ "$(_gh_opt "$1" OVD)" = "on" ] && [ "$(_gh_opt "$1" LITE)" != "1" ]; then
+        _gh_ovd start "$1"
+    fi
 }
 
 gh_stop() {
     _ghs=$(cat "$GH_MARK" 2>/dev/null)
     rm -f "$GH_MARK" "$GH_PEND" "$GH_PRIO_T"
+    _gh_ovd_exists && _gh_ovd stop "game selesai"
     _gh_dnd_off
     _gh_refresh_off
     _gh_render_restore
@@ -441,6 +467,11 @@ gh_foreground() {
 gh_tick() {
     _ght_now=$(_gh_now)
     _gh_num "$_ght_now" || return 0
+    # Penjaga Overdrive mati tapi uperf/fas-rs masih beku atau frekuensi masih terkunci: pulihkan.
+    if _gh_ovd_exists; then
+        _gop=$(cat "$GH_STATE/.ovd_pid" 2>/dev/null | tr -d '[:space:]')
+        if ! _gh_num "$_gop" || [ ! -d "/proc/$_gop" ]; then _gh_ovd recover; fi
+    fi
     if [ -f "$GH_MARK" ]; then
         if [ -f "$GH_PEND" ]; then
             _ght_p=$(tr -d '[:space:]' < "$GH_PEND" 2>/dev/null)

@@ -59,6 +59,10 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         private const val P_BATTERY = 0xFF34D399.toInt()
         private const val P_BALANCED = 0xFF60A5FA.toInt()
         private const val P_PERF = 0xFFF5A524.toInt()
+        private const val OD = 0xFFD946EF.toInt()
+        private const val OD_TEXT = 0xFFF0ABFC.toInt()
+        private const val OD_END = 0xFF9333EA.toInt()
+        private const val OD_GLOW = 0xB3D946EF.toInt()
         private const val MODE_PILL = 0
         private const val MODE_PANEL = 1
         private const val MODE_THIN = 2
@@ -68,6 +72,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     var onProfile: ((String) -> Unit)? = null
     var onRec: (() -> Unit)? = null
     var onHidden: (() -> Unit)? = null
+    var onOvd: ((Boolean) -> Unit)? = null
 
     private val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -104,6 +109,13 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private val rings = ArrayList<RingView>()
     private var segButtons = ArrayList<TextView>()
     private var segRow: View? = null
+    private var odRow: LinearLayout? = null
+    private var odFlame: FlameView? = null
+    private var odName: TextView? = null
+    private var odSmall: TextView? = null
+    private var odOn = false
+    private var odLevel = ""
+    private var odAvail = false
     private var topRow: View? = null
     private var bigRow: View? = null
     private var gridRow: View? = null
@@ -166,6 +178,10 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         segButtons = ArrayList()
         graph = null
         segRow = null
+        odRow = null
+        odFlame = null
+        odName = null
+        odSmall = null
         topRow = null
         bigRow = null
         gridRow = null
@@ -620,6 +636,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     }
 
     private fun accentColor(): Int {
+        if (odOn) return OD
         if (prefs.flAccentFixed) return prefs.flAccentColor
         return when (profile) {
             "battery" -> P_BATTERY
@@ -779,13 +796,14 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             val b = textView(PROFILE_TEXT[i], 13f, SEG_TEXT, true).apply {
                 gravity = Gravity.CENTER
                 isClickable = true
-                setOnClickListener { onProfile?.invoke(k) }
+                setOnClickListener { if (!odOn) onProfile?.invoke(k) }
             }
             seg.addView(b, LinearLayout.LayoutParams(0, px(44), 1f).apply { marginStart = if (i == 0) 0 else px(6) })
             segButtons.add(b)
         }
         segRow = seg
         add(seg)
+        add(buildOdRow(), 8)
 
         val top = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         val dot = View(ctx).apply {
@@ -870,6 +888,94 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         else -> TEMP
     }
 
+    private fun buildOdRow(): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(px(14), 0, px(14), 0)
+            minimumHeight = px(44)
+            isClickable = true
+            setOnClickListener {
+                if (!odAvail && !odOn) Toast.makeText(ctx, "Buka game terdaftar dulu, Overdrive hanya untuk game", Toast.LENGTH_SHORT).show()
+                else onOvd?.invoke(!odOn)
+            }
+        }
+        val fl = FlameView(OD_TEXT)
+        odFlame = fl
+        row.addView(fl, LinearLayout.LayoutParams(px(18), px(18)))
+        val nm = textView("Overdrive", 14f, OD_TEXT, true)
+        odName = nm
+        row.addView(nm, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = px(8) })
+        row.addView(View(ctx), LinearLayout.LayoutParams(0, 1, 1f))
+        val sm = textView("", 11f, HINT, true).apply { letterSpacing = 0.02f }
+        odSmall = sm
+        row.addView(sm)
+        odRow = row
+        applyOvd()
+        return row
+    }
+
+    /** Status Overdrive dari modul. avail = ada game terdaftar yang aktif (syarat untuk menyalakan). */
+    fun setOvd(on: Boolean, level: String, avail: Boolean) {
+        if (on == odOn && level == odLevel && avail == odAvail) return
+        val modeChanged = on != odOn
+        odOn = on; odLevel = level; odAvail = avail
+        applyOvd()
+        if (modeChanged) {
+            val acc = accentColor()
+            for (r in rings) { r.accent = acc; r.invalidate() }
+            paintSeg()
+        }
+    }
+
+    private fun applyOvd() {
+        val row = odRow
+        if (row != null) {
+            if (odOn) {
+                row.background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(OD, OD_END)).apply { cornerRadius = pf(22) }
+                odFlame?.color = Color.WHITE; odFlame?.invalidate()
+                odName?.setTextColor(Color.WHITE)
+                odSmall?.setTextColor(0xD9FFFFFF.toInt())
+                setText(odSmall, if (odLevel == "safe") "AKTIF \u00B7 AMAN (PANAS)" else "AKTIF")
+            } else {
+                row.background = roundBg(0x1AD946EF, pf(22), 0x8CD946EF.toInt())
+                odFlame?.color = OD_TEXT; odFlame?.invalidate()
+                odName?.setTextColor(OD_TEXT)
+                odSmall?.setTextColor(HINT)
+                setText(odSmall, if (odAvail) "Mesin sendiri, tanpa Uperf/fas-rs" else "Butuh game aktif")
+            }
+            row.alpha = if (!odOn && !odAvail) 0.6f else 1f
+        }
+        val edge = if (odOn) OD_GLOW else BORDER
+        panelBox?.background = roundBg(panelColor(), pf(20), if (recOn) 0x8CE5484D.toInt() else edge)
+        pill?.background = roundBg(panelColor(), pf(24), edge)
+        thin?.background = roundBg(panelColor(), pf(26), edge)
+    }
+
+    private inner class FlameView(var color: Int) : View(ctx) {
+        private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val path = Path()
+        override fun onDraw(c: Canvas) {
+            val w = width.toFloat(); val h = height.toFloat()
+            p.color = color
+            p.strokeWidth = w * 0.09f
+            path.reset()
+            path.moveTo(0.50f * w, 0.06f * h)
+            path.cubicTo(0.62f * w, 0.33f * h, 0.34f * w, 0.40f * h, 0.34f * w, 0.62f * h)
+            path.cubicTo(0.34f * w, 0.80f * h, 0.66f * w, 0.80f * h, 0.66f * w, 0.62f * h)
+            path.cubicTo(0.66f * w, 0.50f * h, 0.62f * w, 0.43f * h, 0.58f * w, 0.37f * h)
+            path.cubicTo(0.82f * w, 0.48f * h, 0.90f * w, 0.62f * h, 0.90f * w, 0.70f * h)
+            path.cubicTo(0.90f * w, 0.88f * h, 0.72f * w, 0.96f * h, 0.50f * w, 0.96f * h)
+            path.cubicTo(0.28f * w, 0.96f * h, 0.10f * w, 0.88f * h, 0.10f * w, 0.70f * h)
+            path.cubicTo(0.10f * w, 0.40f * h, 0.38f * w, 0.30f * h, 0.50f * w, 0.06f * h)
+            c.drawPath(path, p)
+        }
+    }
+
     private fun paintSeg() {
         if (segButtons.size < 3) return
         val acc = accentColor()
@@ -878,16 +984,17 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             val b = segButtons[i]
             b.background = roundBg(if (on) acc else Color.TRANSPARENT, pf(10), 0)
             b.setTextColor(if (on) DARK else SEG_TEXT)
-            b.alpha = if (recOn) 0.45f else 1f
+            b.alpha = if (recOn || odOn) 0.45f else 1f
         }
     }
 
     private fun applyRec() {
         segRow?.visibility = if (recOn) View.GONE else View.VISIBLE
+        odRow?.visibility = if (recOn) View.GONE else View.VISIBLE
         topRow?.visibility = if (recOn) View.VISIBLE else View.GONE
         footRow?.visibility = if (recOn) View.GONE else View.VISIBLE
         hintRec?.visibility = if (recOn) View.VISIBLE else View.GONE
-        panelBox?.background = roundBg(panelColor(), pf(20), if (recOn) 0x8CE5484D.toInt() else BORDER)
+        panelBox?.background = roundBg(panelColor(), pf(20), if (recOn) 0x8CE5484D.toInt() else if (odOn) OD_GLOW else BORDER)
         if (recOn && recStart == 0L) recStart = SystemClock.elapsedRealtime()
         tickTimer()
     }

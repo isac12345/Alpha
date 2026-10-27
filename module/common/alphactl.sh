@@ -142,6 +142,11 @@ cmd_status() {
     printf 'hud_pkg=%s\n' "$(rd "$STATE_DIR/.gh_active")"
     pid_alive "$STATE_DIR/.rec_pid" screenrec.sh && echo rec=1 || echo rec=0
     printf 'thermal_warm_c=%s\n' "$(cmd_thermal_get)"
+    if [ -f "$COMMON/overdrive.sh" ]; then
+        ALPHA_STATE_DIR="$STATE_DIR" sh "$COMMON/overdrive.sh" status 2>/dev/null
+    else
+        printf 'ovd=0\novd_pkg=\novd_level=\novd_last=\n'
+    fi
     printf 'ver=%s\n' "$(sed -n 's/^versionCode=//p' "$MODDIR/module.prop" 2>/dev/null | head -n 1)"
 }
 
@@ -260,6 +265,17 @@ cmd_gamerender() {
             ;;
         list) gh_render_list ;;
         *) echo "Usage: gamerender get <pkg> | set <pkg> <default|skiagl|skiavk> | list"; return 1 ;;
+    esac
+}
+
+cmd_ovd() {
+    [ -f "$COMMON/overdrive.sh" ] || { echo "ERROR: overdrive.sh tidak ada"; return 1; }
+    case "$1" in
+        start) [ -z "$2" ] || valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+               ALPHA_STATE_DIR="$STATE_DIR" sh "$COMMON/overdrive.sh" start "$2" ;;
+        stop) ALPHA_STATE_DIR="$STATE_DIR" sh "$COMMON/overdrive.sh" stop "${2:-manual}" ;;
+        status) ALPHA_STATE_DIR="$STATE_DIR" sh "$COMMON/overdrive.sh" status ;;
+        *) echo "Usage: ovd start [pkg] | ovd stop | ovd status"; return 1 ;;
     esac
 }
 
@@ -390,6 +406,7 @@ case "$1" in
     render) sh "$COMMON/render_manager.sh" "$2" "$3" ;;
     gamerender) cmd_gamerender "$2" "$3" "$4" ;;
     gameopt) cmd_gameopt "$2" "$3" "$4" "$5" ;;
+    ovd) cmd_ovd "$2" "$3" ;;
     refresh) cmd_refresh "$2" "$3" ;;
     hud) cmd_hud "$2" "$3" ;;
     rec) sh "$COMMON/screenrec.sh" "$2" "$3" ;;

@@ -17,6 +17,9 @@ data class Status(
     val gameSecs: Long = 0L,
     val hudPkg: String = "",
     val rec: Boolean = false,
+    val ovd: Boolean = false,
+    val ovdLevel: String = "",
+    val ovdLast: String = "",
     val thermalWarmC: Int = 75,
     val ver: Int = 0,
 )

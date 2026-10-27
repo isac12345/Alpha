@@ -76,6 +76,7 @@ class BubbleService : Service() {
         val f = FloatingOverlay(this, prefs)
         f.onProfile = { p -> setProfile(p) }
         f.onRec = { toggleRec() }
+        f.onOvd = { on -> toggleOvd(on) }
         f.onHidden = { floating?.detach() }
         floating = f
         rebuild()
@@ -94,6 +95,7 @@ class BubbleService : Service() {
                         protectSelf()
                     }
                     recOn = s.rec
+                    floating?.setOvd(s.ovd, s.ovdLevel, s.gamePkg.isNotEmpty())
                     floating?.setProfileState(profile, recOn)
                     if (prefs.bubbleHidden || (!prefs.bubbleOn && !prefs.hudOn) || !Settings.canDrawOverlays(this@BubbleService)) {
                         floating?.detach()
@@ -171,6 +173,17 @@ class BubbleService : Service() {
     }
 
     // ---------- rekam ----------
+    private fun toggleOvd(on: Boolean) {
+        scope.launch {
+            val r = if (on) Alpha.ovdStart() else Alpha.ovdStop()
+            if (on && !r.ok) {
+                val msg = r.out.lines().firstOrNull { it.startsWith("ERROR") }?.removePrefix("ERROR:")?.trim() ?: "Overdrive gagal"
+                Toast.makeText(this@BubbleService, msg, Toast.LENGTH_LONG).show()
+            }
+            Alpha.status()?.let { floating?.setOvd(it.ovd, it.ovdLevel, it.gamePkg.isNotEmpty()) }
+        }
+    }
+
     private fun toggleRec() {
         val start = !recOn
         scope.launch {

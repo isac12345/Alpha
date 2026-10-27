@@ -32,7 +32,7 @@ _alpha_kill_pat "pgr-log"
 # Pulihkan ekstra game (DND, refresh rate, render per game) dan hentikan rekaman layar bila ada.
 _alpha_mod_u="${0%/*}"
 if [ -f "$_alpha_mod_u/common/gamehooks.sh" ]; then
-    ALPHA_STATE_DIR="$WORK_DIR" sh -c '. "$1/common/gamehooks.sh"; gh_recover' _ "$_alpha_mod_u" >/dev/null 2>&1
+    ALPHA_STATE_DIR="$WORK_DIR" ALPHA_MOD_DIR="$_alpha_mod_u" sh -c '. "$1/common/gamehooks.sh"; gh_recover' _ "$_alpha_mod_u" >/dev/null 2>&1
 fi
 [ -f "$_alpha_mod_u/common/screenrec.sh" ] && ALPHA_STATE_DIR="$WORK_DIR" sh "$_alpha_mod_u/common/screenrec.sh" stop >/dev/null 2>&1
 unset _alpha_mod_u
@@ -69,6 +69,8 @@ rm -f "$WORK_DIR/boost_level" "$WORK_DIR/GAMEBOOST_LEVEL" \
     "$WORK_DIR/.daily_loadbalanced" "$WORK_DIR/.daily_loadhigh_count" \
     "$WORK_DIR/.foreground-events" "$WORK_DIR/.foreground_last_pkg" \
     "$WORK_DIR/.hud_foreground_pkg" "$WORK_DIR/native_boost.conf" \
+    "$WORK_DIR/.ovd_active" "$WORK_DIR/.ovd_prev" "$WORK_DIR/.ovd_pid" \
+    "$WORK_DIR/.ovd_stopped" "$WORK_DIR/.ovd_last" \
     "$WORK_DIR/detected.conf" "$WORK_DIR/alpha.log" \
     "$WORK_DIR/.boot_fail_count" "$WORK_DIR/active_profile" \
     "$WORK_DIR/current_state" 2>/dev/null

@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">Alpha Control</string>
     <string name="tile_label">Alpha profil</string>
+    <string name="tile_overdrive">Overdrive</string>
 </resources>

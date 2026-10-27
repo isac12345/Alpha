@@ -55,6 +55,9 @@ object Alpha {
             gameSecs = m["game_secs"]?.toLongOrNull() ?: 0L,
             hudPkg = m["hud_pkg"].orEmpty(),
             rec = b(m, "rec"),
+            ovd = b(m, "ovd"),
+            ovdLevel = m["ovd_level"].orEmpty(),
+            ovdLast = m["ovd_last"].orEmpty(),
             thermalWarmC = m["thermal_warm_c"]?.toIntOrNull() ?: 75,
             ver = m["ver"]?.toIntOrNull() ?: 0,
         )
@@ -122,10 +125,15 @@ object Alpha {
 
     suspend fun setGameOpt(pkg: String, key: String, v: String): Root.Res {
         if (!PKG_RE.matches(pkg)) return Root.Res(1, "ERROR: package tidak valid")
-        if (key !in setOf("PRIO", "DND", "LITE", "HZ")) return Root.Res(1, "ERROR: opsi tidak dikenal")
+        if (key !in setOf("PRIO", "DND", "LITE", "HZ", "OVD")) return Root.Res(1, "ERROR: opsi tidak dikenal")
         if (v !in setOf("on", "off", "1", "default") && v.toIntOrNull() !in 30..240) return Root.Res(1, "ERROR: nilai tidak valid")
         return ctl("gameopt set $pkg $key $v")
     }
+
+    /** Overdrive: hanya untuk game terdaftar yang sedang aktif. Pesan gagal ada di Res.out. */
+    suspend fun ovdStart(): Root.Res = ctl("ovd start", 20_000L)
+
+    suspend fun ovdStop(): Root.Res = ctl("ovd stop", 20_000L)
 
     suspend fun launchGame(pkg: String): Root.Res {
         if (!PKG_RE.matches(pkg)) return Root.Res(1, "ERROR: package tidak valid")
