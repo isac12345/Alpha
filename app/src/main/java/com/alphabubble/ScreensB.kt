@@ -125,7 +125,7 @@ private fun FloatingSettings(vm: AppViewModel) {
     }
     AlphaCard {
         Label("Metrik yang ditampilkan")
-        ToggleRow("FPS", null, p.flMFps) { p.flMFps = it; vm.flChanged() }
+        ToggleRow("FPS", "mati = tampilan ringkas hanya logo yang berubah warna sesuai mode", p.flMFps) { p.flMFps = it; vm.flChanged() }
         ToggleRow("CPU", null, p.flMCpu) { setMetric(0, it) }
         ToggleRow("GPU", null, p.flMGpu) { setMetric(1, it) }
         ToggleRow("RAM", null, p.flMRam) { setMetric(2, it) }
