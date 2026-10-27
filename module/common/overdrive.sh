@@ -33,8 +33,8 @@ THERMAL="${SYSFS_THERMAL_PREFIX:-/sys/class/thermal}"
 POWER="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}"
 
 OVD_TICK="${ALPHA_OVD_TICK:-3}"
-OVD_CPU_FULL=75      # persen posisi dalam daftar frekuensi (0 = terendah, 100 = tertinggi)
-OVD_GPU_FULL=85
+OVD_CPU_FULL=100     # persen posisi dalam daftar frekuensi (0 = terendah, 100 = tertinggi); bisa diubah: OVD_CPU_PCT / OVD_GPU_PCT di app.conf
+OVD_GPU_FULL=85      # catatan: fas-rs mode performa di game sudah mengunci CPU di maksimum, jadi Overdrive tidak boleh lebih rendah dari itu
 OVD_CPU_SAFE=40
 OVD_GPU_SAFE=40
 OVD_BATT_MIN=15      # keluar bila baterai di bawah ini dan tidak di-charge
@@ -51,6 +51,10 @@ conf_int() {
     [ -f "$CONF" ] && _ci=$(sed -n "s/^$1=//p" "$CONF" 2>/dev/null | tail -n 1 | tr -d '[:space:]')
     num "$_ci" && printf '%s' "$_ci" || printf '%s' "$2"
 }
+
+# lantai Overdrive bisa disetel di app.conf (0-100); nilai di luar rentang diabaikan
+_pc=$(conf_int OVD_CPU_PCT "$OVD_CPU_FULL"); [ "$_pc" -le 100 ] 2>/dev/null && OVD_CPU_FULL=$_pc
+_pg=$(conf_int OVD_GPU_PCT "$OVD_GPU_FULL"); [ "$_pg" -le 100 ] 2>/dev/null && OVD_GPU_FULL=$_pg
 
 rd() { _rd_v=""; [ -r "$1" ] || return 1; read -r _rd_v < "$1" 2>/dev/null; printf '%s' "$_rd_v"; }
 wr() { printf '%s' "$2" > "$1" 2>/dev/null; }
