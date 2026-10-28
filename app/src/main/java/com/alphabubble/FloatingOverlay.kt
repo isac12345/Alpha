@@ -256,7 +256,9 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     }
 
     fun setGame(pkg: String) {
-        if (pkg == game && job != null) return
+        // aliran mati sendiri (su mati / pipa putus) atau jendela hilang: jangan berhenti di sini, mulai ulang
+        val healthy = job?.isActive == true && attached && root?.isAttachedToWindow == true
+        if (pkg == game && healthy) return
         stopStream()
         game = pkg
         prevTs = ""
@@ -489,6 +491,10 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     }
 
     private fun addWindow() {
+        // jendela hilang tanpa kita minta (sistem membuangnya): anggap belum terpasang, pasang ulang
+        if (attached && root?.isAttachedToWindow == false && root?.windowToken == null) {
+            attached = false; lp = null
+        }
         if (attached) return
         val r = root ?: return
         if (!Settings.canDrawOverlays(ctx)) return

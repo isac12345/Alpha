@@ -102,6 +102,10 @@ class BubbleService : Service() {
                     continue
                 }
                 val s = Alpha.status()
+                if (s == null) {
+                    // status gagal/lambat: floating tetap dipastikan ada (jangan hilang menunggu su)
+                    if (!(prefs.bubbleHidden || (!prefs.bubbleOn && !prefs.hudOn) || !Settings.canDrawOverlays(this@BubbleService))) floating?.setGame("auto")
+                }
                 if (s != null) {
                     profile = s.profile
                     tempC = s.tempC
