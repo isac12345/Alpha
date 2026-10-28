@@ -21,6 +21,9 @@
 #   gameopt list <pkg> | set <pkg> <PRIO|DND|LITE> <on|off|1|default>   opsi per game
 #   game launch <pkg>         pasang render per game lalu buka game
 #   refresh list | get | set <off|Hz> | modes   refresh rate yang dikunci selama game (modes = "indeks_SF Hz")
+#   mem status                tekanan memori (PSI), RAM, kemampuan kernel (hanya baca)
+#   mglru status|on|off       MGLRU eksperimental (default off; on = nyalakan, off = pulihkan nilai asli)
+#   memclean status|on|off    pembersih adaptif saat game bila PSI tinggi (default off)
 #   hud sample <pkg>          satu sampel metrik HUD (FPS, GPU, CPU, suhu)
 #   rec start|stop|status|list   rekam layar (screenrecord)
 #   autoctl start|stop|status daemon auto-profile
@@ -109,6 +112,37 @@ conf_set() {
     mv -f "$_t" "$CONF_FILE" && echo "OK: $_k=$_v"
 }
 
+# memfx: tekanan memori (PSI) dan MGLRU opt-in. Default tidak menyentuh apa pun.
+ALPHA_STATE_DIR="$STATE_DIR"
+[ -f "$COMMON/memfx.sh" ] && . "$COMMON/memfx.sh"
+
+cmd_mem() {
+    command -v mf_memstat >/dev/null 2>&1 || { echo "ERROR: memfx.sh tidak ada"; return 1; }
+    case "$1" in
+        ''|status) mf_memstat; mf_caps ;;
+        *) echo "Usage: mem status"; return 1 ;;
+    esac
+}
+
+cmd_mglru() {
+    command -v mf_mglru_status >/dev/null 2>&1 || { echo "ERROR: memfx.sh tidak ada"; return 1; }
+    case "$1" in
+        ''|status) mf_mglru_status; printf 'mode=%s\n' "$(conf_get MGLRU_MODE off)" ;;
+        on)  conf_set MGLRU_MODE on  >/dev/null && mf_mglru_apply; mf_mglru_status ;;
+        off) conf_set MGLRU_MODE off >/dev/null && mf_mglru_restore; mf_mglru_status ;;
+        *) echo "Usage: mglru status|on|off"; return 1 ;;
+    esac
+}
+
+cmd_memclean() {
+    case "$1" in
+        ''|status) printf 'memclean=%s\nhits=%s\ncooldown=%s\n' "$(conf_get MEMCLEAN 0)" "$(conf_get MEMCLEAN_HITS 3)" "$(conf_get MEMCLEAN_COOLDOWN 180)" ;;
+        on)  conf_set MEMCLEAN 1 ;;
+        off) conf_set MEMCLEAN 0 ;;
+        *) echo "Usage: memclean status|on|off"; return 1 ;;
+    esac
+}
+
 cmd_status() {
     _cur=$(rd "$STATE_DIR/current_state"); [ -n "$_cur" ] || _cur=none
     _act=$(rd "$STATE_DIR/active_profile"); [ -n "$_act" ] || _act=none
@@ -146,6 +180,11 @@ cmd_status() {
         ALPHA_STATE_DIR="$STATE_DIR" sh "$COMMON/overdrive.sh" status 2>/dev/null
     else
         printf 'ovd=0\novd_pkg=\novd_level=\novd_last=\n'
+    fi
+    if command -v mf_psi_x100 >/dev/null 2>&1; then
+        printf 'psi_some10_x100=%s\n' "$(mf_psi_x100 some avg10 2>/dev/null)"
+        printf 'mglru=%s\n' "$([ -r "$MF_LRU/enabled" ] && { _mf_raw_on "$(tr -d '[:space:]' < "$MF_LRU/enabled")" && echo 1 || echo 0; } || echo na)"
+        printf 'mglru_mode=%s\nmemclean=%s\n' "$(conf_get MGLRU_MODE off)" "$(conf_get MEMCLEAN 0)"
     fi
     printf 'ver=%s\n' "$(sed -n 's/^versionCode=//p' "$MODDIR/module.prop" 2>/dev/null | head -n 1)"
 }
@@ -437,6 +476,9 @@ case "$1" in
     gameopt) cmd_gameopt "$2" "$3" "$4" "$5" ;;
     ovd) cmd_ovd "$2" "$3" ;;
     logexport) cmd_logexport ;;
+    mem) cmd_mem "$2" ;;
+    mglru) cmd_mglru "$2" ;;
+    memclean) cmd_memclean "$2" ;;
     refresh) cmd_refresh "$2" "$3" ;;
     hud) cmd_hud "$2" "$3" ;;
     rec) sh "$COMMON/screenrec.sh" "$2" "$3" ;;

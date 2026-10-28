@@ -196,6 +196,10 @@ echo "[BOOT] tahap tuning selesai (applied=$APPLIED_COUNT skipped=$SKIPPED_COUNT
 if [ -f "$MODDIR/common/gamehooks.sh" ]; then
     ALPHA_STATE_DIR="$WORK_DIR" ALPHA_MOD_DIR="$MODDIR" sh -c '. "$1/common/gamehooks.sh"; gh_recover' _ "$MODDIR" >/dev/null 2>&1
 fi
+# MGLRU opt-in (MGLRU_MODE=on): sysfs tidak persisten antar boot, terapkan ulang. Default off = tidak menyentuh apa pun.
+if [ -f "$MODDIR/common/memfx.sh" ]; then
+    ALPHA_STATE_DIR="$WORK_DIR" sh -c '. "$1/common/memfx.sh"; mf_mglru_apply' _ "$MODDIR" >/dev/null 2>&1
+fi
 rm -f "$WORK_DIR/.rec_pid" "$WORK_DIR/.rec_stop" "$WORK_DIR/.rec_file" "$WORK_DIR/.hud_layer" 2>/dev/null
 
 # 7. Start monitor once, without blocking late_start service

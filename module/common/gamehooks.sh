@@ -473,6 +473,7 @@ gh_tick() {
         if ! _gh_num "$_gop" || [ ! -d "/proc/$_gop" ]; then _gh_ovd recover; fi
     fi
     if [ -f "$GH_MARK" ]; then
+        command -v mf_relief_tick >/dev/null 2>&1 && mf_relief_tick "$(cat "$GH_MARK" 2>/dev/null)"
         if [ -f "$GH_PEND" ]; then
             _ght_p=$(tr -d '[:space:]' < "$GH_PEND" 2>/dev/null)
             if _gh_num "$_ght_p" && [ $((_ght_now - _ght_p)) -ge "$GH_GRACE" ]; then

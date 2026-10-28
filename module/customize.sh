@@ -247,6 +247,7 @@ set_perm "$MODPATH/common/game_add.sh" 0 0 0755
 set_perm "$MODPATH/common/render_manager.sh" 0 0 0755
 set_perm "$MODPATH/common/alphactl.sh" 0 0 0755
 set_perm "$MODPATH/common/autoctl.sh" 0 0 0755
+set_perm "$MODPATH/common/memfx.sh" 0 0 0755
 # modul31: .bin hanya ada di zip tahap rilis (encode shc), tidak ada di
 # zip git. Guard [ -f ] supaya tidak error "stat failed" saat file absen
 # (biang error tiap flash, bersih maupun timpa). Tak ada yang mengeksekusi

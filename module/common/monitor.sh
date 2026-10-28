@@ -98,6 +98,9 @@ else
 fi
 # Restore monitor.sh LOG_FILE (gameboost.sh redefines it).
 LOG_FILE="$_gb_monitor_save_log"
+# memfx.sh: pembersih adaptif berbasis PSI (opt-in, MEMCLEAN=1); dipanggil dari gh_tick saat game aktif.
+[ -f "$MODDIR/memfx.sh" ] && . "$MODDIR/memfx.sh" 2>/dev/null
+
 # gamehooks.sh: prioritas proses, DND, refresh rate, render per game saat game aktif.
 # Library murni fungsi (prefix gh_ / _gh_), tidak menyentuh variabel monitor.
 if [ -f "$MODDIR/gamehooks.sh" ]; then
