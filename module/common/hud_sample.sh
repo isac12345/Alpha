@@ -343,19 +343,28 @@ case "$1" in
                 [ -n "$_lp_pkg" ] || _lp_pkg="$_lp_fb"
                 if [ "$_lp_pkg" != "$_lp_last" ]; then
                     _lp_last="$_lp_pkg"
-                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0; TS_PREV=""
+                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0; TS_PREV=""; _lp_back=0
                     rm -f "$LAYER_CACHE" 2>/dev/null
                 fi
             fi
             # game (ditandai .gh_active) = tiap 1 dtk; app lain = tiap 2 dtk dan ringan,
             # supaya dumpsys SurfaceFlinger tidak membuat Play Store/sosmed tersendat
-            LIGHT=1; _lp_slp=2
+            LIGHT=1; _lp_slp=2; [ "${_lp_back:-0}" = 1 ] && _lp_slp=5
             read -r _lp_gm < "$STATE_DIR/.gh_active" 2>/dev/null
             [ -n "$_lp_gm" ] && [ "$_lp_gm" = "$_lp_pkg" ] && { LIGHT=0; _lp_slp=1; }
             [ "$_lp_auto" = 1 ] || { LIGHT=0; _lp_slp=1; }
             TICK_S=$_lp_slp
+            _lp_u0=$(cut -d' ' -f1 /proc/uptime 2>/dev/null)
             sample "$_lp_pkg" || exit 0
             echo "--" || exit 0
+            # sampel lambat (>=0,6 dtk) = SurfaceFlinger sedang berat: di app non-game mundur ke 5 dtk
+            if [ "$LIGHT" = 1 ]; then
+                _lp_u1=$(cut -d' ' -f1 /proc/uptime 2>/dev/null)
+                _lp_c0=${_lp_u0%.*}${_lp_u0#*.}; _lp_c1=${_lp_u1%.*}${_lp_u1#*.}
+                case "$_lp_c0$_lp_c1" in ''|*[!0-9]*) ;; *)
+                    [ $((_lp_c1 - _lp_c0)) -ge 60 ] && { _lp_back=1; _lp_slp=5; } ;;
+                esac
+            fi
             sleep "$_lp_slp"
         done
         ;;
