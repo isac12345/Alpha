@@ -1,12 +1,12 @@
 #!/system/bin/sh
 # Alpha Fusion - screenrec: rekam layar lewat `screenrecord` bawaan Android (root, tanpa dialog izin).
 #
-#   screenrec.sh start     mulai merekam (sambung otomatis per 180 dtk, satu file per potongan)
+#   screenrec.sh start     mulai merekam (satu file per sesi; baru dipotong bila batas waktu perangkat tercapai)
 #   screenrec.sh stop      berhenti dan tutup file dengan benar
 #   screenrec.sh status    running=1|0, file=<potongan sekarang>, dir=<folder>
 #   screenrec.sh list [N]  N file rekaman terbaru
 #
-# Hasil: /sdcard/Movies/Alpha/Alpha_<tanggal>_<jam>_p<n>.mp4 (tanpa audio; screenrecord tidak
+# Hasil: /sdcard/Movies/Alpha/Alpha_<tanggal>_<jam>.mp4 (potongan lanjutan: _p2, _p3 ...) (tanpa audio; screenrecord tidak
 # bisa merekam audio internal). Bitrate dari conf REC_BITRATE_MBPS (default 8, rentang 2-40).
 # Ada jeda sekitar setengah detik antar potongan.
 
@@ -16,7 +16,7 @@ PID_FILE="$STATE_DIR/.rec_pid"
 STOP_FILE="$STATE_DIR/.rec_stop"
 CUR_FILE="$STATE_DIR/.rec_file"
 OUT_DIR="${ALPHA_REC_DIR:-/sdcard/Movies/Alpha}"
-SEG_SECS="${ALPHA_REC_SEG:-180}"
+SEG_SECS="${ALPHA_REC_SEG:-3600}"
 SELF="$(readlink -f "$0")"
 
 rec_alive() {
@@ -44,15 +44,21 @@ rec_loop() {
     _n=1
     _br=$(bitrate)
     _fail=0
+    _sid=$(date '+%Y%m%d_%H%M%S')
+    _seg="$SEG_SECS"
     while [ ! -f "$STOP_FILE" ]; do
-        _f="$OUT_DIR/Alpha_$(date '+%Y%m%d_%H%M%S')_p$_n.mp4"
+        # satu sesi = satu nama dasar; potongan hanya muncul kalau batas waktu tercapai
+        if [ "$_n" -eq 1 ]; then _f="$OUT_DIR/Alpha_${_sid}.mp4"; else _f="$OUT_DIR/Alpha_${_sid}_p$_n.mp4"; fi
         printf '%s\n' "$_f" > "$CUR_FILE"
         _t0=$(cut -d. -f1 /proc/uptime 2>/dev/null)
-        screenrecord --bit-rate "$_br" --time-limit "$SEG_SECS" "$_f" >/dev/null 2>&1
+        screenrecord --bit-rate "$_br" --time-limit "$_seg" "$_f" >/dev/null 2>&1
         _t1=$(cut -d. -f1 /proc/uptime 2>/dev/null)
         am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d "file://$_f" >/dev/null 2>&1
         # screenrecord langsung gagal (mis. layar terkunci / DRM / binary tidak ada): jangan putar tanpa henti
         if [ -n "$_t0" ] && [ -n "$_t1" ] && [ $((_t1 - _t0)) -lt 2 ]; then
+            rm -f "$_f"
+            # versi lama menolak batas > 180 dtk: turun ke 180 lalu coba lagi
+            if [ "$_seg" -gt 180 ]; then _seg=180; continue; fi
             _fail=$((_fail + 1))
             [ "$_fail" -ge 3 ] && break
             sleep 1

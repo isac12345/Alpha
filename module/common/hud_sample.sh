@@ -38,6 +38,8 @@ TS_ON=0
 TS_PREV=""
 DBG_N=0
 DBG_LOG="$STATE_DIR/hud_debug.log"
+TICK_S=1
+LIGHT=0   # 1 = app biasa (bukan game): sampling jarang, tanpa fallback berat
 FL_RES=""
 PL_LAYER=""
 PL_RES=""
@@ -55,7 +57,7 @@ sf_counter() {
     _sc_c=$((0x$2)); CNT_FAIL=0
     _sc_p=$CNT_PREV; CNT_PREV=$_sc_c
     [ -n "$_sc_p" ] && [ "$_sc_c" -ge "$_sc_p" ] || return 1
-    SC_RES="$(( (_sc_c - _sc_p) * 10 )) $_sc_c"
+    SC_RES="$(( (_sc_c - _sc_p) * 10 / TICK_S )) $_sc_c"
 }
 
 # Daftar layer milik paket (tanpa baris pembantu "Background for"/"Bounds for"/"Dim ").
@@ -74,7 +76,7 @@ layer_candidates() {
         printf '%s\n' "$_lc_all" | grep -F "SurfaceView" | grep -v -F "BLAST"
         printf '%s\n' "$_lc_all" | grep -F "BLAST" | grep -v -F "SurfaceView"
         printf '%s\n' "$_lc_all" | grep -v -F "BLAST" | grep -v -F "SurfaceView"
-    } | head -n 6
+    } | head -n "$([ "$LIGHT" = 1 ] && echo 2 || echo 6)"
 }
 
 # Timestamp frame mentah layer: kolom 2 (actualPresentTime) dari 70 baris terakhir
@@ -206,7 +208,7 @@ fps_layer() {
         # layer basi (game restart ganti nomor layer) atau belum pernah dicari.
         # Mendaftar ulang layer itu berat: paling sering sekali per 3 sampel.
         if [ "$LIST_WAIT" -le 0 ]; then
-            LIST_WAIT=3
+            if [ "$LIGHT" = 1 ]; then LIST_WAIT=15; else LIST_WAIT=3; fi
             if pick_layer "$_fl_pkg"; then
                 printf '%s|%s\n' "$_fl_pkg" "$PL_LAYER" > "$LAYER_CACHE" 2>/dev/null
                 FL_LAT=$PL_OUT
@@ -305,7 +307,7 @@ sample() {
                 LAYER_FAIL=0
             else
                 LAYER_FAIL=$((LAYER_FAIL + 1))
-                if [ "$LAYER_FAIL" -ge 3 ]; then
+                if [ "$LAYER_FAIL" -ge 3 ] && [ "$LIGHT" != 1 ]; then
                     ts_fps "$_s_pkg" && _s_fps=$TS_RES
                     [ -n "$_s_fps" ] || dbg_dump "$_s_pkg"
                 fi
@@ -322,6 +324,9 @@ sample() {
     printf 'cpu=%s\n' "$_s_cpu"
     printf 'temp_mc=%s\nsoc_mc=%s\n' "$(batt_temp_mc)" "$(soc_temp_mc)"
 }
+
+# matikan timestats yang kita nyalakan sendiri (jangan dibiarkan aktif terus di SurfaceFlinger)
+trap '[ "$TS_ON" = 1 ] && dumpsys SurfaceFlinger --timestats -disable >/dev/null 2>&1; exit 0' EXIT HUP INT TERM
 
 case "$1" in
     --once) CNT_FAIL=3; sample "$2" ;;   # satu sampel: counter butuh dua titik, jadi langsung jalur layer
@@ -342,9 +347,16 @@ case "$1" in
                     rm -f "$LAYER_CACHE" 2>/dev/null
                 fi
             fi
+            # game (ditandai .gh_active) = tiap 1 dtk; app lain = tiap 2 dtk dan ringan,
+            # supaya dumpsys SurfaceFlinger tidak membuat Play Store/sosmed tersendat
+            LIGHT=1; _lp_slp=2
+            read -r _lp_gm < "$STATE_DIR/.gh_active" 2>/dev/null
+            [ -n "$_lp_gm" ] && [ "$_lp_gm" = "$_lp_pkg" ] && { LIGHT=0; _lp_slp=1; }
+            [ "$_lp_auto" = 1 ] || { LIGHT=0; _lp_slp=1; }
+            TICK_S=$_lp_slp
             sample "$_lp_pkg" || exit 0
             echo "--" || exit 0
-            sleep 1
+            sleep "$_lp_slp"
         done
         ;;
     *) echo "Usage: hud_sample.sh --once|--loop <package|auto>"; exit 1 ;;

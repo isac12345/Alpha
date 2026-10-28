@@ -91,6 +91,16 @@ class BubbleService : Service() {
         rebuild()
         scope.launch {
             while (isActive) {
+                val pm = getSystemService(POWER_SERVICE) as android.os.PowerManager
+                if (!pm.isInteractive) {
+                    // layar mati: tidak perlu memanggil su; cukup segarkan notifikasi dari baterai sistem
+                    // hentikan aliran HUD (proses su + dumpsys) selama layar mati
+                    floating?.detach()
+                    readBattery(); updateNotification()
+                    var w = 0
+                    while (isActive && !pm.isInteractive && w < 15) { delay(2000); w++ }
+                    continue
+                }
                 val s = Alpha.status()
                 if (s != null) {
                     profile = s.profile
@@ -112,8 +122,10 @@ class BubbleService : Service() {
                     } else {
                         floating?.setGame("auto")
                     }
-                    updateNotification()
                 }
+                // baterai/suhu selalu dari sistem (tanpa su) supaya notifikasi tidak basi walau status gagal/lambat
+                readBattery()
+                updateNotification()
                 delay(8000)
             }
         }
@@ -245,6 +257,7 @@ class BubbleService : Service() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(big))
             .setContentIntent(content)
             .setOngoing(true)
+            .setShowWhen(false)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
         PROFILE_KEYS.forEachIndexed { i, k ->
@@ -256,6 +269,17 @@ class BubbleService : Service() {
             b.addAction(0, (if (k == profile) "● " else "") + PROFILE_LABELS[i], pi)
         }
         return b.build()
+    }
+
+    private fun readBattery() {
+        try {
+            val i = registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return
+            val lv = i.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1)
+            val sc = i.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100)
+            if (lv >= 0 && sc > 0) batt = lv * 100 / sc
+            val t = i.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, -1)
+            if (t > 0) tempC = t / 10f
+        } catch (_: Exception) {}
     }
 
     private fun updateNotification() {
