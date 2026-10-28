@@ -26,6 +26,7 @@ SYS_POWER="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}"
 # FPS cara Smollming: counter SurfaceFlinger 1013 (selisih per detik), fallback
 # ke latency per layer kalau counter gagal/diam 3x berturut-turut.
 CNT_PREV=""
+CNT_TPREV=""
 CNT_FAIL=0
 ZERO_RUN=0
 LAYER_FAIL=0
@@ -56,8 +57,15 @@ sf_counter() {
     [ "$1" = "00000000" ] || { CNT_FAIL=$((CNT_FAIL + 1)); return 1; }
     _sc_c=$((0x$2)); CNT_FAIL=0
     _sc_p=$CNT_PREV; CNT_PREV=$_sc_c
+    # selang NYATA dari /proc/uptime (centidetik): iterasi bisa molor, jangan asumsikan 1 dtk
+    _sc_u=$(cut -d' ' -f1 /proc/uptime 2>/dev/null)
+    _sc_t=${_sc_u%.*}${_sc_u#*.}
+    case "$_sc_t" in ''|*[!0-9]*) _sc_t="" ;; esac
+    _sc_tp=$CNT_TPREV; CNT_TPREV=$_sc_t
     [ -n "$_sc_p" ] && [ "$_sc_c" -ge "$_sc_p" ] || return 1
-    SC_RES="$(( (_sc_c - _sc_p) * 10 / TICK_S )) $_sc_c"
+    _sc_dt=$(( TICK_S * 100 ))
+    [ -n "$_sc_t" ] && [ -n "$_sc_tp" ] && [ "$_sc_t" -gt "$_sc_tp" ] && _sc_dt=$(( _sc_t - _sc_tp ))
+    SC_RES="$(( (_sc_c - _sc_p) * 1000 / _sc_dt )) $_sc_c"
 }
 
 # Daftar layer milik paket (tanpa baris pembantu "Background for"/"Bounds for"/"Dim ").

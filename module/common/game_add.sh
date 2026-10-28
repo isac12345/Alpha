@@ -200,7 +200,9 @@ ${_new_line}" "$FASRS_TOML" > "$_tmp"
 
     # 2. Sentuh merge flag + live merge (tanpa reboot)
     touch "$MERGE_FLAG" 2>/dev/null
-    do_live_merge
+    # GA_SKIP_MERGE=1: dipakai mode batch (alphactl game scan add) supaya fas-rs tidak di-restart per game;
+    # setelah semua selesai panggil `game_add.sh merge` SEKALI.
+    [ "${GA_SKIP_MERGE:-0}" = "1" ] || do_live_merge
 
     # 3. Sync uperf exclusion (games.toml -> uperf.json regex)
     if [ -x "$SYNC_SCRIPT" ]; then
@@ -342,11 +344,19 @@ case "$1" in
     remove)
         do_remove "$2"
         ;;
+    merge)
+        # merge + restart fas-rs sekali, setelah beberapa `add` dengan GA_SKIP_MERGE=1
+        do_live_merge
+        if [ -x "$SYNC_SCRIPT" ]; then
+            sh "$SYNC_SCRIPT" "$FASRS_TOML" "$UPERF_JSON" 2>/dev/null
+        fi
+        echo "OK: merge selesai"
+        ;;
     list)
         do_list
         ;;
     *)
-        echo "Usage: game_add.sh [add <pkg> [fps_csv] [profile] | remove <pkg> | list]"
+        echo "Usage: game_add.sh [add <pkg> [fps_csv] [profile] | remove <pkg> | merge | list]"
         echo ""
         echo "  add <pkg> [fps_csv] [profile]"
         echo "    Tambah game ke fas-rs games.toml + uperf exclusion + profile map."

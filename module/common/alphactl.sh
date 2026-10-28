@@ -21,6 +21,13 @@
 #   gameopt list <pkg> | set <pkg> <PRIO|DND|LITE> <on|off|1|default>   opsi per game
 #   game launch <pkg>         pasang render per game lalu buka game
 #   refresh list | get | set <off|Hz> | modes   refresh rate yang dikunci selama game (modes = "indeks_SF Hz")
+#   features                  peta kemampuan perangkat (key=value): cmd game, SF, ANGLE, hosts, ...
+#   gamefx get <pkg> | set <pkg> <gamemode|downscale|fps|preload|render> <nilai> | list    opsi per game
+#   mitigation list | add <pola> <fitur> | remove <pola> <fitur> | check    matikan fitur per perangkat
+#   game scan [add [profil] [fps]] | game seed <pkg>   cari game terpasang dari daftar seed, daftarkan sekaligus
+#   shield status|lists|import|enable|disable|remove|allow|on|off|apply   pemblokir iklan berbasis hosts
+#   bugreport                 arsip log + state ke /sdcard/Download untuk dilaporkan
+#   trim [force]              fstrim semua partisi (tidak saat game aktif / baterai < 15%)
 #   mem status                tekanan memori (PSI), RAM, kemampuan kernel (hanya baca)
 #   mglru status|on|off       MGLRU eksperimental (default off; on = nyalakan, off = pulihkan nilai asli)
 #   memclean status|on|off    pembersih adaptif saat game bila PSI tinggi (default off)
@@ -41,6 +48,7 @@ FASRS_NODE="${ALPHA_FASRS_MODE_NODE:-/dev/fas_rs/mode}"
 mkdir -p "$STATE_DIR" 2>/dev/null
 ALPHA_STATE_DIR="$STATE_DIR"
 [ -f "$COMMON/gamehooks.sh" ] && . "$COMMON/gamehooks.sh"
+[ -f "$COMMON/gamescan.sh" ] && . "$COMMON/gamescan.sh"
 
 FLAG_WHITELIST="GB_FASRS_FORCE_ALPHA GB_COOLDOWN_EXTREME NO_CPUSET THERMAL_GUARD_OFF BOOT_GUARD_OFF GAME_PRIO_OFF GAME_DND_ON"
 
@@ -288,7 +296,15 @@ cmd_game() {
             valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
             gh_launch "$2"
             ;;
-        *) echo "Usage: game add <pkg> <fps_csv> <profile> | game remove <pkg> | game launch <pkg>"; return 1 ;;
+        scan)
+            command -v gs_candidates >/dev/null 2>&1 || { echo "ERROR: gamescan.sh tidak ada"; return 1; }
+            case "$2" in
+                add) gs_add_all "$3" "$4" ;;
+                *) gs_candidates ;;
+            esac
+            ;;
+        seed) gs_user_add "$2" ;;
+        *) echo "Usage: game add <pkg> <fps_csv> <profile> | game remove <pkg> | game launch <pkg> | game scan [add [profil] [fps]] | game seed <pkg>"; return 1 ;;
     esac
 }
 
@@ -303,7 +319,40 @@ cmd_gamerender() {
             gh_render_set "$2" "$3"
             ;;
         list) gh_render_list ;;
-        *) echo "Usage: gamerender get <pkg> | set <pkg> <default|skiagl|skiavk> | list"; return 1 ;;
+        *) echo "Usage: gamerender get <pkg> | set <pkg> <default|skiagl|skiavk|angle> | list"; return 1 ;;
+    esac
+}
+
+cmd_gamefx() {
+    case "$1" in
+        get)
+            valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+            printf 'gamemode=%s\n' "$(gh_opt_get "$2" gamemode off)"
+            printf 'downscale=%s\n' "$(gh_opt_get "$2" downscale off)"
+            printf 'fps=%s\n' "$(gh_opt_get "$2" fps off)"
+            printf 'preload=%s\n' "$(gh_opt_get "$2" preload off)"
+            _gx=$(gh_render_get "$2"); printf 'render=%s\n' "${_gx:-default}"
+            ;;
+        set)
+            valid_pkg "$2" || { echo "ERROR: package tidak valid"; return 1; }
+            case "$3" in
+                gamemode|downscale|fps|preload) gh_opt_set "$2" "$3" "$4" ;;
+                render) gh_render_set "$2" "$4" ;;
+                *) echo "ERROR: kunci = gamemode|downscale|fps|preload|render"; return 1 ;;
+            esac
+            ;;
+        list) gh_opt_list; gh_render_list | sed 's/^\([^:]*\):/\1:render=/' ;;
+        *) echo "Usage: gamefx get <pkg> | set <pkg> <gamemode|downscale|fps|preload|render> <nilai> | list"; return 1 ;;
+    esac
+}
+
+cmd_mitigation() {
+    case "$1" in
+        list) gh_mit_list ;;
+        add) gh_mit_add "$2" "$3" ;;
+        remove) gh_mit_remove "$2" "$3" ;;
+        check) gh_mit_check ;;
+        *) echo "Usage: mitigation list | add <pola> <fitur> | remove <pola> <fitur> | check"; return 1 ;;
     esac
 }
 
@@ -483,7 +532,13 @@ case "$1" in
     hud) cmd_hud "$2" "$3" ;;
     rec) sh "$COMMON/screenrec.sh" "$2" "$3" ;;
     autoctl) cmd_autoctl "$2" ;;
+    features) gh_caps; mf_caps ;;
+    trim) sh "$COMMON/trim.sh" "$2" ;;
+    gamefx) cmd_gamefx "$2" "$3" "$4" "$5" ;;
+    mitigation) cmd_mitigation "$2" "$3" "$4" ;;
+    shield) shift; sh "$COMMON/shield.sh" "$@" ;;
+    bugreport) sh "$COMMON/bugreport.sh" ;;
     log) cmd_log "$2" ;;
     modinfo) cat "$MODDIR/module.prop" ;;
-    *) sed -n '2,34p' "$0" ;;
+    *) sed -n '2,42p' "$0" ;;
 esac

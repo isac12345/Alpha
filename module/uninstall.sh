@@ -35,6 +35,7 @@ if [ -f "$_alpha_mod_u/common/gamehooks.sh" ]; then
     ALPHA_STATE_DIR="$WORK_DIR" ALPHA_MOD_DIR="$_alpha_mod_u" sh -c '. "$1/common/gamehooks.sh"; gh_recover' _ "$_alpha_mod_u" >/dev/null 2>&1
 fi
 [ -f "$_alpha_mod_u/common/memfx.sh" ] && ALPHA_STATE_DIR="$WORK_DIR" sh -c '. "$1/common/memfx.sh"; mf_mglru_restore' _ "$_alpha_mod_u" >/dev/null 2>&1
+[ -f "$_alpha_mod_u/common/shield.sh" ] && ALPHA_STATE_DIR="$WORK_DIR" sh "$_alpha_mod_u/common/shield.sh" off >/dev/null 2>&1
 [ -f "$_alpha_mod_u/common/screenrec.sh" ] && ALPHA_STATE_DIR="$WORK_DIR" sh "$_alpha_mod_u/common/screenrec.sh" stop >/dev/null 2>&1
 unset _alpha_mod_u
 rm -f "$WORK_DIR/monitor.pid" "$WORK_DIR/watchdog.pid" "$WORK_DIR/autoctl.pid" 2>/dev/null

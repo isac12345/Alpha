@@ -32,6 +32,10 @@ GH_REND_PREV="$GH_STATE/.gh_render_prev"
 GH_PRIO_T="$GH_STATE/.gh_prio_t"
 GH_RENDER_MAP="$GH_STATE/game_render.conf"
 GH_OPTS="$GH_STATE/game_opts.conf"
+GH_MIT="$GH_STATE/device_mitigation.conf"
+GH_GM_MARK="$GH_STATE/.gh_gm_pkg"
+GH_ANGLE_PREV="$GH_STATE/.gh_angle_prev"
+GH_PRELOAD_T="$GH_STATE/.gh_preload_t"
 GH_CONF="$GH_STATE/app.conf"
 GH_GRACE="${ALPHA_GB_GRACE:-12}"
 GH_PRIO_EVERY=45
@@ -52,11 +56,76 @@ _gh_conf() {
     [ -n "$_ghc_v" ] && printf '%s' "$_ghc_v" || printf '%s' "$2"
 }
 
+# ---------------------------------------------------------------- 0. mitigasi per perangkat
+# device_mitigation.conf: satu aturan per baris, "<pola> <fitur>", pola = glob (huruf besar/kecil sama)
+# yang dicocokkan ke model/device/board/hardware perangkat. Fitur: prio dnd refresh gamemode
+# downscale angle render, atau "all". Contoh:  m5* refresh   |   *t606* angle   |   rmx3* all
+# Fitur juga bisa dimatikan sementara lewat file FEAT_<fitur>_OFF di folder state.
+_gh_device_ids() {
+    if [ -z "$_GH_IDS" ]; then
+        _GH_IDS=$(for _ghp in ro.product.model ro.product.device ro.product.name ro.board.platform \
+            ro.hardware ro.soc.model ro.product.board; do
+            _ghv=$(getprop "$_ghp" 2>/dev/null | tr 'A-Z' 'a-z')
+            [ -n "$_ghv" ] && printf '%s\n' "$_ghv"
+        done)
+    fi
+    printf '%s\n' "$_GH_IDS"
+}
+
+# return 0 = fitur $1 DILARANG oleh aturan mitigasi
+gh_mit_hit() {
+    [ -f "$GH_MIT" ] || return 1
+    while read -r _ghm_pat _ghm_ft _ghm_rest; do
+        case "$_ghm_pat" in ''|'#'*) continue ;; esac
+        case "$_ghm_ft" in "$1"|all) ;; *) continue ;; esac
+        _ghm_pat=$(printf '%s' "$_ghm_pat" | tr 'A-Z' 'a-z')
+        _gh_device_ids | while read -r _ghm_id; do
+            case "$_ghm_id" in $_ghm_pat) exit 7 ;; esac
+        done
+        [ $? -eq 7 ] && return 0
+    done < "$GH_MIT"
+    return 1
+}
+
+# return 0 = fitur $1 BOLEH jalan
+gh_feat_ok() {
+    [ -f "$GH_STATE/FEAT_$1_OFF" ] && return 1
+    gh_mit_hit "$1" && return 1
+    return 0
+}
+
+gh_mit_list() { [ -f "$GH_MIT" ] && grep -v '^[[:space:]]*#' "$GH_MIT" | grep -v '^[[:space:]]*$'; return 0; }
+
+gh_mit_add() {
+    case "$1" in ''|*[!A-Za-z0-9._*?-]*) echo "ERROR: pola tidak valid (huruf, angka, . _ - * ?)"; return 1 ;; esac
+    case "$2" in prio|dnd|refresh|gamemode|downscale|angle|render|preload|mglru|memclean|trim|all) ;;
+        *) echo "ERROR: fitur harus salah satu: prio dnd refresh gamemode downscale angle render preload mglru memclean trim all"; return 1 ;; esac
+    touch "$GH_MIT" 2>/dev/null
+    # -F: pola berisi * dan ? harus dibaca apa adanya, bukan sebagai regex
+    grep -Fqx "$1 $2" "$GH_MIT" 2>/dev/null || printf '%s %s\n' "$1" "$2" >> "$GH_MIT"
+    echo "OK: $1 $2"
+}
+
+gh_mit_remove() {
+    [ -f "$GH_MIT" ] || { echo "OK: tidak ada aturan"; return 0; }
+    grep -Fvx "$1 $2" "$GH_MIT" > "$GH_MIT.tmp.$$" 2>/dev/null
+    mv -f "$GH_MIT.tmp.$$" "$GH_MIT"
+    echo "OK: dihapus $1 $2"
+}
+
+# fitur apa saja yang dimatikan di perangkat ini
+gh_mit_check() {
+    for _ghc in prio dnd refresh gamemode downscale angle render preload mglru memclean trim; do
+        gh_feat_ok "$_ghc" || echo "off:$_ghc"
+    done
+    return 0
+}
+
 # ---------------------------------------------------------------- 0. opsi per game
 # File game_opts.conf: satu baris "package:KEY=nilai". Tidak ada baris = ikut pengaturan global.
 _gh_opt() {
     [ -f "$GH_OPTS" ] || return 0
-    sed -n "s/^$1:$2=//p" "$GH_OPTS" 2>/dev/null | tail -n 1 | tr -d '[:space:]'
+    sed -n "s/^$(_gh_re "$1"):$2=//p" "$GH_OPTS" 2>/dev/null | tail -n 1 | tr -d '[:space:]'
 }
 
 # $1=pkg $2=PRIO|DND -> status 0 bila fitur itu aktif untuk game ini
@@ -86,18 +155,36 @@ gh_opt_set() {
                 ''|*[!0-9]*) echo "ERROR: nilai HZ harus off|default|30-240"; return 1 ;;
                 *) [ "$3" -ge 30 ] && [ "$3" -le 240 ] || { echo "ERROR: rentang HZ 30-240"; return 1; } ;;
             esac ;;
-        *) echo "ERROR: opsi tidak dikenal (PRIO|DND|LITE|HZ|OVD)"; return 1 ;;
+        gamemode)
+            case "$3" in off|default|standard|performance|battery) ;; *) echo "ERROR: gamemode = off|standard|performance|battery"; return 1 ;; esac ;;
+        downscale)
+            case "$3" in off|default|0.[5-9]|0.[5-9][0-9]|1|1.0|1.00) ;; *) echo "ERROR: downscale = off atau 0.5 sampai 1.0"; return 1 ;; esac ;;
+        fps)
+            case "$3" in off|default) ;; ''|*[!0-9]*) echo "ERROR: fps = off atau angka 10 sampai 240"; return 1 ;;
+                *) [ "$3" -ge 10 ] && [ "$3" -le 240 ] || { echo "ERROR: fps = off atau angka 10 sampai 240"; return 1; } ;; esac ;;
+        preload)
+            case "$3" in off|default|on) ;; *) echo "ERROR: preload = off|on"; return 1 ;; esac ;;
+        *) echo "ERROR: opsi tidak dikenal (PRIO|DND|LITE|HZ|OVD|gamemode|downscale|fps|preload)"; return 1 ;;
     esac
     touch "$GH_OPTS" 2>/dev/null || { echo "ERROR: gagal tulis"; return 1; }
-    grep -v "^$1:$2=" "$GH_OPTS" > "$GH_OPTS.tmp.$$" 2>/dev/null
-    [ "$3" = "default" ] || printf '%s:%s=%s\n' "$1" "$2" "$3" >> "$GH_OPTS.tmp.$$"
+    grep -v "^$(_gh_re "$1"):$2=" "$GH_OPTS" > "$GH_OPTS.tmp.$$" 2>/dev/null
+    _gos_rm=0
+    [ "$3" = "default" ] && _gos_rm=1
+    case "$2" in gamemode|downscale|fps|preload) [ "$3" = off ] && _gos_rm=1 ;; esac
+    [ "$_gos_rm" = 1 ] || printf '%s:%s=%s\n' "$1" "$2" "$3" >> "$GH_OPTS.tmp.$$"
     mv -f "$GH_OPTS.tmp.$$" "$GH_OPTS" && echo "OK: $1 $2=$3"
+}
+
+# $1=pkg $2=kunci $3=bawaan -> nilai opsi (atau bawaan bila tidak diset)
+gh_opt_get() {
+    _gho=$(_gh_opt "$1" "$2")
+    [ -n "$_gho" ] && printf '%s' "$_gho" || printf '%s' "$3"
 }
 
 # $1=pkg -> baris "KEY=nilai" untuk opsi yang diset khusus game ini
 gh_opt_list() {
     [ -f "$GH_OPTS" ] || return 0
-    sed -n "s/^$1://p" "$GH_OPTS" 2>/dev/null
+    sed -n "s/^$(_gh_re "$1")://p" "$GH_OPTS" 2>/dev/null
 }
 
 # ---------------------------------------------------------------- 1. prioritas
@@ -120,6 +207,7 @@ _gh_renice_tid() {
 
 _gh_prio_apply() {
     _gh_enabled "$1" PRIO || return 0
+    gh_feat_ok prio || return 0
     _ghp_pids=$(pidof "$1" 2>/dev/null)
     [ -n "$_ghp_pids" ] || return 0
     for _ghp_pid in $_ghp_pids; do
@@ -149,6 +237,7 @@ _gh_prio_apply() {
 # ---------------------------------------------------------------- 2. DND
 _gh_dnd_on() {
     _gh_enabled "$1" DND || return 0
+    gh_feat_ok dnd || return 0
     [ -f "$GH_DND_PREV" ] && return 0
     command -v settings >/dev/null 2>&1 || return 0
     _ghd=$(settings get global zen_mode 2>/dev/null | tr -d '\r\n[:space:]')
@@ -239,6 +328,7 @@ _gh_sf_index_for() {
 }
 
 _gh_refresh_on() {
+    gh_feat_ok refresh || return 0
     # opsi HZ khusus game menimpa pengaturan global (off = game ini tidak dipaksa)
     _ghh=$(_gh_opt "$1" HZ)
     [ -n "$_ghh" ] || _ghh=$(_gh_conf GAME_REFRESH_HZ off)
@@ -319,6 +409,7 @@ gh_refresh_list() {
 _gh_render_valid() {
     case "$1" in
         skiagl) return 0 ;;
+        angle) _gh_angle_supported; return $? ;;
         skiavk)
             _ghv_api=$(getprop ro.build.version.sdk 2>/dev/null)
             _gh_num "$_ghv_api" || return 1
@@ -332,7 +423,7 @@ _gh_render_valid() {
 # stdout: backend khusus game, atau kosong (= ikut global)
 gh_render_get() {
     [ -f "$GH_RENDER_MAP" ] || return 0
-    sed -n "s/^$1://p" "$GH_RENDER_MAP" 2>/dev/null | tail -n 1 | tr -d '[:space:]'
+    sed -n "s/^$(_gh_re "$1")://p" "$GH_RENDER_MAP" 2>/dev/null | tail -n 1 | tr -d '[:space:]'
 }
 
 # $1=pkg $2=skiagl|skiavk|default (default = hapus pengaturan khusus)
@@ -342,19 +433,20 @@ gh_render_set() {
         default)
             if [ -f "$GH_RENDER_MAP" ]; then
                 # grep -v keluar 1 kalau hasilnya kosong, jadi jangan dirantai dengan &&
-                grep -v "^$1:" "$GH_RENDER_MAP" > "$GH_RENDER_MAP.tmp.$$" 2>/dev/null
+                grep -v "^$(_gh_re "$1"):" "$GH_RENDER_MAP" > "$GH_RENDER_MAP.tmp.$$" 2>/dev/null
                 mv -f "$GH_RENDER_MAP.tmp.$$" "$GH_RENDER_MAP"
             fi
             echo "OK: render $1 -> ikut global"
             return 0 ;;
-        skiagl|skiavk)
+        skiagl|skiavk|angle)
+            gh_feat_ok render || { echo "ERROR: render per game dimatikan oleh mitigasi perangkat"; return 1; }
             _gh_render_valid "$2" || { echo "ERROR: $2 tidak didukung perangkat ini"; return 1; }
             touch "$GH_RENDER_MAP" 2>/dev/null
-            grep -v "^$1:" "$GH_RENDER_MAP" > "$GH_RENDER_MAP.tmp.$$" 2>/dev/null
+            grep -v "^$(_gh_re "$1"):" "$GH_RENDER_MAP" > "$GH_RENDER_MAP.tmp.$$" 2>/dev/null
             printf '%s:%s\n' "$1" "$2" >> "$GH_RENDER_MAP.tmp.$$"
             mv -f "$GH_RENDER_MAP.tmp.$$" "$GH_RENDER_MAP" && echo "OK: render $1 -> $2"
             return 0 ;;
-        *) echo "ERROR: backend tidak valid (default|skiagl|skiavk)"; return 1 ;;
+        *) echo "ERROR: backend tidak valid (default|skiagl|skiavk|angle)"; return 1 ;;
     esac
 }
 
@@ -363,14 +455,20 @@ gh_render_list() {
     return 0
 }
 
+_gh_re() { printf '%s' "$1" | sed 's/\./\\./g'; }
+
 _gh_render_restore() {
     [ -f "$GH_REND_PREV" ] || return 0
     _ghx=$(sed -n '1p' "$GH_REND_PREV" 2>/dev/null)
     rm -f "$GH_REND_PREV"
     _ghx=${_ghx%%|*}
-    [ -n "$_ghx" ] || return 0
     command -v setprop >/dev/null 2>&1 || return 0
+    # Nilai awal KOSONG = renderer bawaan sistem; tetap harus ditulis balik (kosong), kalau tidak
+    # renderer pilihan game tertinggal untuk semua app sampai reboot.
     setprop debug.hwui.renderer "$_ghx" >/dev/null 2>&1
+    if [ -z "$_ghx" ] && [ -n "$(getprop debug.hwui.renderer 2>/dev/null)" ]; then
+        command -v resetprop >/dev/null 2>&1 && resetprop -n debug.hwui.renderer "" >/dev/null 2>&1
+    fi
     _gh_log RESTORED "debug.hwui.renderer dikembalikan"
 }
 
@@ -383,19 +481,195 @@ gh_launch() {
         return 1
     fi
     _ghl_be=$(gh_render_get "$1")
-    if [ -n "$_ghl_be" ] && _gh_render_valid "$_ghl_be"; then
-        if [ ! -f "$GH_REND_PREV" ]; then
-            printf '%s|%s\n' "$(getprop debug.hwui.renderer 2>/dev/null)" "$(_gh_now)" > "$GH_REND_PREV" 2>/dev/null
-        fi
-        setprop debug.hwui.renderer "$_ghl_be" >/dev/null 2>&1
-        _gh_log APPLIED "render $_ghl_be untuk $1 (peluncuran)"
+    if [ -n "$_ghl_be" ] && gh_feat_ok render && _gh_render_valid "$_ghl_be"; then
+        case "$_ghl_be" in
+            angle)
+                _gh_angle_on "$1" || _ghl_be=""
+                ;;
+            *)
+                if [ ! -f "$GH_REND_PREV" ]; then
+                    printf '%s|%s\n' "$(getprop debug.hwui.renderer 2>/dev/null)" "$(_gh_now)" > "$GH_REND_PREV" 2>/dev/null
+                fi
+                setprop debug.hwui.renderer "$_ghl_be" >/dev/null 2>&1
+                _gh_log APPLIED "render $_ghl_be untuk $1 (peluncuran)"
+                ;;
+        esac
+    else
+        _ghl_be=""
     fi
+    # Game Mode API (mode + downscale) juga hanya efektif penuh bila dipasang sebelum proses game mulai
+    _gh_gm_on "$1"
+    _gh_preload "$1"
     _ghl_c=$(cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$1" 2>/dev/null | tail -n 1 | tr -d '\r')
     case "$_ghl_c" in
         */*) am start -n "$_ghl_c" >/dev/null 2>&1 ;;
         *) monkey -p "$1" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 ;;
     esac
     echo "OK: launch $1${_ghl_be:+ render=$_ghl_be}"
+}
+
+# ---------------------------------------------------------------- 0c. Game Mode API (cmd game)
+# Android 12+: `cmd game set --mode <m> [--downscale <r>] <pkg>`; `cmd game reset <pkg>` membuang override.
+# Downscale dibaca sistem saat proses game DIMULAI, jadi baru terasa kalau game dibuka lewat tombol Luncurkan.
+# PERHATIAN: `reset` membuang SEMUA override game itu, termasuk yang kamu atur sendiri di Game Dashboard.
+_gh_gamecmd_ok() {
+    command -v cmd >/dev/null 2>&1 || return 1
+    cmd -l 2>/dev/null | grep -q '^[[:space:]]*game$'
+}
+
+_gh_gm_on() {
+    _ghg_pkg="$1"
+    _ghg_mode=$(gh_opt_get "$_ghg_pkg" gamemode off)
+    _ghg_ds=$(gh_opt_get "$_ghg_pkg" downscale off)
+    _ghg_fps=$(gh_opt_get "$_ghg_pkg" fps off)
+    [ "$_ghg_mode" = off ] && [ "$_ghg_ds" = off ] && [ "$_ghg_fps" = off ] && return 0
+    gh_feat_ok gamemode || return 0
+    gh_feat_ok downscale || _ghg_ds=off
+    [ "$_ghg_mode" = off ] && [ "$_ghg_ds" = off ] && [ "$_ghg_fps" = off ] && return 0
+    if [ -f "$GH_GM_MARK" ] && [ "$(sed -n '1p' "$GH_GM_MARK" 2>/dev/null | cut -d'|' -f1)" = "$_ghg_pkg" ]; then
+        return 0
+    fi
+    _gh_gamecmd_ok || { _gh_log WARN "cmd game tidak tersedia di perangkat ini (Android < 12?)"; return 0; }
+    # downscale dan fps butuh mode; default performance
+    [ "$_ghg_mode" = off ] && _ghg_mode=performance
+    set -- --mode "$_ghg_mode"
+    [ "$_ghg_ds" != off ] && set -- "$@" --downscale "$_ghg_ds"
+    [ "$_ghg_fps" != off ] && set -- "$@" --fps "$_ghg_fps"
+    cmd game set "$@" "$_ghg_pkg" >/dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        printf '%s|%s\n' "$_ghg_pkg" "$(_gh_now)" > "$GH_GM_MARK" 2>/dev/null
+        _gh_log APPLIED "game mode $_ghg_mode downscale=$_ghg_ds fps=$_ghg_fps untuk $_ghg_pkg"
+    else
+        _gh_log WARN "cmd game set gagal untuk $_ghg_pkg"
+    fi
+}
+
+_gh_gm_off() {
+    [ -f "$GH_GM_MARK" ] || return 0
+    _ghg_p=$(sed -n '1p' "$GH_GM_MARK" 2>/dev/null)
+    rm -f "$GH_GM_MARK"
+    _ghg_p=${_ghg_p%%|*}
+    [ -n "$_ghg_p" ] || return 0
+    _gh_gamecmd_ok && cmd game reset "$_ghg_p" >/dev/null 2>&1
+    _gh_log RESTORED "game mode override dibuang untuk $_ghg_p"
+}
+
+# ---------------------------------------------------------------- 0d. ANGLE per game
+# ANGLE = OpenGL ES di atas Vulkan. Dipilih per package lewat settings global
+# angle_gl_driver_selection_pkgs/values; hanya dibaca proses yang baru dimulai (tombol Luncurkan).
+_gh_angle_supported() {
+    [ "$(getprop ro.gfx.angle.supported 2>/dev/null)" = "true" ] && return 0
+    for _gha_f in /system/lib64/libEGL_angle.so /vendor/lib64/egl/libEGL_angle.so /system/lib64/egl/libEGL_angle.so; do
+        [ -f "$_gha_f" ] && return 0
+    done
+    command -v pm >/dev/null 2>&1 && pm path com.android.angle >/dev/null 2>&1 && return 0
+    return 1
+}
+
+_gh_angle_on() {
+    _gha_pkg="$1"
+    command -v settings >/dev/null 2>&1 || return 1
+    [ -f "$GH_ANGLE_PREV" ] && return 0
+    _gha_pp=$(settings get global angle_gl_driver_selection_pkgs 2>/dev/null | tr -d '\r\n')
+    _gha_pv=$(settings get global angle_gl_driver_selection_values 2>/dev/null | tr -d '\r\n')
+    case "$_gha_pp" in null) _gha_pp="" ;; esac
+    case "$_gha_pv" in null) _gha_pv="" ;; esac
+    # sudah dipilih pengguna sendiri: jangan diubah, tidak perlu dipulihkan
+    case ",$_gha_pp," in *",$_gha_pkg,"*) return 0 ;; esac
+    printf '%s|%s|%s\n' "$_gha_pp" "$_gha_pv" "$(_gh_now)" > "$GH_ANGLE_PREV" 2>/dev/null
+    settings put global angle_gl_driver_selection_pkgs "${_gha_pp:+$_gha_pp,}$_gha_pkg" >/dev/null 2>&1
+    settings put global angle_gl_driver_selection_values "${_gha_pv:+$_gha_pv,}angle" >/dev/null 2>&1
+    _gh_log APPLIED "ANGLE untuk $_gha_pkg (peluncuran)"
+}
+
+_gh_angle_restore() {
+    [ -f "$GH_ANGLE_PREV" ] || return 0
+    _gha_l=$(sed -n '1p' "$GH_ANGLE_PREV" 2>/dev/null)
+    rm -f "$GH_ANGLE_PREV"
+    command -v settings >/dev/null 2>&1 || return 0
+    _gha_pp=${_gha_l%%|*}; _gha_r=${_gha_l#*|}; _gha_pv=${_gha_r%%|*}
+    if [ -n "$_gha_pp" ]; then
+        settings put global angle_gl_driver_selection_pkgs "$_gha_pp" >/dev/null 2>&1
+        settings put global angle_gl_driver_selection_values "$_gha_pv" >/dev/null 2>&1
+    else
+        settings delete global angle_gl_driver_selection_pkgs >/dev/null 2>&1
+        settings delete global angle_gl_driver_selection_values >/dev/null 2>&1
+    fi
+    _gh_log RESTORED "ANGLE dikembalikan"
+}
+
+# ---------------------------------------------------------------- 0d2. preload page cache per game
+# Membaca berkas game ke page cache lebih dulu (kode terkompilasi, library native, APK) supaya loading awal
+# tidak menunggu flash. Page cache bisa dibuang kernel kapan saja, jadi aman bagi RAM; biayanya satu lonjakan I/O.
+# Urutan: oat/*.odex|vdex (kode terkompilasi) -> lib/*/*.so -> base.apk -> split APK, sampai batas ukuran.
+# Batas = 1/4 dari MemAvailable saat itu (bukan angka tetap); PRELOAD_MAX_MB di app.conf bisa menurunkannya.
+# Sekali per PRELOAD_COOLDOWN detik (default 600) per game. Manfaat belum terukur: uji dengan waktu loading sendiri.
+_gh_meminfo_kb() { sed -n "s/^$1:[[:space:]]*\([0-9]*\).*/\1/p" "${ALPHA_MEMINFO:-/proc/meminfo}" 2>/dev/null | head -n 1; }
+
+_gh_preload() {
+    _gpl_pkg="$1"
+    [ "$(gh_opt_get "$_gpl_pkg" preload off)" = on ] || return 0
+    gh_feat_ok preload || return 0
+    command -v pm >/dev/null 2>&1 || return 0
+    _gpl_now=$(_gh_now); _gh_num "$_gpl_now" || return 0
+    _gpl_cd=$(_gh_conf PRELOAD_COOLDOWN 600); _gh_num "$_gpl_cd" || _gpl_cd=600
+    if [ -f "$GH_PRELOAD_T" ]; then
+        _gpl_l=$(sed -n '1p' "$GH_PRELOAD_T" 2>/dev/null)
+        if [ "${_gpl_l%%|*}" = "$_gpl_pkg" ]; then
+            _gpl_t=${_gpl_l#*|}
+            _gh_num "$_gpl_t" && [ $((_gpl_now - _gpl_t)) -lt "$_gpl_cd" ] && return 0
+        fi
+    fi
+    _gpl_kb=$(_gh_meminfo_kb MemAvailable); _gh_num "$_gpl_kb" || return 0
+    _gpl_cap=$((_gpl_kb / 4 / 1024))
+    # RAM bebas terlalu kecil -> lewati (pengecekan SEBELUM batas pengguna, supaya PRELOAD_MAX_MB kecil tetap dihormati)
+    if [ "$_gpl_cap" -lt 16 ]; then _gh_log WARN "preload $_gpl_pkg dilewati: RAM bebas terlalu kecil (${_gpl_cap} MB)"; return 0; fi
+    _gpl_max=$(_gh_conf PRELOAD_MAX_MB 0)
+    if _gh_num "$_gpl_max" && [ "$_gpl_max" -gt 0 ] && [ "$_gpl_max" -lt "$_gpl_cap" ]; then _gpl_cap=$_gpl_max; fi
+    _gpl_paths=$(pm path "$_gpl_pkg" 2>/dev/null | sed -n 's/^package://p' | tr -d '\r')
+    [ -n "$_gpl_paths" ] || return 0
+    printf '%s|%s\n' "$_gpl_pkg" "$_gpl_now" > "$GH_PRELOAD_T" 2>/dev/null
+    (
+        _gpl_left=$_gpl_cap; _gpl_n=0
+        _gpl_dir=$(dirname "$(printf '%s\n' "$_gpl_paths" | head -n 1)")
+        for _gpl_f in "$_gpl_dir"/oat/*/*.odex "$_gpl_dir"/oat/*/*.vdex "$_gpl_dir"/lib/*/*.so $_gpl_paths; do
+            [ "$_gpl_left" -gt 0 ] || break
+            [ -f "$_gpl_f" ] || continue
+            _gpl_sz=$(wc -c < "$_gpl_f" 2>/dev/null | tr -d '[:space:]'); _gh_num "$_gpl_sz" || continue
+            _gpl_mb=$(( (_gpl_sz + 1048575) / 1048576 )); [ "$_gpl_mb" -gt 0 ] || _gpl_mb=1
+            [ "$_gpl_mb" -le "$_gpl_left" ] || _gpl_mb=$_gpl_left
+            if command -v ionice >/dev/null 2>&1; then
+                ionice -c2 -n7 dd if="$_gpl_f" of=/dev/null bs=1048576 count="$_gpl_mb" >/dev/null 2>&1
+            else
+                dd if="$_gpl_f" of=/dev/null bs=1048576 count="$_gpl_mb" >/dev/null 2>&1
+            fi
+            _gpl_left=$((_gpl_left - _gpl_mb)); _gpl_n=$((_gpl_n + _gpl_mb))
+        done
+        _gh_log APPLIED "preload $_gpl_pkg: $_gpl_n MB dibaca (batas $_gpl_cap MB)"
+    ) >/dev/null 2>&1 &
+}
+
+# Grace keluar game (detik) yang bisa diatur: app.conf GAME_GRACE_SEC, 3-120; default = GH_GRACE (12).
+_gh_grace() {
+    _ggr=$(_gh_conf GAME_GRACE_SEC "$GH_GRACE")
+    if _gh_num "$_ggr" && [ "$_ggr" -ge 3 ] && [ "$_ggr" -le 120 ]; then printf '%s' "$_ggr"; else printf '%s' "$GH_GRACE"; fi
+}
+
+# ---------------------------------------------------------------- 0e. peta kemampuan
+gh_caps() {
+    _ghk_sdk=$(getprop ro.build.version.sdk 2>/dev/null)
+    printf 'sdk=%s\n' "$_ghk_sdk"
+    printf 'settings=%s\n' "$(command -v settings >/dev/null 2>&1 && echo 1 || echo 0)"
+    printf 'cmd_game=%s\n' "$(_gh_gamecmd_ok && echo 1 || echo 0)"
+    printf 'sf_service=%s\n' "$(command -v service >/dev/null 2>&1 && echo 1 || echo 0)"
+    printf 'sf_modes=%s\n' "$(gh_sf_modes | wc -l | tr -d '[:space:]')"
+    printf 'refresh_list=%s\n' "$(gh_refresh_list | tr '\n' ',' | sed 's/,$//')"
+    printf 'angle=%s\n' "$(_gh_angle_supported && echo 1 || echo 0)"
+    printf 'vulkan=%s\n' "$(_gh_render_valid skiavk && echo 1 || echo 0)"
+    printf 'screenrecord=%s\n' "$(command -v screenrecord >/dev/null 2>&1 && echo 1 || echo 0)"
+    printf 'dnd_cmd=%s\n' "$(command -v cmd >/dev/null 2>&1 && cmd notification help >/dev/null 2>&1 && echo 1 || echo 0)"
+    printf 'hosts_mount=%s\n' "$(command -v mount >/dev/null 2>&1 && [ -e /system/etc/hosts ] && echo 1 || echo 0)"
+    printf 'mitigated=%s\n' "$(gh_mit_check | sed 's/^off://' | tr '\n' ',' | sed 's/,$//')"
 }
 
 # ---------------------------------------------------------------- Overdrive (mesin sendiri, overdrive.sh)
@@ -430,6 +704,9 @@ gh_start() {
     if [ "$(_gh_opt "$1" OVD)" = "on" ] && [ "$(_gh_opt "$1" LITE)" != "1" ]; then
         _gh_ovd start "$1"
     fi
+    _gh_gm_on "$1"
+    _gh_preload "$1"
+    command -v mf_start_clean >/dev/null 2>&1 && mf_start_clean "$1"
 }
 
 gh_stop() {
@@ -439,6 +716,8 @@ gh_stop() {
     _gh_dnd_off
     _gh_refresh_off
     _gh_render_restore
+    _gh_angle_restore
+    _gh_gm_off
     [ -n "$_ghs" ] && _gh_log INFO "game selesai: $_ghs"
     return 0
 }
@@ -476,7 +755,7 @@ gh_tick() {
         command -v mf_relief_tick >/dev/null 2>&1 && mf_relief_tick "$(cat "$GH_MARK" 2>/dev/null)"
         if [ -f "$GH_PEND" ]; then
             _ght_p=$(tr -d '[:space:]' < "$GH_PEND" 2>/dev/null)
-            if _gh_num "$_ght_p" && [ $((_ght_now - _ght_p)) -ge "$GH_GRACE" ]; then
+            if _gh_num "$_ght_p" && [ $((_ght_now - _ght_p)) -ge "$(_gh_grace)" ]; then
                 gh_stop
                 return 0
             fi
@@ -498,6 +777,21 @@ gh_tick() {
         _ght_r=${_ght_r#*|}
         if _gh_num "$_ght_r" && [ $((_ght_now - _ght_r)) -ge "$GH_RENDER_TIMEOUT" ]; then
             _gh_render_restore
+        fi
+    fi
+    # Peluncuran yang tidak pernah masuk foreground: ANGLE dan Game Mode override dibuang setelah timeout yang sama
+    if [ -f "$GH_ANGLE_PREV" ]; then
+        _ght_a=$(sed -n '1p' "$GH_ANGLE_PREV" 2>/dev/null)
+        _ght_a=${_ght_a#*|}; _ght_a=${_ght_a#*|}
+        if _gh_num "$_ght_a" && [ $((_ght_now - _ght_a)) -ge "$GH_RENDER_TIMEOUT" ]; then
+            _gh_angle_restore
+        fi
+    fi
+    if [ -f "$GH_GM_MARK" ]; then
+        _ght_g=$(sed -n '1p' "$GH_GM_MARK" 2>/dev/null)
+        _ght_g=${_ght_g#*|}
+        if _gh_num "$_ght_g" && [ $((_ght_now - _ght_g)) -ge "$GH_RENDER_TIMEOUT" ]; then
+            _gh_gm_off
         fi
     fi
     return 0

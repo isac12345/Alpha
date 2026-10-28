@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# memfx.sh — REFERENSI (belum masuk modul). Tweak memori untuk Alpha: MGLRU opt-in + PSI memori.
+# memfx.sh — tweak memori Alpha: PSI memori (baca), MGLRU opt-in (eksperimental), pembersih adaptif opt-in.
 # Library fungsi (di-source), gaya sama dengan gamehooks.sh. Semua jalur bisa di-override lewat env
 # supaya bisa diuji di Linux biasa tanpa HP (lihat test_memfx.sh).
 #
@@ -20,6 +20,9 @@ MF_MEMINFO="${ALPHA_MEMINFO:-/proc/meminfo}"
 MF_LRU_PREV="$MF_STATE/.mf_mglru_prev"
 MF_HITS="$MF_STATE/.mf_hits"
 MF_LAST="$MF_STATE/.mf_last"
+
+# pintu mitigasi dari gamehooks.sh bila ada (fitur: mglru, memclean); tanpa gamehooks tidak memblok
+_mf_ok() { command -v gh_feat_ok >/dev/null 2>&1 || return 0; gh_feat_ok "$1"; }
 
 _mf_log() { printf '[%s] [MEMFX] [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null)" "$1" "$2" >> "$MF_LOG" 2>/dev/null; }
 _mf_num() { case "$1" in ''|*[!0-9]*) return 1 ;; *) return 0 ;; esac; }
@@ -104,6 +107,7 @@ mf_mglru_status() {
 mf_mglru_apply() {
     _mm=$(_mf_conf MGLRU_MODE off)
     if [ "$_mm" != on ]; then mf_mglru_restore; return 0; fi
+    _mf_ok mglru || return 0
     [ -w "$MF_LRU/enabled" ] || { _mf_log WARN "MGLRU diminta tapi kernel tidak mendukung"; return 0; }
     _mr=$(tr -d '[:space:]' < "$MF_LRU/enabled" 2>/dev/null)
     _mf_raw_on "$_mr" && return 0   # sudah menyala (bawaan ROM atau sudah kita nyalakan): tidak ada yang diubah, tidak ada yang dipulihkan
@@ -137,6 +141,7 @@ mf_mglru_restore() {
 # Tindakan: `am kill-all` (hanya proses yang aman dimatikan: cached/background, bukan app foreground).
 mf_relief_tick() {
     [ "$(_mf_conf MEMCLEAN 0)" = 1 ] || return 0
+    _mf_ok memclean || return 0
     _mv=$(mf_psi_x100 some avg10) || return 0
     _mth=$(mf_psi_threshold_x100)
     _mhn=$(_mf_conf MEMCLEAN_HITS 3); _mf_num "$_mhn" || _mhn=3
@@ -171,4 +176,14 @@ mf_caps() {
     printf 'lmk_partial_stall_ms=%s\n' "$(getprop ro.lmk.psi_partial_stall_ms 2>/dev/null)"
     printf 'low_ram=%s\n' "$(getprop ro.config.low_ram 2>/dev/null)"
     printf 'freezer_cfg=%s\n' "$(command -v device_config >/dev/null 2>&1 && device_config get activity_manager_native_boot use_freezer 2>/dev/null)"
+}
+
+# Bebaskan RAM sekali saat game mulai (opt-in: MEMCLEAN_ON_START=1). Setara "Free RAM" di AZenith tapi
+# memakai `am kill-all` (hanya proses yang aman dimatikan), bukan force-stop massal.
+mf_start_clean() {
+    [ "$(_mf_conf MEMCLEAN_ON_START 0)" = 1 ] || return 0
+    _mf_ok memclean || return 0
+    am help 2>&1 | grep -q 'kill-all' || { _mf_log WARN "am kill-all tidak tersedia, free RAM saat game mulai dilewati"; return 0; }
+    am kill-all >/dev/null 2>&1
+    _mf_log APPLIED "am kill-all saat game mulai${1:+: $1}"
 }

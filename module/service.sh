@@ -198,9 +198,25 @@ if [ -f "$MODDIR/common/gamehooks.sh" ]; then
 fi
 # MGLRU opt-in (MGLRU_MODE=on): sysfs tidak persisten antar boot, terapkan ulang. Default off = tidak menyentuh apa pun.
 if [ -f "$MODDIR/common/memfx.sh" ]; then
-    ALPHA_STATE_DIR="$WORK_DIR" sh -c '. "$1/common/memfx.sh"; mf_mglru_apply' _ "$MODDIR" >/dev/null 2>&1
+    ALPHA_STATE_DIR="$WORK_DIR" sh -c '. "$1/gamehooks.sh"; . "$1/memfx.sh"; mf_mglru_apply' _ "$MODDIR/common" >/dev/null 2>&1
+fi
+# Alpha Shield (hosts blocker): pasang ulang kalau SHIELD_ON=1. Latar belakang, daftar besar butuh beberapa detik.
+if [ -f "$MODDIR/common/shield.sh" ]; then
+    ( ALPHA_STATE_DIR="$WORK_DIR" sh "$MODDIR/common/shield.sh" boot >/dev/null 2>&1 & )
 fi
 rm -f "$WORK_DIR/.rec_pid" "$WORK_DIR/.rec_stop" "$WORK_DIR/.rec_file" "$WORK_DIR/.hud_layer" 2>/dev/null
+
+# 9.5 Auto-scan game (opsional): SCAN_AUTO=1 di app.conf. Mendaftarkan game terpasang yang ada di
+#     gamelist.seed / gamelist.user dengan profil SCAN_PROFILE (default balanced). fas-rs di-merge sekali.
+if [ -f "$MODDIR/common/gamescan.sh" ] && grep -qx 'SCAN_AUTO=1' "$WORK_DIR/app.conf" 2>/dev/null; then
+    (
+        sleep 25
+        COMMON="$MODDIR/common" ALPHA_STATE_DIR="$WORK_DIR" sh -c '
+            . "$COMMON/gamescan.sh"
+            gs_add_all "$(sed -n "s/^SCAN_PROFILE=//p" "$ALPHA_STATE_DIR/app.conf" | tail -n 1)"
+        ' >> "$LOG_FILE" 2>&1
+    ) &
+fi
 
 # 7. Start monitor once, without blocking late_start service
 MONITOR_PID_FILE="$WORK_DIR/monitor.pid"
