@@ -460,16 +460,25 @@ _gh_re() { printf '%s' "$1" | sed 's/\./\\./g'; }
 _gh_render_restore() {
     [ -f "$GH_REND_PREV" ] || return 0
     _ghx=$(sed -n '1p' "$GH_REND_PREV" 2>/dev/null)
-    rm -f "$GH_REND_PREV"
     _ghx=${_ghx%%|*}
-    command -v setprop >/dev/null 2>&1 || return 0
+    if ! command -v setprop >/dev/null 2>&1; then
+        _gh_log WARN "render restore: setprop tidak ditemukan di PATH ($PATH), coba lagi nanti"
+        return 0
+    fi
     # Nilai awal KOSONG = renderer bawaan sistem; tetap harus ditulis balik (kosong), kalau tidak
     # renderer pilihan game tertinggal untuk semua app sampai reboot.
     setprop debug.hwui.renderer "$_ghx" >/dev/null 2>&1
     if [ -z "$_ghx" ] && [ -n "$(getprop debug.hwui.renderer 2>/dev/null)" ]; then
         command -v resetprop >/dev/null 2>&1 && resetprop -n debug.hwui.renderer "" >/dev/null 2>&1
     fi
-    _gh_log RESTORED "debug.hwui.renderer dikembalikan"
+    # verifikasi: file penanda baru dihapus bila nilai benar-benar kembali (kalau gagal, dicoba lagi di siklus berikut)
+    _ghy=$(getprop debug.hwui.renderer 2>/dev/null)
+    if [ "$_ghy" = "$_ghx" ]; then
+        rm -f "$GH_REND_PREV"
+        _gh_log RESTORED "debug.hwui.renderer dikembalikan ke '${_ghx:-bawaan}'"
+    else
+        _gh_log WARN "render restore: setelah setprop nilai masih '$_ghy' (target '$_ghx'), diulang di siklus berikut"
+    fi
 }
 
 # Tombol Luncurkan: pasang backend khusus game, lalu buka game. Backend baru

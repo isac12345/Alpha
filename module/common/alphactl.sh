@@ -532,6 +532,7 @@ case "$1" in
     hud) cmd_hud "$2" "$3" ;;
     rec) sh "$COMMON/screenrec.sh" "$2" "$3" ;;
     autoctl) cmd_autoctl "$2" ;;
+    renderrestore) _gh_render_restore; [ -f "$GH_REND_PREV" ] && echo "pending: $(cat "$GH_REND_PREV")" || echo "OK: tidak ada penanda; renderer=$(getprop debug.hwui.renderer)" ;;
     features) gh_caps; mf_caps ;;
     trim) sh "$COMMON/trim.sh" "$2" ;;
     gamefx) cmd_gamefx "$2" "$3" "$4" "$5" ;;
