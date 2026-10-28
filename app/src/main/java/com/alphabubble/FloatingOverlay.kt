@@ -492,7 +492,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         if (attached) return
         val r = root ?: return
         if (!Settings.canDrawOverlays(ctx)) return
-        ensureProbe()
+        if (gameFg) ensureProbe()
         val p = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -526,6 +526,24 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
      * Jendela probe transparan seluas layar. Ukurannya yang dipakai untuk batas
      * geser, karena HP ini kadang melaporkan metrik portrait saat game landscape.
      */
+    /**
+     * Jendela probe seluas layar HANYA dipasang saat game di depan. Di app biasa (Play Store dll.) jendela
+     * seluas layar membuat Android menganggap layar "tertutup" dan app sensitif mengabaikan semua sentuhan.
+     */
+    private var gameFg = false
+    private fun syncProbe(game: Boolean) {
+        if (game == gameFg) return
+        gameFg = game
+        if (game) {
+            if (attached) ensureProbe()
+        } else if (probeOn) {
+            try { wm.removeView(probe) } catch (_: Exception) { }
+            probeOn = false
+            screenW = 0; screenH = 0
+            if (attached) { lp?.let { q -> q.x = savedX(); q.y = savedY() }; clamp() }
+        }
+    }
+
     private fun ensureProbe() {
         if (probeOn) return
         val p = WindowManager.LayoutParams(
@@ -953,6 +971,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
     /** Status Overdrive dari modul. avail = ada game terdaftar yang aktif (syarat untuk menyalakan). */
     fun setOvd(on: Boolean, level: String, avail: Boolean) {
+        syncProbe(avail)
         if (on == odOn && level == odLevel && avail == odAvail) return
         val modeChanged = on != odOn
         odOn = on; odLevel = level; odAvail = avail
