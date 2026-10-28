@@ -538,6 +538,10 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             PixelFormat.TRANSLUCENT,
         )
         p.gravity = Gravity.TOP or Gravity.START
+        // Android 12+: overlay seluas layar dengan alpha jendela > 0,8 dianggap "menutupi" app di belakangnya,
+        // dan app sensitif (Play Store: profil/pembayaran) lalu mengabaikan semua sentuhan = tampak beku.
+        // Jendela probe isinya kosong, jadi alpha rendah tidak mengubah tampilan tapi membuat sentuhan lolos.
+        p.alpha = 0.1f
         try {
             wm.addView(probe, p)
             probeOn = true
