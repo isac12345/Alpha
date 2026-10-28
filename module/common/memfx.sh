@@ -151,6 +151,12 @@ mf_relief_tick() {
     _mn=$(date +%s 2>/dev/null); _mf_num "$_mn" || return 0
     _ml=$(cat "$MF_LAST" 2>/dev/null); _mf_num "$_ml" || _ml=0
     [ $(( _mn - _ml )) -ge "$_mcd" ] || return 0
+    # ROM ini bisa tidak punya `am kill-all` (terbukti di itel P65): jangan pura-pura bertindak.
+    if ! am help 2>&1 | grep -q 'kill-all'; then
+        printf '%s\n' "$_mn" > "$MF_LAST"; rm -f "$MF_HITS"
+        _mf_log WARN "am kill-all tidak tersedia di ROM ini, pembersih adaptif dilewati"
+        return 0
+    fi
     am kill-all >/dev/null 2>&1
     printf '%s\n' "$_mn" > "$MF_LAST"; rm -f "$MF_HITS"
     _mf_log APPLIED "tekanan memori ${_mv} (ambang ${_mth}, x100) selama $_mh sampel -> am kill-all${1:+ saat $1}"
