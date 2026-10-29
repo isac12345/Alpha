@@ -88,6 +88,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private var root: FrameLayout? = null
     private var lp: WindowManager.LayoutParams? = null
     private var attached = false
+    private var addedAt = 0L
     private var mode = MODE_PILL
 
     private var pill: View? = null
@@ -257,7 +258,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
     fun setGame(pkg: String) {
         // aliran mati sendiri (su mati / pipa putus) atau jendela hilang: jangan berhenti di sini, mulai ulang
-        val healthy = job?.isActive == true && attached && root?.isAttachedToWindow == true
+        val healthy = job?.isActive == true && attached
         if (pkg == game && healthy) return
         stopStream()
         game = pkg
@@ -492,7 +493,9 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
     private fun addWindow() {
         // jendela hilang tanpa kita minta (sistem membuangnya): anggap belum terpasang, pasang ulang
-        if (attached && root?.isAttachedToWindow == false && root?.windowToken == null) {
+        // (beri waktu 3 dtk setelah addView: isAttachedToWindow baru true di frame berikutnya)
+        if (attached && root?.isAttachedToWindow == false && SystemClock.uptimeMillis() - addedAt > 3000L) {
+            try { root?.let { wm.removeViewImmediate(it) } } catch (_: Exception) { }
             attached = false; lp = null
         }
         if (attached) return
@@ -515,8 +518,11 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         try {
             wm.addView(r, p)
             attached = true
+            addedAt = SystemClock.uptimeMillis()
         } catch (_: Exception) {
-            attached = false
+            // "sudah ditambahkan": jendela memang ada, jangan kehilangan lp/attached (itu yang mematikan geser)
+            attached = r.parent != null || r.isAttachedToWindow
+            if (attached) lp = p
             return
         }
         r.post { clamp() }
