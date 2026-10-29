@@ -353,7 +353,7 @@ case "$1" in
                 [ -n "$_lp_pkg" ] || _lp_pkg="$_lp_fb"
                 if [ "$_lp_pkg" != "$_lp_last" ]; then
                     _lp_last="$_lp_pkg"
-                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0; TS_PREV=""; _lp_back=0
+                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0; TS_PREV=""; _lp_back=0; _lp_slow=0
                     rm -f "$LAYER_CACHE" 2>/dev/null
                 fi
             fi
@@ -372,7 +372,13 @@ case "$1" in
                 _lp_u1=$(cut -d' ' -f1 /proc/uptime 2>/dev/null)
                 _lp_c0=${_lp_u0%.*}${_lp_u0#*.}; _lp_c1=${_lp_u1%.*}${_lp_u1#*.}
                 case "$_lp_c0$_lp_c1" in ''|*[!0-9]*) ;; *)
-                    [ $((_lp_c1 - _lp_c0)) -ge 60 ] && { _lp_back=1; _lp_slp=5; } ;;
+                    # hanya mundur bila dua sampel berturut-turut lambat (satu sampel lambat = pencarian layer awal, wajar)
+                    if [ $((_lp_c1 - _lp_c0)) -ge 100 ]; then
+                        _lp_slow=$(( ${_lp_slow:-0} + 1 ))
+                        [ "$_lp_slow" -ge 2 ] && { _lp_back=1; _lp_slp=5; }
+                    else
+                        _lp_slow=0
+                    fi ;;
                 esac
             fi
             sleep "$_lp_slp"
