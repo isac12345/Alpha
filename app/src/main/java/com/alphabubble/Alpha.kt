@@ -137,6 +137,41 @@ object Alpha {
         return r.out.lines().firstOrNull { it.startsWith("OK: ") }?.removePrefix("OK: ")?.trim()
     }
 
+    // ---------------- memfx / alat v55 ----------------
+    suspend fun memStatus(): Map<String, String> = kv(ctl("mem status").out)
+
+    suspend fun mglruStatus(): Map<String, String> = kv(ctl("mglru status").out)
+
+    suspend fun setMglru(on: Boolean): Map<String, String> = kv(ctl("mglru ${if (on) "on" else "off"}", 30_000L).out)
+
+    suspend fun setMemclean(on: Boolean): Boolean = ctl("memclean ${if (on) "on" else "off"}").code == 0
+
+    suspend fun trim(): String = ctl("trim force", 180_000L).out.lines().lastOrNull { it.isNotBlank() }.orEmpty()
+
+    suspend fun gameScan(): List<String> =
+        ctl("game scan", 90_000L).out.lines().map { it.trim() }.filter { PKG_RE.matches(it) }
+
+    suspend fun gameScanAdd(): String =
+        ctl("game scan add", 300_000L).out.lines().lastOrNull { it.isNotBlank() }.orEmpty()
+
+    suspend fun bugreport(): String? {
+        val r = ctl("bugreport", 120_000L)
+        return r.out.lines().firstOrNull { it.startsWith("OK: ") }?.removePrefix("OK: ")?.trim()
+    }
+
+    /** Opsi game v55: gamemode, downscale, fps, preload (nilai "off" = tidak diatur). */
+    suspend fun gamefx(pkg: String): Map<String, String> {
+        if (!PKG_RE.matches(pkg)) return emptyMap()
+        return kv(ctl("gamefx get $pkg").out)
+    }
+
+    suspend fun setGamefx(pkg: String, key: String, v: String): Root.Res {
+        if (!PKG_RE.matches(pkg)) return Root.Res(1, "ERROR: package tidak valid")
+        if (key !in setOf("gamemode", "downscale", "fps", "preload")) return Root.Res(1, "ERROR: opsi tidak dikenal")
+        if (!Regex("^[a-z0-9.]+$").matches(v)) return Root.Res(1, "ERROR: nilai tidak valid")
+        return ctl("gamefx set $pkg $key $v")
+    }
+
     suspend fun ovdStart(): Root.Res = ctl("ovd start", 20_000L)
 
     suspend fun ovdStop(): Root.Res = ctl("ovd stop", 20_000L)

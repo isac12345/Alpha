@@ -217,6 +217,7 @@ fun ToolsScreen(vm: AppViewModel) {
         txt("Menutup proses latar belakang saja. Termux, Magisk, KernelSU, Alpha, launcher, keyboard, dan game yang sedang jalan tidak disentuh.", 11.sp, muted())
         Pill("APP DILINDUNGI (${vm.prefs.ramKeep.size})", { vm.go("ramkeep") })
         Pill("TUTUP SEMUA APP", { vm.askCloseApps() })
+        Pill("MEMORI & ALAT", { vm.go("memfx") })
         Pill("EKSPOR LOG (1 BERKAS)", { vm.exportLog() })
     }
 
@@ -431,6 +432,74 @@ fun DexoptScreen(vm: AppViewModel) {
                 }
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------- MEMORI & ALAT (v55)
+@Composable
+fun MemFxScreen(vm: AppViewModel) {
+    BackBtn { vm.back() }
+    val m = vm.memInfo
+    fun pct(k: String): String = m[k]?.toIntOrNull()?.let { "%d.%02d%%".format(it / 100, it % 100) } ?: "-"
+    AlphaCard {
+        Label("Tekanan memori")
+        if (m["psi"] != "1") {
+            txt("Kernel ini tidak punya PSI memori, jadi angka tekanan tidak tersedia.", 12.sp, muted())
+        } else {
+            KV("Tertahan sebagian (10 dtk)", pct("psi_some10_x100"))
+            Divider()
+            KV("Tertahan penuh (10 dtk)", pct("psi_full10_x100"))
+            Divider()
+            KV("Ambang pembersih", pct("psi_threshold_x100"))
+        }
+        Divider()
+        KV("RAM tersedia", m["mem_avail_mb"]?.let { "$it MB dari ${m["mem_total_mb"] ?: "?"} MB" } ?: "-")
+        Divider()
+        KV("Swap terpakai", m["swap_used_mb"]?.let { "$it MB" } ?: "-")
+        Pill("SEGARKAN", { vm.loadMem() })
+    }
+    AlphaCard {
+        Label("MGLRU (eksperimental)")
+        val sup = vm.mglru["supported"] == "1"
+        if (!sup) {
+            txt("Kernel ini tidak mendukung MGLRU.", 12.sp, muted())
+        } else {
+            ToggleRow(
+                "Nyalakan MGLRU",
+                "Bukan untuk game: manfaat terbukti hanya untuk multitasking, dan bisa membuat stutter. Nilai asli dikembalikan saat dimatikan.",
+                vm.mglru["enabled"] == "1",
+            ) { vm.setMglru(it) }
+            txt("Status kernel: ${vm.mglru["enabled_raw"] ?: "-"}", 11.sp, muted())
+        }
+    }
+    AlphaCard {
+        Label("Pembersih adaptif")
+        ToggleRow(
+            "Bersihkan saat tekanan tinggi",
+            "Hanya saat game aktif: tutup proses latar bila tekanan memori tinggi berturut-turut. Jeda 3 menit antar aksi.",
+            vm.confStr("MEMCLEAN", "0") == "1",
+        ) { vm.setMemclean(it) }
+        Divider()
+        ToggleRow(
+            "Bebaskan RAM saat game mulai",
+            "Sekali tiap game dibuka.",
+            vm.confStr("MEMCLEAN_ON_START", "0") == "1",
+        ) { vm.setConfKey("MEMCLEAN_ON_START", if (it) "1" else "0") }
+        txt("Memakai perintah am kill-all; bila ROM tidak punya, aksinya dilewati dan dicatat di log.", 11.sp, muted())
+    }
+    AlphaCard {
+        Label("Alat")
+        Pill("TRIM PENYIMPANAN", { vm.runTrim() })
+        txt("fstrim semua partisi. Tidak jalan saat game aktif atau baterai di bawah 15%.", 11.sp, muted())
+        Pill("CARI GAME TERPASANG", { vm.scanGames() })
+        val sl = vm.scanList
+        if (sl != null && sl.isNotEmpty()) {
+            sl.take(12).forEach { txt(vm.label(it), 12.sp, maxLines = 1, modifier = Modifier.padding(top = 4.dp)) }
+            if (sl.size > 12) txt("+${sl.size - 12} lainnya", 11.sp, muted())
+            Pill("DAFTARKAN ${sl.size} GAME", { vm.scanAdd() }, solid = true)
+        }
+        Pill("BUAT LAPORAN BUG", { vm.makeBugreport() })
+        txt("Arsip log + konfigurasi ke folder Download, untuk dikirim saat ada masalah.", 11.sp, muted())
     }
 }
 

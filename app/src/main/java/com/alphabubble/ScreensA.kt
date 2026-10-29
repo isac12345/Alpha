@@ -407,6 +407,27 @@ fun EditScreen(vm: AppViewModel) {
         }
     }
 
+    // Game Mode API (Android 12+): mode, downscale, target FPS, preload. "off" = tidak diatur.
+    LaunchedEffect(pkg) { vm.loadGameFx(pkg) }
+    val fx = vm.gameFx
+    fun fxIdx(k: String, keys: List<String>) = keys.indexOf(fx[k] ?: "off").coerceAtLeast(0)
+    AlphaCard {
+        Label("Game Mode Android")
+        val gmKeys = listOf("off", "standard", "performance", "battery")
+        Label("Mode")
+        Seg(listOf("OFF", "STANDAR", "PERFORMA", "HEMAT"), fxIdx("gamemode", gmKeys), { vm.setGameFx(pkg, "gamemode", gmKeys[it]) })
+        val dsKeys = listOf("off", "0.9", "0.8", "0.7", "0.6", "0.5")
+        Label("Skala resolusi")
+        Seg(listOf("OFF", "90", "80", "70", "60", "50"), fxIdx("downscale", dsKeys), { vm.setGameFx(pkg, "downscale", dsKeys[it]) })
+        val fKeys = listOf("off", "30", "45", "60", "90", "120")
+        Label("Target FPS")
+        Seg(listOf("OFF", "30", "45", "60", "90", "120"), fxIdx("fps", fKeys), { vm.setGameFx(pkg, "fps", fKeys[it]) })
+        ToggleRow("Preload cache", "baca file game ke cache lebih dulu supaya loading awal lebih cepat (butuh RAM bebas)", fx["preload"] == "on") {
+            vm.setGameFx(pkg, "preload", if (it) "on" else "off")
+        }
+        txt("Dipasang saat game dibuka lewat tombol Luncurkan, dan dibuang saat game selesai. Skala resolusi baru terbaca saat game mulai. Butuh Android 12 ke atas; tidak semua ROM menurut.", 11.sp, muted())
+    }
+
     val rKeys = listOf("default") + vm.render.available.filter { it != "default" }
     var rend by remember(pkg) { mutableStateOf("default") }
     LaunchedEffect(pkg) { rend = Alpha.gameRender(pkg) }

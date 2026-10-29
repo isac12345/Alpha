@@ -41,7 +41,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         "auto" to "dash", "therm" to "dash",
         "stats" to "games", "detect" to "games", "edit" to "games", "addgame" to "games",
         "bgbanner" to "custom", "bubble" to "custom", "theme" to "custom",
-        "dexopt" to "tools", "batlab" to "tools", "fulllog" to "tools", "ramkeep" to "tools",
+        "dexopt" to "tools", "batlab" to "tools", "fulllog" to "tools", "ramkeep" to "tools", "memfx" to "tools",
     )
     val tab: String get() = parents[route] ?: route
 
@@ -54,6 +54,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             "fulllog" -> viewModelScope.launch { loadFullLog() }
             "addgame", "detect" -> ensureApps()
             "dexopt", "ramkeep" -> ensureThirdParty()
+            "memfx" -> viewModelScope.launch { conf = Alpha.conf(); loadMem() }
             "dash", "therm" -> viewModelScope.launch { flags = Alpha.flags() }
             "auto" -> viewModelScope.launch { conf = Alpha.conf() }
         }
@@ -557,6 +558,97 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             checkDefault = false,
             onOk = { includeSystem -> closeApps(includeSystem) },
         )
+    }
+
+    // ---------- memori & alat (v55) ----------
+    var memInfo by mutableStateOf<Map<String, String>>(emptyMap())
+    var mglru by mutableStateOf<Map<String, String>>(emptyMap())
+    var scanList by mutableStateOf<List<String>?>(null)
+
+    fun loadMem() {
+        viewModelScope.launch {
+            memInfo = Alpha.memStatus()
+            mglru = Alpha.mglruStatus()
+        }
+    }
+
+    fun setMglru(on: Boolean) {
+        viewModelScope.launch {
+            busy = "Mengatur MGLRU..."
+            mglru = Alpha.setMglru(on)
+            conf = Alpha.conf()
+            busy = null
+            val real = mglru["enabled"] == "1"
+            toast(if (on && !real) "MGLRU gagal menyala (kernel tidak mendukung)" else if (on) "MGLRU menyala" else "MGLRU dikembalikan ke semula")
+        }
+    }
+
+    fun setMemclean(on: Boolean) {
+        viewModelScope.launch {
+            Alpha.setMemclean(on)
+            conf = Alpha.conf()
+        }
+    }
+
+    fun setConfKey(k: String, v: String) {
+        viewModelScope.launch {
+            Alpha.setConf(k, v)
+            conf = Alpha.conf()
+        }
+    }
+
+    fun runTrim() {
+        viewModelScope.launch {
+            busy = "Menjalankan TRIM..."
+            val r = Alpha.trim()
+            busy = null
+            toast(r.ifEmpty { "Selesai" })
+        }
+    }
+
+    fun scanGames() {
+        viewModelScope.launch {
+            busy = "Mencari game terpasang..."
+            scanList = Alpha.gameScan()
+            busy = null
+            toast(if (scanList.isNullOrEmpty()) "Tidak ada game baru yang dikenal" else "${scanList!!.size} game baru ditemukan")
+        }
+    }
+
+    fun scanAdd() {
+        viewModelScope.launch {
+            busy = "Mendaftarkan game..."
+            val r = Alpha.gameScanAdd()
+            scanList = null
+            games = Alpha.games()
+            busy = null
+            toast(r.removePrefix("OK: ").ifEmpty { "Selesai" })
+        }
+    }
+
+    fun makeBugreport() {
+        viewModelScope.launch {
+            busy = "Membuat arsip laporan..."
+            val path = Alpha.bugreport()
+            busy = null
+            toast(if (path != null) "Disimpan: $path" else "Gagal membuat laporan")
+        }
+    }
+
+    // ---------- opsi game v55 ----------
+    var gameFx by mutableStateOf<Map<String, String>>(emptyMap())
+
+    fun loadGameFx(pkg: String) {
+        viewModelScope.launch { gameFx = Alpha.gamefx(pkg) }
+    }
+
+    fun setGameFx(pkg: String, key: String, v: String) {
+        gameFx = gameFx + (key to v)
+        viewModelScope.launch {
+            val r = Alpha.setGamefx(pkg, key, v)
+            if (r.code != 0) toast(r.out.lines().firstOrNull { it.isNotBlank() } ?: "Gagal")
+            gameFx = Alpha.gamefx(pkg)
+        }
     }
 
     fun exportLog() {

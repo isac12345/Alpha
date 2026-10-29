@@ -109,6 +109,74 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private val sesFps = ArrayList<Float>(1024)
     private val recFps = ArrayList<Float>(512)
 
+    // ---- rekam data FPS ke CSV (bukan video) ----
+    private var csvOn = false
+    private var csvStart = 0L
+    private val csvBuf = StringBuilder()
+    private var csvRows = 0
+    private var csvBtnLbl: TextView? = null
+    private var csvDot: View? = null
+
+    fun toggleFpsLog() {
+        if (!csvOn) {
+            csvOn = true
+            csvStart = SystemClock.elapsedRealtime()
+            csvRows = 0
+            csvBuf.setLength(0)
+            csvBuf.append("t_detik,paket,fps,gpu_persen,gpu_mhz,cpu_persen,suhu_c\n")
+            paintCsv()
+            Toast.makeText(ctx, "Rekam data FPS dimulai", Toast.LENGTH_SHORT).show()
+        } else {
+            csvOn = false
+            paintCsv()
+            saveCsv()
+        }
+    }
+
+    private fun paintCsv() {
+        csvBtnLbl?.text = if (csvOn) "Stop FPS" else "Rekam FPS"
+        csvDot?.background = GradientDrawable().apply {
+            shape = if (csvOn) GradientDrawable.RECTANGLE else GradientDrawable.OVAL
+            cornerRadius = pf(3)
+            setColor(Color.WHITE)
+        }
+    }
+
+    private fun csvRow(s: Sample) {
+        if (csvRows >= 40000) return
+        val t = (SystemClock.elapsedRealtime() - csvStart) / 1000.0
+        csvBuf.append("%.1f".format(java.util.Locale.US, t)).append(',').append(curFg).append(',')
+        csvBuf.append(s.fps?.let { "%.1f".format(java.util.Locale.US, it) } ?: "").append(',')
+        csvBuf.append(s.gpu?.toString() ?: "").append(',').append(s.gpuMhz?.toString() ?: "").append(',')
+        csvBuf.append(s.cpu?.toString() ?: "").append(',')
+        csvBuf.append(s.tempC?.let { "%.0f".format(java.util.Locale.US, it) } ?: "").append('\n')
+        csvRows++
+    }
+
+    private fun saveCsv() {
+        if (csvRows == 0) {
+            Toast.makeText(ctx, "Tidak ada data FPS yang terekam", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val text = csvBuf.toString()
+        val rows = csvRows
+        csvBuf.setLength(0)
+        scope.launch(Dispatchers.IO) {
+            val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
+            val name = "Alpha_fps_$ts.csv"
+            val tmp = java.io.File(ctx.cacheDir, name)
+            val ok = try {
+                tmp.writeText(text)
+                val r = Root.exec("mkdir -p /sdcard/Download && cp '${tmp.absolutePath}' /sdcard/Download/$name && echo OK", 20_000L)
+                r.out.contains("OK")
+            } catch (_: Exception) { false }
+            try { tmp.delete() } catch (_: Exception) { }
+            kotlinx.coroutines.withContext(Dispatchers.Main) {
+                Toast.makeText(ctx, if (ok) "Data FPS ($rows baris) disimpan: Download/$name" else "Gagal menyimpan data FPS", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     /** Dipanggil tiap polling status: pkg = game terdaftar yang aktif (kosong = tidak ada). Ganti game = sesi lama selesai. */
     fun setSession(pkg: String) {
         if (pkg == sesPkg) return
@@ -389,6 +457,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private fun apply(s: Sample) {
         if (prefs.bubbleHidden) return
         if (recOn) tickTimer()
+        if (csvOn) csvRow(s)
         val fpsText = when {
             !prefs.flMFps -> null
             s.fps == null -> "--"
@@ -816,6 +885,26 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         return box
     }
 
+    private fun csvButton(): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(px(14), 0, px(16), 0)
+            background = roundBg(0x33FFFFFF, pf(22), 0)
+            minimumHeight = px(44)
+            isClickable = true
+            setOnClickListener { toggleFpsLog() }
+        }
+        val dot = View(ctx)
+        csvDot = dot
+        row.addView(dot, LinearLayout.LayoutParams(px(12), px(12)))
+        val lbl = textView(if (csvOn) "Stop FPS" else "Rekam FPS", 13f, Color.WHITE, true)
+        csvBtnLbl = lbl
+        row.addView(lbl, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = px(8) })
+        paintCsv()
+        return row
+    }
+
     private fun recButton(stop: Boolean): View {
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -910,8 +999,9 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
         val foot = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         foot.addView(recButton(false), LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, px(44)))
+        foot.addView(csvButton(), LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, px(44)).apply { marginStart = px(8) })
         foot.addView(View(ctx), LinearLayout.LayoutParams(0, 1, 1f))
-        val hint = textView("Ketuk panel untuk ringkas\nTahan untuk sembunyikan", 11f, HINT, false).apply {
+        val hint = textView("Ketuk: ringkas\nTahan: sembunyikan", 11f, HINT, false).apply {
             gravity = Gravity.END
             setLineSpacing(0f, 1.4f)
         }
@@ -919,7 +1009,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         footRow = foot
         add(foot)
 
-        val recHint = textView("Profil terkunci selama merekam. Rekaman otomatis dipotong per 3 menit.", 11f, HINT, false).apply {
+        val recHint = textView("Profil terkunci selama merekam. Satu sesi = satu file video.", 11f, HINT, false).apply {
             setLineSpacing(0f, 1.4f)
         }
         hintRec = recHint

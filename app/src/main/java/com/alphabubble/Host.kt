@@ -250,6 +250,7 @@ fun AlphaApp(vm: AppViewModel) {
                                 "tools" -> ToolsScreen(vm)
                                 "dexopt" -> DexoptScreen(vm)
                                 "ramkeep" -> RamKeepScreen(vm)
+                                "memfx" -> MemFxScreen(vm)
                                 "batlab" -> BatLabScreen(vm)
                                 "fulllog" -> FullLogScreen(vm)
                             }

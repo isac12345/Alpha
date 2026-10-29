@@ -138,10 +138,11 @@ fun Seg(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier:
             Box(
                 Modifier.weight(1f).clip(CircleShape)
                     .background(if (on) ui.accent else Color.Transparent)
-                    .clickable { onSelect(i) }.padding(vertical = 10.dp),
+                    .clickable { onSelect(i) }.padding(vertical = 10.dp, horizontal = 1.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                txt(o, 12.sp, if (on) Ink else muted(), spacing = 1.sp, maxLines = 1)
+                val many = options.size > 4
+                txt(o, if (many) 10.sp else 12.sp, if (on) Ink else muted(), spacing = if (many) 0.2.sp else 1.sp, maxLines = 1)
             }
         }
     }
