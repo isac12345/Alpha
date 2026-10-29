@@ -216,8 +216,10 @@ fps_layer() {
         # layer basi (game restart ganti nomor layer) atau belum pernah dicari.
         # Mendaftar ulang layer itu berat: paling sering sekali per 3 sampel.
         if [ "$LIST_WAIT" -le 0 ]; then
-            if [ "$LIGHT" = 1 ]; then LIST_WAIT=15; else LIST_WAIT=3; fi
+            LIST_WAIT=3
             if pick_layer "$_fl_pkg"; then
+                # app biasa: layer ketemu = jarang dicari ulang (hemat SurfaceFlinger); gagal = coba lagi cepat
+                [ "$LIGHT" = 1 ] && LIST_WAIT=15
                 printf '%s|%s\n' "$_fl_pkg" "$PL_LAYER" > "$LAYER_CACHE" 2>/dev/null
                 FL_LAT=$PL_OUT
             else
