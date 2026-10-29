@@ -459,8 +459,13 @@ _gh_re() { printf '%s' "$1" | sed 's/\./\\./g'; }
 
 _gh_render_restore() {
     [ -f "$GH_REND_PREV" ] || return 0
-    _ghx=$(sed -n '1p' "$GH_REND_PREV" 2>/dev/null)
-    _ghx=${_ghx%%|*}
+    _ghl1=$(sed -n '1p' "$GH_REND_PREV" 2>/dev/null)
+    _ghx=${_ghl1%%|*}
+    # Pilihan global pengguna (render_backend.conf) adalah nilai yang HARUS berlaku di luar game; bila penanda
+    # kosong tapi global bukan default, pulihkan ke global (bukan ke kosong).
+    _ghg=$(tr -d '[:space:]' < "${ALPHA_RENDER_CONF:-$GH_STATE/render_backend.conf}" 2>/dev/null)
+    case "$_ghg" in skiagl|skiavk) [ -n "$_ghx" ] || _ghx="$_ghg" ;; esac
+    _gh_log INFO "render restore: penanda='$_ghl1' global='$_ghg' target='$_ghx'"
     if ! command -v setprop >/dev/null 2>&1; then
         _gh_log WARN "render restore: setprop tidak ditemukan di PATH ($PATH), coba lagi nanti"
         return 0
