@@ -44,7 +44,7 @@ for z in /sys/class/thermal/thermal_zone*/temp; do v=$(cat "$z" 2>/dev/null); ca
 [ "$mx" -gt 0 ] && ln OK "Suhu SoC" "$((mx / 1000)) C (zona terpanas)" || ln GAGAL "Suhu SoC" "tidak terbaca"
 
 # --- Game Mode Android: uji nyata pada app Alpha sendiri, lalu dibuang
-if command -v cmd >/dev/null 2>&1 && cmd game help >/dev/null 2>&1; then
+if command -v cmd >/dev/null 2>&1 && cmd -l 2>/dev/null | grep -q '^[[:space:]]*game$'; then
     T=com.alphabubble
     cmd game reset "$T" >/dev/null 2>&1
     if cmd game set --mode 2 --downscale 0.9 "$T" >/dev/null 2>&1 && cmd game list-configs "$T" 2>/dev/null | grep -q 'Scaling:0.9'; then

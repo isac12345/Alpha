@@ -233,7 +233,8 @@ fun GamesScreen(vm: AppViewModel) {
                     }
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SmallPill("EDIT", { vm.editPkg = g.pkg; vm.go("edit") }, highlight = true)
+                    SmallPill("LUNCUR", { vm.launchGame(g.pkg) }, highlight = true)
+                    SmallPill("EDIT", { vm.editPkg = g.pkg; vm.go("edit") })
                     SmallPill("HAPUS", {
                         vm.dialog = Dlg.Confirm("Hapus game", "Hapus ${vm.label(g.pkg)} dari daftar? Game kembali ditangani seperti app biasa.", "HAPUS") { vm.removeGame(g.pkg) }
                     })
