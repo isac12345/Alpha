@@ -135,6 +135,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var fpsFiles by mutableStateOf<List<FpsFile>>(emptyList())
     var fpsSel by mutableStateOf<List<String>>(emptyList())
     var fpsLoading by mutableStateOf(false)
+    var fpsView by mutableStateOf("")   // rekaman yang dibuka di tampilan detail
 
     fun loadFpsFiles() {
         viewModelScope.launch {
@@ -147,6 +148,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 val nl = blk.indexOf('\n')
                 if (nl < 0) null else FpsFile.parse(blk.substring(0, nl).trim().substringAfterLast('/'), blk.substring(nl + 1))
             }
+            if (fpsFiles.none { it.name == fpsView }) fpsView = fpsFiles.firstOrNull()?.name.orEmpty()
             fpsSel = fpsSel.filter { n -> fpsFiles.any { it.name == n } }
             fpsLoading = false
         }

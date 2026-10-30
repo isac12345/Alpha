@@ -169,7 +169,21 @@ data class FpsFile(
     val tMin: Int,
     val tMax: Int,
     val mode: String,
+    val fpsS: FloatArray = FloatArray(0),   // deret per-detik untuk grafik (sejajar dengan fpsS)
+    val cpuS: FloatArray = FloatArray(0),
+    val gpuS: FloatArray = FloatArray(0),
+    val tempS: FloatArray = FloatArray(0),
 ) {
+    /** Stutter = sampel di bawah 70% dari median FPS. */
+    val median: Double get() = if (fpsS.isEmpty()) 0.0 else fpsS.sorted()[fpsS.size / 2].toDouble()
+    val stutters: Int get() { val m = median * 0.7; return fpsS.count { it < m } }
+    val smoothPct: Int get() = if (fpsS.isEmpty()) 0 else 100 - stutters * 100 / fpsS.size
+    val low5: Double get() {
+        if (fpsS.isEmpty()) return 0.0
+        val v = fpsS.sorted(); val k = maxOf(1, Math.ceil(v.size * 0.05).toInt())
+        return v.take(k).average()
+    }
+
     companion object {
         fun parse(name: String, text: String): FpsFile? {
             val lines = text.lines().filter { it.isNotBlank() }
@@ -180,6 +194,8 @@ data class FpsFile(
             val iBat = h.indexOf("suhu_baterai").let { if (it >= 0) it else h.indexOf("suhu_c") }
             val iPr = h.indexOf("profil"); val iOv = h.indexOf("overdrive")
             val fps = ArrayList<Double>(); val temps = ArrayList<Int>()
+            val iCpu = h.indexOf("cpu_persen"); val iGpu = h.indexOf("gpu_persen")
+            val cpuL = ArrayList<Float>(); val gpuL = ArrayList<Float>(); val tL = ArrayList<Float>()
             var last = 0.0; var pkg = ""; var ov = 0; var n = 0
             val prof = HashMap<String, Int>()
             for (i in 1 until lines.size) {
@@ -188,7 +204,12 @@ data class FpsFile(
                 last = c[iT].toDoubleOrNull() ?: last
                 if (iP >= 0 && pkg.isEmpty()) pkg = c[iP]
                 val f = c[iF].toDoubleOrNull()
-                if (f != null && f <= 480.0) fps.add(f)
+                if (f != null && f <= 480.0) {
+                    fps.add(f)
+                    cpuL.add(if (iCpu >= 0 && c.size > iCpu) c[iCpu].toFloatOrNull() ?: -1f else -1f)
+                    gpuL.add(if (iGpu >= 0 && c.size > iGpu) c[iGpu].toFloatOrNull() ?: -1f else -1f)
+                    tL.add(if (iBat >= 0 && c.size > iBat) (c[iBat].toFloatOrNull()?.takeIf { it in 1f..105f } ?: -1f) else -1f)
+                }
                 if (iBat >= 0 && c.size > iBat) c[iBat].toDoubleOrNull()?.toInt()?.takeIf { it in 1..105 }?.let { temps.add(it) }
                 n++
                 if (iOv >= 0 && c.size > iOv && c[iOv].trim() == "1") ov++
@@ -207,6 +228,7 @@ data class FpsFile(
                 name, pkg, last.toInt(), fps.average(), low,
                 fps.count { it >= 27.0 } * 100 / fps.size, fps.count { it < 15.0 } * 100 / fps.size,
                 temps.minOrNull() ?: 0, temps.maxOrNull() ?: 0, mode,
+                fps.map { it.toFloat() }.toFloatArray(), cpuL.toFloatArray(), gpuL.toFloatArray(), tL.toFloatArray(),
             )
         }
     }
