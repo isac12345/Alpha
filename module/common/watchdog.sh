@@ -47,9 +47,34 @@ fi
 printf '%s\n' "$$" > "$WD_PID_FILE" || exit 1
 wd_log "START" "watchdog pid=$$ interval=${WD_INTERVAL}s"
 
+BUBBLE_WANT="$STATE_DIR/.bubble_want"
+BUBBLE_PKG="com.alphabubble"
+BUBBLE_TICK="${ALPHA_BUBBLE_TICK:-45}"
+wd_n=0
+wd_per=$((WD_INTERVAL / BUBBLE_TICK)); [ "$wd_per" -ge 1 ] || wd_per=1
+
+# Floating/HUD harus hidup lagi tanpa membuka app: kalau app menandai ingin aktif (.bubble_want)
+# tetapi service-nya mati (dibunuh pembersih ROM), start ulang lewat root (lolos batas background).
+bubble_revive() {
+    [ -f "$BUBBLE_WANT" ] || return 0
+    command -v am >/dev/null 2>&1 || return 0
+    _up=0
+    if [ -n "$(pidof "$BUBBLE_PKG" 2>/dev/null)" ]; then
+        dumpsys activity services "$BUBBLE_PKG/.BubbleService" 2>/dev/null | grep -q 'ServiceRecord' && _up=1
+    fi
+    [ "$_up" -eq 1 ] && return 0
+    am start-foreground-service -n "$BUBBLE_PKG/.BubbleService" >/dev/null 2>&1 \
+        || am startservice -n "$BUBBLE_PKG/.BubbleService" >/dev/null 2>&1
+    wd_log REVIVE "floating mati, service dihidupkan ulang"
+}
+
 while [ "$WD_STOP" -eq 0 ]; do
-    sleep "$WD_INTERVAL" 2>/dev/null || sleep 180
+    sleep "$BUBBLE_TICK" 2>/dev/null || sleep 45
     [ "$WD_STOP" -eq 0 ] || break
+    bubble_revive
+    wd_n=$((wd_n + 1))
+    [ "$wd_n" -ge "$wd_per" ] || continue
+    wd_n=0
     mon_ok=0
     if [ -f "$MON_PID_FILE" ]; then
         mon_pid=$(tr -d '[:space:]' < "$MON_PID_FILE" 2>/dev/null)

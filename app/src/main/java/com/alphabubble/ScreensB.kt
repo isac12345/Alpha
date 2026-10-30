@@ -221,20 +221,10 @@ fun ToolsScreen(vm: AppViewModel) {
         Pill("EKSPOR LOG (1 BERKAS)", { vm.exportLog() })
     }
 
-    val ses = vm.prefs.fpsSessions
-    if (ses.isNotEmpty()) {
-        AlphaCard {
-            Label("Riwayat FPS sesi")
-            txt("1% terendah = rata-rata 1% detik terburuk. Bandingkan sesi Performa dan Overdrive di game yang sama.", 11.sp, muted())
-            ses.take(6).forEach { x ->
-                val mode = if (x.ovdPct >= 50) "OVERDRIVE" else profileLabel(x.profile).uppercase()
-                val dur = "${x.secs / 60}m${(x.secs % 60).toString().padStart(2, '0')}d"
-                Column(Modifier.fillMaxWidth().padding(top = 10.dp)) {
-                    txt(vm.label(x.pkg), 13.sp, maxLines = 1)
-                    txt("$mode · rata-rata ${x.avg} · 1% terendah ${x.low1} · $dur", 12.sp, muted(), maxLines = 1)
-                }
-            }
-        }
+    AlphaCard {
+        Label("Performa & FPS")
+        txt("Rekam data FPS, riwayat sesi, dan bandingkan Performa vs Overdrive: semua di satu layar.", 11.sp, muted())
+        Pill(if (FpsLog.on) "SEDANG MEREKAM FPS (${FpsLog.rows})" else "BUKA PERFORMA & FPS", { vm.go("perf") }, solid = FpsLog.on)
     }
 
     AlphaCard {

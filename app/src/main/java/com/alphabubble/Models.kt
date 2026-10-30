@@ -1,5 +1,9 @@
 package com.alphabubble
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 data class Status(
     val profile: String = "none",
     val active: String = "none",
@@ -141,6 +145,69 @@ data class FpsSession(
             var low = 0.0
             for (i in 0 until n) low += sorted[i]
             return Pair(Math.round(v.average()).toInt(), Math.round(low / n).toInt())
+        }
+    }
+}
+
+
+/** Status rekam data FPS yang bisa dilihat layar app (diisi FloatingOverlay). */
+object FpsLog {
+    var on by mutableStateOf(false)
+    var rows by mutableStateOf(0)
+    var saved by mutableStateOf(0)   // naik tiap berkas tersimpan -> daftar dimuat ulang
+}
+
+/** Ringkasan satu berkas CSV rekaman FPS (Download/Alpha_fps_*.csv). */
+data class FpsFile(
+    val name: String,
+    val pkg: String,
+    val secs: Int,
+    val avg: Double,
+    val low1: Double,
+    val pctOk: Int,      // % sampel >= 27 FPS
+    val pctBad: Int,     // % sampel < 15 FPS
+    val tMin: Int,
+    val tMax: Int,
+    val mode: String,
+) {
+    companion object {
+        fun parse(name: String, text: String): FpsFile? {
+            val lines = text.lines().filter { it.isNotBlank() }
+            if (lines.size < 11) return null
+            val h = lines[0].split(',')
+            val iT = h.indexOf("t_detik"); val iP = h.indexOf("paket"); val iF = h.indexOf("fps")
+            if (iT < 0 || iF < 0) return null
+            val iBat = h.indexOf("suhu_baterai").let { if (it >= 0) it else h.indexOf("suhu_c") }
+            val iPr = h.indexOf("profil"); val iOv = h.indexOf("overdrive")
+            val fps = ArrayList<Double>(); val temps = ArrayList<Int>()
+            var last = 0.0; var pkg = ""; var ov = 0; var n = 0
+            val prof = HashMap<String, Int>()
+            for (i in 1 until lines.size) {
+                val c = lines[i].split(',')
+                if (c.size <= iF) continue
+                last = c[iT].toDoubleOrNull() ?: last
+                if (iP >= 0 && pkg.isEmpty()) pkg = c[iP]
+                val f = c[iF].toDoubleOrNull()
+                if (f != null && f <= 480.0) fps.add(f)
+                if (iBat >= 0 && c.size > iBat) c[iBat].toDoubleOrNull()?.toInt()?.takeIf { it in 1..105 }?.let { temps.add(it) }
+                n++
+                if (iOv >= 0 && c.size > iOv && c[iOv].trim() == "1") ov++
+                if (iPr >= 0 && c.size > iPr) prof[c[iPr]] = (prof[c[iPr]] ?: 0) + 1
+            }
+            if (fps.size < 10) return null
+            val sorted = fps.sorted()
+            val k = maxOf(1, Math.ceil(fps.size * 0.01).toInt())
+            val low = sorted.take(k).average()
+            val mode = when {
+                iOv < 0 -> "?"
+                ov * 2 >= n -> "OVERDRIVE"
+                else -> profileLabel(prof.maxByOrNull { it.value }?.key ?: "").uppercase()
+            }
+            return FpsFile(
+                name, pkg, last.toInt(), fps.average(), low,
+                fps.count { it >= 27.0 } * 100 / fps.size, fps.count { it < 15.0 } * 100 / fps.size,
+                temps.minOrNull() ?: 0, temps.maxOrNull() ?: 0, mode,
+            )
         }
     }
 }

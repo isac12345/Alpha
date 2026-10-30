@@ -35,6 +35,8 @@ POWER="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}"
 OVD_TICK="${ALPHA_OVD_TICK:-3}"
 OVD_CPU_FULL=100     # persen posisi dalam daftar frekuensi (0 = terendah, 100 = tertinggi); bisa diubah: OVD_CPU_PCT / OVD_GPU_PCT di app.conf
 OVD_GPU_FULL=85      # catatan: fas-rs mode performa di game sudah mengunci CPU di maksimum, jadi Overdrive tidak boleh lebih rendah dari itu
+OVD_CPU_MID=70
+OVD_GPU_MID=65
 OVD_CPU_SAFE=40
 OVD_GPU_SAFE=40
 OVD_BATT_MIN=15      # keluar bila baterai di bawah ini dan tidak di-charge
@@ -76,18 +78,38 @@ soc_temp_c() {                                         # zona terpanas, derajat 
     printf '%s' $((_sm / 1000))
 }
 
-# 0 = aman, 1 = turun ke level aman, 2 = keluar
+# Batas default sengaja DI ATAS suhu Performa (baterai Performa bisa 60+ C): Overdrive harus lebih
+# panas dulu baru turun. Margin = jarak ke batas terdekat; turun bertahap: >6 penuh, <=6 sedang,
+# <=2 aman, <=0 keluar. Naik kembali butuh +2 C (histeresis) supaya tidak bolak-balik.
+# temp_state: 0 = boleh lanjut (margin di $_mg), 2 = keluar
 temp_state() {
-    _soc_max=$(conf_int OVD_SOC_MAX_C 80)
-    _bat_max=$(conf_int OVD_BATT_MAX_C 45)
-    _soc=$(soc_temp_c)
+    _soc_max=$(conf_int OVD_SOC_MAX_C 95)
+    _bat_max=$(conf_int OVD_BATT_MAX_C 66)
+    _soc=$(soc_temp_c); num "$_soc" || _soc=0
     _bt=$(batt_temp_dc); num "$_bt" || _bt=0
     _bc=$((_bt / 10))
-    if [ "$_soc" -ge "$_soc_max" ] || [ "$_bc" -ge "$_bat_max" ]; then return 2; fi
-    _soc_w=$((_soc_max - 8)); _bat_w=$((_bat_max - 3))
-    if [ "$_soc" -ge "$_soc_w" ] || [ "$_bc" -ge "$_bat_w" ]; then return 1; fi
+    # nilai ngawur (sensor error > 110 C) diabaikan
+    [ "$_soc" -gt 110 ] && _soc=0
+    [ "$_bc" -gt 110 ] && _bc=0
+    _m1=$((_soc_max - _soc)); _m2=$((_bat_max - _bc))
+    _mg=$_m1; [ "$_m2" -lt "$_mg" ] && _mg=$_m2
+    [ "$_mg" -le 0 ] && return 2
     return 0
 }
+
+# level target dari margin dan level sekarang (histeresis)
+level_for() {
+    _cur="$1"; _h=0
+    [ "$_cur" != full ] && _h=2
+    if [ "$_mg" -le 2 ]; then echo safe; return; fi
+    if [ "$_cur" = safe ] && [ "$_mg" -le 4 ]; then echo safe; return; fi
+    if [ "$_mg" -le 6 ]; then echo mid; return; fi
+    if [ "$_cur" != full ] && [ "$_mg" -le $((6 + _h)) ]; then echo mid; return; fi
+    echo full
+}
+
+lv_cpu() { case "$1" in full) echo "$OVD_CPU_FULL" ;; mid) echo "$OVD_CPU_MID" ;; *) echo "$OVD_CPU_SAFE" ;; esac; }
+lv_gpu() { case "$1" in full) echo "$OVD_GPU_FULL" ;; mid) echo "$OVD_GPU_MID" ;; *) echo "$OVD_GPU_SAFE" ;; esac; }
 
 screen_off() {
     command -v dumpsys >/dev/null 2>&1 || return 1
@@ -319,18 +341,15 @@ do_loop() {
         # suhu: level aman dulu, keluar bila lewat batas
         temp_state; _ts=$?
         if [ "$_ts" -ge 2 ]; then do_stop "suhu tinggi"; exit 0; fi
-        if [ "$_ts" -eq 1 ] && [ "$_lv" = full ]; then
-            _lv=safe; apply_floors "$OVD_CPU_SAFE" "$OVD_GPU_SAFE"
-            printf '%s\nsafe\n' "$_pkg" > "$OVD_ACTIVE"
-            ovd_log WARN "suhu naik, Overdrive turun ke level aman"
-        elif [ "$_ts" -eq 0 ] && [ "$_lv" = safe ]; then
-            _lv=full; apply_floors "$OVD_CPU_FULL" "$OVD_GPU_FULL"
-            printf '%s\nfull\n' "$_pkg" > "$OVD_ACTIVE"
-            ovd_log INFO "suhu turun, Overdrive kembali penuh"
+        _nl=$(level_for "$_lv")
+        if [ "$_nl" != "$_lv" ]; then
+            _old=$_lv; _lv=$_nl
+            apply_floors "$(lv_cpu "$_lv")" "$(lv_gpu "$_lv")"
+            printf '%s\n%s\n' "$_pkg" "$_lv" > "$OVD_ACTIVE"
+            ovd_log WARN "suhu: Overdrive $_old -> $_lv (margin ${_mg} C)"
         else
             # skrip lain (apply profil) bisa menimpa lantai; tulis ulang bila berbeda
-            if [ "$_lv" = full ]; then apply_floors "$OVD_CPU_FULL" "$OVD_GPU_FULL"
-            else apply_floors "$OVD_CPU_SAFE" "$OVD_GPU_SAFE"; fi
+            apply_floors "$(lv_cpu "$_lv")" "$(lv_gpu "$_lv")"
         fi
 
         # tiap ~9 dtk: proses yang lahir ulang tetap dibekukan; tiap ~15 dtk: cek layar

@@ -41,7 +41,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         "auto" to "dash", "therm" to "dash",
         "stats" to "games", "detect" to "games", "edit" to "games", "addgame" to "games",
         "bgbanner" to "custom", "bubble" to "custom", "theme" to "custom",
-        "dexopt" to "tools", "batlab" to "tools", "fulllog" to "tools", "ramkeep" to "tools", "memfx" to "tools",
+        "dexopt" to "tools", "batlab" to "tools", "fulllog" to "tools", "ramkeep" to "tools", "memfx" to "tools", "perf" to "tools",
     )
     val tab: String get() = parents[route] ?: route
 
@@ -55,6 +55,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             "addgame", "detect" -> ensureApps()
             "dexopt", "ramkeep" -> ensureThirdParty()
             "memfx" -> viewModelScope.launch { conf = Alpha.conf(); loadMem() }
+            "perf" -> loadFpsFiles()
             "dash", "therm" -> viewModelScope.launch { flags = Alpha.flags() }
             "auto" -> viewModelScope.launch { conf = Alpha.conf() }
         }
@@ -129,6 +130,37 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun updateContrast(v: Int) { contrast = v; prefs.contrast = v }
     fun updateSaver(v: Boolean) { saver = v; prefs.saver = v }
     fun updateAutostart(v: Boolean) { autostart = v; prefs.autostart = v }
+
+    // ---------- performa & rekam FPS ----------
+    var fpsFiles by mutableStateOf<List<FpsFile>>(emptyList())
+    var fpsSel by mutableStateOf<List<String>>(emptyList())
+    var fpsLoading by mutableStateOf(false)
+
+    fun loadFpsFiles() {
+        viewModelScope.launch {
+            fpsLoading = true
+            val r = Root.exec(
+                "for f in \$(ls -t /sdcard/Download/Alpha_fps_*.csv 2>/dev/null | head -6); do echo \"@@FILE \$f\"; cat \"\$f\"; done",
+                40_000L,
+            )
+            fpsFiles = r.out.split("@@FILE ").drop(1).mapNotNull { blk ->
+                val nl = blk.indexOf('\n')
+                if (nl < 0) null else FpsFile.parse(blk.substring(0, nl).trim().substringAfterLast('/'), blk.substring(nl + 1))
+            }
+            fpsSel = fpsSel.filter { n -> fpsFiles.any { it.name == n } }
+            fpsLoading = false
+        }
+    }
+
+    fun toggleFpsSel(name: String) {
+        fpsSel = if (name in fpsSel) fpsSel - name else (fpsSel + name).takeLast(2)
+    }
+
+    fun toggleFpsLog() {
+        if (!Settings.canDrawOverlays(app)) { askOverlay = true; return }
+        BubbleService.start(app)
+        app.startService(Intent(app, BubbleService::class.java).setAction(BubbleService.ACT_FPSLOG))
+    }
 
     fun updateHudOn(on: Boolean) {
         if (on && !Settings.canDrawOverlays(app)) {

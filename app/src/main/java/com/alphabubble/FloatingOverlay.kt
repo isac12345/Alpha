@@ -120,14 +120,16 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     fun toggleFpsLog() {
         if (!csvOn) {
             csvOn = true
+            FpsLog.on = true; FpsLog.rows = 0
             csvStart = SystemClock.elapsedRealtime()
             csvRows = 0
             csvBuf.setLength(0)
-            csvBuf.append("t_detik,paket,fps,gpu_persen,gpu_mhz,cpu_persen,suhu_c\n")
+            csvBuf.append("t_detik,paket,fps,gpu_persen,gpu_mhz,cpu_persen,suhu_soc,suhu_baterai,profil,overdrive\n")
             paintCsv()
             Toast.makeText(ctx, "Rekam data FPS dimulai", Toast.LENGTH_SHORT).show()
         } else {
             csvOn = false
+            FpsLog.on = false
             paintCsv()
             saveCsv()
         }
@@ -149,8 +151,11 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         csvBuf.append(s.fps?.let { "%.1f".format(java.util.Locale.US, it) } ?: "").append(',')
         csvBuf.append(s.gpu?.toString() ?: "").append(',').append(s.gpuMhz?.toString() ?: "").append(',')
         csvBuf.append(s.cpu?.toString() ?: "").append(',')
-        csvBuf.append(s.tempC?.let { "%.0f".format(java.util.Locale.US, it) } ?: "").append('\n')
+        csvBuf.append(s.socC?.let { "%.0f".format(java.util.Locale.US, it) } ?: "").append(',')
+        csvBuf.append(s.batC?.let { "%.0f".format(java.util.Locale.US, it) } ?: "").append(',')
+        csvBuf.append(profile).append(',').append(if (odOn) 1 else 0).append('\n')
         csvRows++
+        FpsLog.rows = csvRows
     }
 
     private fun saveCsv() {
@@ -172,6 +177,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
             } catch (_: Exception) { false }
             try { tmp.delete() } catch (_: Exception) { }
             kotlinx.coroutines.withContext(Dispatchers.Main) {
+                FpsLog.saved++
                 Toast.makeText(ctx, if (ok) "Data FPS ($rows baris) disimpan: Download/$name" else "Gagal menyimpan data FPS", Toast.LENGTH_LONG).show()
             }
         }
@@ -342,7 +348,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
     // ---------------- data ----------------
 
-    private class Sample(val fps: Float?, val gpu: Int?, val gpuMhz: Int?, val cpu: Int?, val tempC: Float?)
+    private class Sample(val fps: Float?, val gpu: Int?, val gpuMhz: Int?, val cpu: Int?, val tempC: Float?, val socC: Float? = null, val batC: Float? = null)
 
     private suspend fun loop(pkg: String) {
         try {
@@ -450,8 +456,11 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         val gpuMhz = m["gpu_freq"]?.toIntOrNull()?.takeIf { it in 1..5000 }
         val soc = m["soc_mc"]?.toIntOrNull() ?: 0
         val bat = m["temp_mc"]?.toIntOrNull() ?: 0
-        val t = (if (soc > 0) soc else bat) / 1000f
-        return Sample(fps, gpu, gpuMhz, cpu, if (t > 0f) t else null)
+        // suhu ngawur (> 105 C, sensor error) dibuang supaya tidak merusak grafik/statistik
+        val socC = (soc / 1000f).takeIf { it in 1f..105f }
+        val batC = (bat / 1000f).takeIf { it in 1f..105f }
+        val t = socC ?: batC
+        return Sample(fps, gpu, gpuMhz, cpu, t, socC, batC)
     }
 
     private fun apply(s: Sample) {
@@ -1093,7 +1102,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
                 odFlame?.color = Color.WHITE; odFlame?.invalidate()
                 odName?.setTextColor(Color.WHITE)
                 odSmall?.setTextColor(0xD9FFFFFF.toInt())
-                setText(odSmall, if (odLevel == "safe") "AKTIF \u00B7 AMAN (PANAS)" else "AKTIF")
+                setText(odSmall, if (odLevel == "safe") "AKTIF \u00B7 AMAN (PANAS)" else if (odLevel == "mid") "AKTIF \u00B7 TURUN SEDIKIT" else "AKTIF")
             } else {
                 row.background = roundBg(0x1AD946EF, pf(22), 0x8CD946EF.toInt())
                 odFlame?.color = OD_TEXT; odFlame?.invalidate()

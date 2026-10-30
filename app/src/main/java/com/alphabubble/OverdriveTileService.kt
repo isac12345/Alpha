@@ -56,6 +56,7 @@ class OverdriveTileService : TileService() {
             t.subtitle = when {
                 s == null -> "Modul tidak terbaca"
                 s.ovd && s.ovdLevel == "safe" -> "Aktif, mode aman (panas)"
+                s.ovd && s.ovdLevel == "mid" -> "Aktif, turun sedikit (panas)"
                 s.ovd -> "Aktif"
                 s.gamePkg.isEmpty() -> "Butuh game aktif"
                 else -> "Mati"

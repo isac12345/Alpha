@@ -33,13 +33,25 @@ class BubbleService : Service() {
         const val NID = 7
         const val ACT_SET = "com.alphabubble.SET_PROFILE"
         const val ACT_SHOW = "com.alphabubble.SHOW_BUBBLE"
+        const val ACT_FPSLOG = "com.alphabubble.FPS_LOG"
         const val EXTRA_P = "profile"
 
+        private const val WANT = "/data/adb/alpha/.bubble_want"
+
+        /** Penanda untuk watchdog modul: "floating harus hidup". Dihapus saat pengguna mematikannya. */
+        private fun mark(on: Boolean) {
+            kotlin.concurrent.thread(isDaemon = true) {
+                Root.execBlocking(if (on) "mkdir -p /data/adb/alpha; : > $WANT" else "rm -f $WANT", 8_000L)
+            }
+        }
+
         fun start(ctx: android.content.Context) {
+            mark(true)
             ContextCompat.startForegroundService(ctx, Intent(ctx, BubbleService::class.java))
         }
 
         fun stop(ctx: android.content.Context) {
+            mark(false)
             ctx.stopService(Intent(ctx, BubbleService::class.java))
         }
     }
@@ -77,6 +89,17 @@ class BubbleService : Service() {
         if (Build.VERSION.SDK_INT >= 34) startForeground(NID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(NID, n)
         prefs.sp.registerOnSharedPreferenceChangeListener(prefListener)
+        harden()
+        screenOn = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, i: Intent?) {
+                // layar menyala / buka kunci: pasang floating lagi seketika, tanpa menunggu siklus 8 dtk
+                rebuild()
+            }
+        }
+        val flt = android.content.IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_USER_PRESENT)
+        }
+        ContextCompat.registerReceiver(this, screenOn, flt, ContextCompat.RECEIVER_NOT_EXPORTED)
         val f = FloatingOverlay(this, prefs)
         f.onProfile = { p -> setProfile(p) }
         f.onRec = { toggleRec() }
@@ -135,6 +158,24 @@ class BubbleService : Service() {
         }
     }
 
+    private var screenOn: android.content.BroadcastReceiver? = null
+
+    /** Minta sistem jangan membekukan/membunuh service ini: whitelist hemat daya, bucket aktif, oom. Butuh root, gagal diam-diam. */
+    private fun harden() {
+        val pkg = packageName
+        val pid = android.os.Process.myPid()
+        scope.launch {
+            Root.exec(
+                "dumpsys deviceidle whitelist +$pkg >/dev/null 2>&1; " +
+                    "cmd appops set $pkg RUN_ANY_IN_BACKGROUND allow >/dev/null 2>&1; " +
+                    "cmd appops set $pkg RUN_IN_BACKGROUND allow >/dev/null 2>&1; " +
+                    "am set-standby-bucket $pkg active >/dev/null 2>&1; " +
+                    "[ -w /proc/$pid/oom_score_adj ] && echo -500 > /proc/$pid/oom_score_adj; true",
+                10_000L,
+            )
+        }
+    }
+
     /** Turunkan oom_score_adj proses ini (butuh root). Gagal diam-diam: hanya tambahan, bukan syarat jalan. */
     private fun protectSelf() {
         val pid = android.os.Process.myPid()
@@ -146,6 +187,11 @@ class BubbleService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACT_SET -> intent.getStringExtra(EXTRA_P)?.let { setProfile(it) }
+            ACT_FPSLOG -> {
+                // layar Performa di app: mulai/berhenti rekam data FPS; pastikan floating terpasang (aliran HUD)
+                if (!FpsLog.on) { prefs.bubbleHidden = false; rebuild() }
+                floating?.toggleFpsLog()
+            }
             ACT_SHOW -> {
                 prefs.bubbleHidden = false
                 rebuild()
@@ -157,6 +203,7 @@ class BubbleService : Service() {
 
     override fun onDestroy() {
         prefs.sp.unregisterOnSharedPreferenceChangeListener(prefListener)
+        try { screenOn?.let { unregisterReceiver(it) } } catch (_: Exception) {}
         floating?.release()
         floating = null
         scope.cancel()
