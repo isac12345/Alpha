@@ -515,6 +515,9 @@ gh_launch() {
     _gh_gm_on "$1"
     _gh_preload "$1"
     _ghl_c=$(cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$1" 2>/dev/null | tail -n 1 | tr -d '\r')
+    # game dengan beberapa activity launcher (mis. Roblox): resolve-activity mengembalikan chooser sistem
+    # (ResolverActivity), bukan game; lewat monkey sistem memilih activity utama sendiri
+    case "$_ghl_c" in *[Rr]esolver*|*[Cc]hooser*) _ghl_c="" ;; esac
     case "$_ghl_c" in
         */*)
             _ghl_o=$(am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "$_ghl_c" 2>&1)
