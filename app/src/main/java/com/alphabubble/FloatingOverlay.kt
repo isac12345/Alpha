@@ -136,6 +136,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     }
 
     private fun paintCsv() {
+        paintThinBtns()
         csvBtnLbl?.text = if (csvOn) "Stop FPS" else "Rekam FPS"
         csvDot?.background = GradientDrawable().apply {
             shape = if (csvOn) GradientDrawable.RECTANGLE else GradientDrawable.OVAL
@@ -881,9 +882,53 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
         }
         val spacer = View(ctx)
         row.addView(spacer, LinearLayout.LayoutParams(0, 1, 1f))
+        // tombol cepat: profil (ketuk = ganti), Overdrive, rekam data FPS
+        val bp = thinBtn { 
+            val next = when (profile) { "battery" -> "balanced"; "balanced" -> "performance"; else -> "battery" }
+            onProfile?.invoke(next)
+        }
+        thinProf = bp
+        row.addView(bp, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, px(40)).apply { marginStart = px(12) })
+        val bo = thinBtn { if (odOn || odAvail) onOvd?.invoke(!odOn) }
+        thinOd = bo
+        row.addView(bo, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, px(40)).apply { marginStart = px(8) })
+        val bc = thinBtn { toggleFpsLog() }
+        thinCsv = bc
+        row.addView(bc, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, px(40)).apply { marginStart = px(8) })
+        paintThinBtns()
         val rb = recCircle()
-        row.addView(rb, LinearLayout.LayoutParams(px(44), px(44)).apply { marginStart = px(14) })
+        row.addView(rb, LinearLayout.LayoutParams(px(44), px(44)).apply { marginStart = px(8) })
         return row
+    }
+
+    private var thinProf: TextView? = null
+    private var thinOd: TextView? = null
+    private var thinCsv: TextView? = null
+
+    private fun thinBtn(onClick: () -> Unit): TextView =
+        textView("", 12f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(px(12), 0, px(12), 0)
+            isClickable = true
+            setOnClickListener { onClick() }
+        }
+
+    private fun paintThinBtns() {
+        thinProf?.apply {
+            text = when (profile) { "battery" -> "DAY"; "balanced" -> "BAL"; "performance" -> "PERF"; else -> "..." }
+            background = roundBg(0x33FFFFFF, pf(20), 0)
+        }
+        thinOd?.apply {
+            text = "OD"
+            setTextColor(if (odOn) Color.WHITE else OD_TEXT)
+            background = if (odOn) GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, intArrayOf(OD, OD_END)).apply { cornerRadius = pf(20) }
+                         else roundBg(0x1AD946EF, pf(20), 0x8CD946EF.toInt())
+            alpha = if (!odOn && !odAvail) 0.5f else 1f
+        }
+        thinCsv?.apply {
+            text = if (csvOn) "STOP" else "FPS"
+            background = roundBg(if (csvOn) 0xCCE5484D.toInt() else 0x33FFFFFF, pf(20), 0)
+        }
     }
 
     private fun recCircle(): View {
@@ -1101,6 +1146,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     }
 
     private fun applyOvd() {
+        paintThinBtns()
         val row = odRow
         if (row != null) {
             if (odOn) {
@@ -1149,6 +1195,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     }
 
     private fun paintSeg() {
+        paintThinBtns()
         if (segButtons.size < 3) return
         val acc = accentColor()
         for (i in 0 until 3) {
