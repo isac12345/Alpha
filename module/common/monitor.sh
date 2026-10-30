@@ -1021,6 +1021,15 @@ check_gb_grace_period() {
                 gb_warm_thr=200000
                 gb_high_thr=200000
             fi
+            # Overdrive aktif (mode gacor, OVD_STEPDOWN bukan 1): tangga warm/high dimatikan,
+            # batas kritis digeser ke 105C. Rem darurat dipegang overdrive.sh.
+            local gb_crit_thr=95000
+            if [ -f "$STATE_DIR/.ovd_active" ] && \
+               [ "$(sed -n 's/^OVD_STEPDOWN=//p' "$STATE_DIR/app.conf" 2>/dev/null | tail -n 1 | tr -d '[:space:]')" != "1" ]; then
+                gb_warm_thr=200000
+                gb_high_thr=200000
+                gb_crit_thr=105000
+            fi
 
             # Konfirmasi 2 sampel sebelum step-down/kritis. Satu bacaan sensor
             # rusak yang melonjak (114C padahal SoC 52C) sebelumnya langsung
@@ -1047,7 +1056,7 @@ check_gb_grace_period() {
             fi
             
             # Check thermal thresholds
-            if [ "$current_temp" -ge 95000 ] 2>/dev/null; then
+            if [ "$current_temp" -ge "$gb_crit_thr" ] 2>/dev/null; then
                 # Critical: restore and apply battery
                 if command -v gb_restore >/dev/null 2>&1; then
                     gb_restore

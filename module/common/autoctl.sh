@@ -140,7 +140,8 @@ auto_rules_tick() {
 }
 
 # ---------- statistik sesi game ----------
-SES_PKG=""; SES_T0=0; SES_PEAK=0; SES_B0=0; SES_EPOCH=0
+SES_PKG=""; SES_T0=0; SES_PEAK=0; SES_B0=0; SES_EPOCH=0; SES_PROF=""; SES_OVD=0
+prof_rank() { case "$1" in battery) echo 1 ;; balanced) echo 2 ;; performance) echo 3 ;; *) echo 0 ;; esac; }
 
 ses_tick() {
     if [ -f "$STATE_DIR/.game_t0" ]; then
@@ -150,12 +151,15 @@ ses_tick() {
             SES_PKG="$_pkg"
             SES_T0=$(cut -d. -f1 /proc/uptime 2>/dev/null)
             SES_EPOCH=$(date +%s 2>/dev/null)
-            SES_PEAK=0
+            SES_PEAK=0; SES_PROF=""; SES_OVD=0
             SES_B0=$(rdf "$SYS_POWER/battery/capacity")
             case "$SES_B0" in ''|*[!0-9]*) SES_B0=0 ;; esac
         fi
         _tm=$(batt_temp_mc)
         [ "$_tm" -gt "$SES_PEAK" ] 2>/dev/null && SES_PEAK=$_tm
+        _cs=$(rdf "$STATE_DIR/current_state")
+        [ "$(prof_rank "$_cs")" -gt "$(prof_rank "$SES_PROF")" ] && SES_PROF=$_cs
+        [ -f "$STATE_DIR/.ovd_active" ] && SES_OVD=1
     elif [ -n "$SES_PKG" ]; then
         ses_end
     fi
@@ -166,7 +170,9 @@ ses_end() {
     _dur=$((_up - SES_T0))
     _b1=$(rdf "$SYS_POWER/battery/capacity")
     case "$_b1" in ''|*[!0-9]*) _b1=$SES_B0 ;; esac
-    _prof=$(rdf "$STATE_DIR/current_state")
+    _prof=$SES_PROF
+    [ "$SES_OVD" = 1 ] && _prof=overdrive
+    [ -n "$_prof" ] || _prof=$(rdf "$STATE_DIR/current_state")
     if [ "$_dur" -ge "$SES_MIN_SECS" ] 2>/dev/null; then
         printf '%s|%s|%s|%s|%s|%s|%s\n' "$SES_EPOCH" "$SES_PKG" "$_dur" "$SES_PEAK" "$SES_B0" "$_b1" "${_prof:-?}" >> "$SES_FILE"
         if [ "$(wc -l < "$SES_FILE" 2>/dev/null)" -gt 60 ] 2>/dev/null; then
@@ -174,7 +180,7 @@ ses_end() {
         fi
         alog "SESSION" "pkg=$SES_PKG dur=${_dur}s peak=${SES_PEAK}mC batt=${SES_B0}->${_b1}"
     fi
-    SES_PKG=""; SES_PEAK=0
+    SES_PKG=""; SES_PEAK=0; SES_PROF=""; SES_OVD=0
 }
 
 ticks=0

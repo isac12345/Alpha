@@ -100,6 +100,7 @@ fun profileLabel(p: String): String = when (p) {
     "battery" -> "DAILY"
     "balanced" -> "BALANCED"
     "performance" -> "PERF"
+    "overdrive" -> "OVERDRIVE"
     else -> "—"
 }
 

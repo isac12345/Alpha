@@ -70,7 +70,10 @@ class BubbleService : Service() {
 
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == null) return@OnSharedPreferenceChangeListener
-        if (key.startsWith("fl_") && key != "fl_x_p" && key != "fl_y_p" && key != "fl_x_l" && key != "fl_y_l") {
+        if (key == "fl_start_thin") {
+            flJob?.cancel()
+            flJob = scope.launch { delay(100); floating?.applyStartMode() }
+        } else if (key.startsWith("fl_") && key != "fl_x_p" && key != "fl_y_p" && key != "fl_x_l" && key != "fl_y_l") {
             // slider mengirim puluhan perubahan per detik: gabungkan jadi satu rebuild setelah 150 ms tenang
             flJob?.cancel()
             flJob = scope.launch { delay(150); floating?.rebuild() }

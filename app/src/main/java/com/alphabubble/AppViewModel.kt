@@ -135,6 +135,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var fpsFiles by mutableStateOf<List<FpsFile>>(emptyList())
     var fpsSel by mutableStateOf<List<String>>(emptyList())
     var fpsLoading by mutableStateOf(false)
+    var fpsSkipped by mutableStateOf(0)   // berkas CSV tanpa data FPS (sumber FPS tidak tersedia)
     var fpsView by mutableStateOf("")   // rekaman yang dibuka di tampilan detail
 
     fun loadFpsFiles() {
@@ -144,10 +145,12 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 "for f in \$(ls -t /sdcard/Download/Alpha_fps_*.csv 2>/dev/null | head -6); do echo \"@@FILE \$f\"; cat \"\$f\"; done",
                 40_000L,
             )
-            fpsFiles = r.out.split("@@FILE ").drop(1).mapNotNull { blk ->
+            val blocks = r.out.split("@@FILE ").drop(1)
+            fpsFiles = blocks.mapNotNull { blk ->
                 val nl = blk.indexOf('\n')
                 if (nl < 0) null else FpsFile.parse(blk.substring(0, nl).trim().substringAfterLast('/'), blk.substring(nl + 1))
             }
+            fpsSkipped = blocks.size - fpsFiles.size
             if (fpsFiles.none { it.name == fpsView }) fpsView = fpsFiles.firstOrNull()?.name.orEmpty()
             fpsSel = fpsSel.filter { n -> fpsFiles.any { it.name == n } }
             fpsLoading = false

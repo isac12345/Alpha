@@ -34,7 +34,7 @@ POWER="${SYSFS_POWER_PREFIX:-/sys/class/power_supply}"
 
 OVD_TICK="${ALPHA_OVD_TICK:-3}"
 OVD_CPU_FULL=100     # persen posisi dalam daftar frekuensi (0 = terendah, 100 = tertinggi); bisa diubah: OVD_CPU_PCT / OVD_GPU_PCT di app.conf
-OVD_GPU_FULL=85      # catatan: fas-rs mode performa di game sudah mengunci CPU di maksimum, jadi Overdrive tidak boleh lebih rendah dari itu
+OVD_GPU_FULL=100     # catatan: fas-rs mode performa di game sudah mengunci CPU di maksimum, jadi Overdrive tidak boleh lebih rendah dari itu
 OVD_CPU_MID=70
 OVD_GPU_MID=65
 OVD_CPU_SAFE=40
@@ -57,6 +57,8 @@ conf_int() {
 # lantai Overdrive bisa disetel di app.conf (0-100); nilai di luar rentang diabaikan
 _pc=$(conf_int OVD_CPU_PCT "$OVD_CPU_FULL"); [ "$_pc" -le 100 ] 2>/dev/null && OVD_CPU_FULL=$_pc
 _pg=$(conf_int OVD_GPU_PCT "$OVD_GPU_FULL"); [ "$_pg" -le 100 ] 2>/dev/null && OVD_GPU_FULL=$_pg
+# 0 = tanpa step-down (selalu full, mode gacor); 1 = step-down bertingkat
+OVD_STEPDOWN=$(conf_int OVD_STEPDOWN 0)
 
 rd() { _rd_v=""; [ -r "$1" ] || return 1; read -r _rd_v < "$1" 2>/dev/null; printf '%s' "$_rd_v"; }
 wr() { printf '%s' "$2" > "$1" 2>/dev/null; }
@@ -83,8 +85,8 @@ soc_temp_c() {                                         # zona terpanas, derajat 
 # <=2 aman, <=0 keluar. Naik kembali butuh +2 C (histeresis) supaya tidak bolak-balik.
 # temp_state: 0 = boleh lanjut (margin di $_mg), 2 = keluar
 temp_state() {
-    _soc_max=$(conf_int OVD_SOC_MAX_C 95)
-    _bat_max=$(conf_int OVD_BATT_MAX_C 66)
+    _soc_max=$(conf_int OVD_SOC_MAX_C 105)
+    _bat_max=$(conf_int OVD_BATT_MAX_C 70)
     _soc=$(soc_temp_c); num "$_soc" || _soc=0
     _bt=$(batt_temp_dc); num "$_bt" || _bt=0
     _bc=$((_bt / 10))
@@ -99,6 +101,7 @@ temp_state() {
 
 # level target dari margin dan level sekarang (histeresis)
 level_for() {
+    [ "$OVD_STEPDOWN" = 1 ] || { echo full; return; }
     _cur="$1"; _h=0
     [ "$_cur" != full ] && _h=2
     if [ "$_mg" -le 2 ]; then echo safe; return; fi
@@ -307,7 +310,7 @@ do_loop() {
     # Hanya penjaga yang masih MEMILIKI .ovd_pid yang boleh membersihkan; penjaga lama yang baru
     # tersadar (sinyal diterima belakangan) tidak boleh mematikan Overdrive yang baru dimulai.
     trap '_me=$(rd "$OVD_PID"); if [ "$_me" = "$$" ] && [ -f "$OVD_ACTIVE" ]; then do_stop "penjaga berhenti"; fi; exit 0' TERM INT HUP
-    _lv=full; _n=0; _away=0; _dead=0
+    _lv=full; _n=0; _away=0; _dead=0; _hot=0
     while :; do
         sleep "$OVD_TICK" & wait $!       # wait: sinyal TERM langsung ditangani, tidak menunggu sleep selesai
         _me=$(rd "$OVD_PID")
@@ -340,7 +343,12 @@ do_loop() {
 
         # suhu: level aman dulu, keluar bila lewat batas
         temp_state; _ts=$?
-        if [ "$_ts" -ge 2 ]; then do_stop "suhu tinggi"; exit 0; fi
+        if [ "$_ts" -ge 2 ]; then
+            _hot=$((_hot + 1))
+            [ "$_hot" -ge 2 ] && { do_stop "suhu tinggi"; exit 0; }
+        else
+            _hot=0
+        fi
         _nl=$(level_for "$_lv")
         if [ "$_nl" != "$_lv" ]; then
             _old=$_lv; _lv=$_nl

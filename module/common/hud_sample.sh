@@ -30,6 +30,17 @@ CNT_TPREV=""
 CNT_FAIL=0
 ZERO_RUN=0
 LAYER_FAIL=0
+SRC_DEAD=0
+SRC_N=0
+src_dead() {
+    [ "$SRC_DEAD" = 1 ] || return 1
+    SRC_N=$((SRC_N + 1))
+    if [ "$SRC_N" -ge 60 ]; then
+        SRC_DEAD=0; SRC_N=0; LAYER_FAIL=0; CNT_FAIL=3; TS_PREV=""
+        return 1
+    fi
+    return 0
+}
 LIST_WAIT=0
 LR_OUT=""
 LR_N=0
@@ -293,7 +304,7 @@ sample() {
     _s_pkg="$1"
     _s_fps=""
     _s_lat=""
-    if [ -n "$_s_pkg" ]; then
+    if [ -n "$_s_pkg" ] && ! src_dead; then
         if [ "$CNT_FAIL" -lt 3 ]; then
             sf_counter; _s_cnt=$SC_RES
             case "$_s_cnt" in
@@ -320,6 +331,9 @@ sample() {
                 if [ "$LAYER_FAIL" -ge 3 ] && [ "$LIGHT" != 1 ]; then
                     ts_fps "$_s_pkg" && _s_fps=$TS_RES
                     [ -n "$_s_fps" ] || dbg_dump "$_s_pkg"
+                fi
+                if [ "$LAYER_FAIL" -ge 6 ] && [ -z "$_s_fps" ]; then
+                    SRC_DEAD=1; SRC_N=0
                 fi
             fi
         fi
@@ -353,7 +367,7 @@ case "$1" in
                 [ -n "$_lp_pkg" ] || _lp_pkg="$_lp_fb"
                 if [ "$_lp_pkg" != "$_lp_last" ]; then
                     _lp_last="$_lp_pkg"
-                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0; TS_PREV=""; _lp_back=0; _lp_slow=0
+                    CNT_FAIL=3; ZERO_RUN=0; LAYER_FAIL=0; LIST_WAIT=0; TS_PREV=""; _lp_back=0; _lp_slow=0; SRC_DEAD=0; SRC_N=0
                     rm -f "$LAYER_CACHE" 2>/dev/null
                 fi
             fi

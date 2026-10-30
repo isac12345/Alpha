@@ -546,16 +546,36 @@ _gh_gm_on() {
     _gh_gamecmd_ok || { _gh_log WARN "cmd game tidak tersedia di perangkat ini (Android < 12?)"; return 0; }
     # downscale dan fps butuh mode; default performance
     [ "$_ghg_mode" = off ] && _ghg_mode=performance
-    set -- --mode "$_ghg_mode"
-    [ "$_ghg_ds" != off ] && set -- "$@" --downscale "$_ghg_ds"
-    [ "$_ghg_fps" != off ] && set -- "$@" --fps "$_ghg_fps"
-    cmd game set "$@" "$_ghg_pkg" >/dev/null 2>&1
-    if [ $? -eq 0 ]; then
+    case "$_ghg_mode" in
+        standard) _ghg_mn=1 ;; performance) _ghg_mn=2 ;; battery) _ghg_mn=3 ;; custom) _ghg_mn=4 ;;
+        [1-4]) _ghg_mn=$_ghg_mode ;; *) _ghg_mn=2 ;;
+    esac
+    _ghg_ok=0
+    _gh_gm_try "$_ghg_mn" "$_ghg_ds" "$_ghg_fps" && _ghg_ok=1
+    if [ "$_ghg_ok" = 0 ] && [ "$_ghg_fps" != off ]; then
+        if _gh_gm_try "$_ghg_mn" "$_ghg_ds" off; then
+            _ghg_ok=1
+            _gh_log WARN "fps $_ghg_fps ditolak ROM untuk $_ghg_pkg, mode + downscale tetap dipasang"
+            _ghg_fps=off
+        fi
+    fi
+    if [ "$_ghg_ok" = 0 ]; then
+        _gh_gm_try "$_ghg_mode" "$_ghg_ds" "$_ghg_fps" && _ghg_ok=1
+    fi
+    if [ "$_ghg_ok" = 1 ]; then
         printf '%s|%s\n' "$_ghg_pkg" "$(_gh_now)" > "$GH_GM_MARK" 2>/dev/null
-        _gh_log APPLIED "game mode $_ghg_mode downscale=$_ghg_ds fps=$_ghg_fps untuk $_ghg_pkg"
+        _gh_log APPLIED "game mode $_ghg_mode($_ghg_mn) downscale=$_ghg_ds fps=$_ghg_fps untuk $_ghg_pkg"
     else
         _gh_log WARN "cmd game set gagal untuk $_ghg_pkg"
     fi
+}
+
+_gh_gm_try() {   # $1=mode (angka/nama) $2=downscale|off $3=fps|off; paket dari $_ghg_pkg
+    _ghg_tm="$1"; _ghg_td="$2"; _ghg_tf="$3"
+    set -- --mode "$_ghg_tm"
+    [ "$_ghg_td" != off ] && set -- "$@" --downscale "$_ghg_td"
+    [ "$_ghg_tf" != off ] && set -- "$@" --fps "$_ghg_tf"
+    cmd game set "$@" "$_ghg_pkg" >/dev/null 2>&1
 }
 
 _gh_gm_off() {
@@ -681,7 +701,7 @@ gh_caps() {
     printf 'angle=%s\n' "$(_gh_angle_supported && echo 1 || echo 0)"
     printf 'vulkan=%s\n' "$(_gh_render_valid skiavk && echo 1 || echo 0)"
     printf 'screenrecord=%s\n' "$(command -v screenrecord >/dev/null 2>&1 && echo 1 || echo 0)"
-    printf 'dnd_cmd=%s\n' "$(command -v cmd >/dev/null 2>&1 && cmd notification help >/dev/null 2>&1 && echo 1 || echo 0)"
+    printf 'dnd_cmd=%s\n' "$(command -v cmd >/dev/null 2>&1 && cmd -l 2>/dev/null | grep -q '^[[:space:]]*notification$' && echo 1 || echo 0)"
     printf 'hosts_mount=%s\n' "$(command -v mount >/dev/null 2>&1 && [ -e /system/etc/hosts ] && echo 1 || echo 0)"
     printf 'mitigated=%s\n' "$(gh_mit_check | sed 's/^off://' | tr '\n' ',' | sed 's/,$//')"
 }

@@ -104,6 +104,7 @@ fun PerfScreen(vm: AppViewModel) {
         Label("Rekaman tersimpan")
         if (vm.fpsLoading) txt("Membaca...", 12.sp, muted())
         else if (vm.fpsFiles.isEmpty()) txt("Belum ada rekaman di Download/Alpha_fps_*.csv.", 12.sp, muted())
+        if (vm.fpsSkipped > 0) txt("${vm.fpsSkipped} rekaman tidak punya data FPS: ROM ini tidak menyediakan sumber FPS untuk game tersebut (GPU/CPU/suhu tetap terekam).", 11.sp, Coral, modifier = Modifier.padding(top = 6.dp))
         vm.fpsFiles.forEach { f ->
             val on = f.name in vm.fpsSel
             val tag = when (vm.fpsSel.indexOf(f.name)) { 0 -> "A"; 1 -> "B"; else -> "" }
