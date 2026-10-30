@@ -158,6 +158,10 @@ ses_tick() {
         _tm=$(batt_temp_mc)
         [ "$_tm" -gt "$SES_PEAK" ] 2>/dev/null && SES_PEAK=$_tm
         _cs=$(rdf "$STATE_DIR/current_state")
+        # profil yang dipasang untuk game ini (game_profile_map.conf) ikut dihitung: current_state tetap
+        # "battery" selama game di ROM ini padahal game boost memakai profil game
+        _gp=$(sed -n "s/^$_pkg://p" "$STATE_DIR/game_profile_map.conf" 2>/dev/null | tail -n 1 | tr -d '[:space:]')
+        [ "$(prof_rank "$_gp")" -gt "$(prof_rank "$_cs")" ] && _cs=$_gp
         [ "$(prof_rank "$_cs")" -gt "$(prof_rank "$SES_PROF")" ] && SES_PROF=$_cs
         [ -f "$STATE_DIR/.ovd_active" ] && SES_OVD=1
     elif [ -n "$SES_PKG" ]; then

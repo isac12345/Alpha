@@ -279,7 +279,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
     /** Pilihan "Tampilan awal" berubah: ciutkan langsung ke bentuk itu (kecuali panel sedang dibuka). */
     fun applyStartMode() {
-        if (mode != MODE_PANEL) mode = if (prefs.flStartThin) MODE_THIN else MODE_PILL
+        mode = if (prefs.flStartThin) MODE_THIN else MODE_PILL
         rebuild()
     }
 
