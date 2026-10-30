@@ -279,7 +279,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
 
     /** Pilihan "Tampilan awal" berubah: ciutkan langsung ke bentuk itu (kecuali panel sedang dibuka). */
     fun applyStartMode() {
-        mode = if (prefs.flStartThin) MODE_THIN else MODE_PILL
+        mode = MODE_PILL
         rebuild()
     }
 
@@ -556,7 +556,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     private fun build() {
         if (!started) {
             started = true
-            mode = if (prefs.flStartThin) MODE_THIN else MODE_PILL
+            mode = MODE_PILL
         }
         val f = FrameLayout(ctx)
         pill = buildPill()
@@ -769,7 +769,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     }
 
     private fun toggle() {
-        mode = if (mode == MODE_PILL) MODE_PANEL else if (mode == MODE_THIN) MODE_PANEL else MODE_PILL
+        mode = if (mode == MODE_PILL) (if (prefs.flStartThin) MODE_THIN else MODE_PANEL) else MODE_PILL
         applyMode()
         root?.post { clamp() }
     }

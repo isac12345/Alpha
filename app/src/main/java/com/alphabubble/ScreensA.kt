@@ -208,13 +208,6 @@ fun ThermScreen(vm: AppViewModel) {
 // ---------------------------------------------------------------- GAMES
 @Composable
 fun GamesScreen(vm: AppViewModel) {
-    val last = vm.sessions.firstOrNull()
-    AlphaCard(onClick = { vm.go("stats") }) {
-        Label("Statistik sesi terakhir")
-        if (last == null) KV("Belum ada sesi (min. 1 menit)", "›")
-        else KV("${vm.label(last.pkg)} · ${fmtDur(last.durSecs)}", "%.1f°C ›".format(last.peakC))
-    }
-
     AlphaCard {
         var q by remember { mutableStateOf("") }
         Row(verticalAlignment = Alignment.CenterVertically) {

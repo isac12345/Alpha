@@ -107,10 +107,17 @@ class BubbleService : Service() {
         f.onProfile = { p -> setProfile(p) }
         f.onRec = { toggleRec() }
         f.onOvd = { on -> toggleOvd(on) }
-        f.onSession = { st ->
-            prefs.fpsSessions = listOf(st) + prefs.fpsSessions
-            val mode = if (st.ovdPct >= 50) "Overdrive" else profileLabel(st.profile)
-            Toast.makeText(this, "Sesi selesai ($mode): rata-rata ${st.avg} FPS, 1% terendah ${st.low1} FPS", Toast.LENGTH_LONG).show()
+        f.onSession = { st0 ->
+            scope.launch {
+                // profil yang dicatat = yang tertinggi antara profil aktif dan profil yang diatur untuk game itu
+                // (profil aktif tetap "daily" selama game di ROM ini, padahal game memakai profil per-game)
+                val rank = { p: String -> when (p) { "battery" -> 1; "balanced" -> 2; "performance" -> 3; else -> 0 } }
+                val gp = try { Alpha.games().firstOrNull { it.pkg == st0.pkg }?.profile.orEmpty() } catch (_: Exception) { "" }
+                val st = if (rank(gp) > rank(st0.profile)) st0.copy(profile = gp) else st0
+                prefs.fpsSessions = listOf(st) + prefs.fpsSessions
+                val mode = if (st.ovdPct >= 50) "Overdrive" else profileLabel(st.profile)
+                Toast.makeText(this@BubbleService, "Sesi selesai ($mode): rata-rata ${st.avg} FPS, 1% terendah ${st.low1} FPS", Toast.LENGTH_LONG).show()
+            }
         }
         f.onHidden = { floating?.detach() }
         floating = f

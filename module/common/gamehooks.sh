@@ -516,7 +516,14 @@ gh_launch() {
     _gh_preload "$1"
     _ghl_c=$(cmd package resolve-activity --brief -c android.intent.category.LAUNCHER "$1" 2>/dev/null | tail -n 1 | tr -d '\r')
     case "$_ghl_c" in
-        */*) am start -n "$_ghl_c" >/dev/null 2>&1 ;;
+        */*)
+            _ghl_o=$(am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "$_ghl_c" 2>&1)
+            case "$_ghl_o" in
+                *Error*|*"does not exist"*|*Exception*)
+                    _gh_log WARN "am start gagal untuk $1 ($_ghl_c), coba monkey"
+                    monkey -p "$1" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 ;;
+            esac
+            ;;
         *) monkey -p "$1" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 ;;
     esac
     echo "OK: launch $1${_ghl_be:+ render=$_ghl_be}"
