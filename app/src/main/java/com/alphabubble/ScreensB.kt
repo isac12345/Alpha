@@ -225,6 +225,8 @@ fun ToolsScreen(vm: AppViewModel) {
         Label("Cek fitur")
         txt("Menguji sungguhan apakah tweak modul jalan di HP ini. Selesai sekitar 10 detik. Buka game dulu kalau mau ikut cek sumber FPS.", 11.sp, muted())
         Pill(if (vm.liveBusy) "MENGUJI..." else "CEK SEMUA FITUR", { vm.runLiveCheck() }, solid = !vm.liveBusy, enabled = !vm.liveBusy)
+        if (vm.liveBusy) txt("Sedang menguji, tunggu sekitar 10 detik...", 12.sp, Mint, modifier = Modifier.padding(top = 8.dp))
+        if (vm.liveNote.isNotEmpty()) txt(vm.liveNote, 11.sp, Coral, modifier = Modifier.padding(top = 8.dp))
         vm.liveRes.forEach { (st, name, note) ->
             Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 txt((if (st == "OK") "\u2713 " else if (st == "GAGAL") "\u2717 " else "\u2013 ") + name, 13.sp,

@@ -134,9 +134,20 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     // ---------- cek fitur ----------
     var liveRes by mutableStateOf<List<Triple<String, String, String>>>(emptyList())
     var liveBusy by mutableStateOf(false)
+    var liveNote by mutableStateOf("")
     fun runLiveCheck() {
         if (liveBusy) return
-        viewModelScope.launch { liveBusy = true; liveRes = Alpha.livecheck(); liveBusy = false }
+        viewModelScope.launch {
+            liveBusy = true; liveNote = ""; liveRes = emptyList()
+            try {
+                val (rows, raw) = Alpha.livecheck()
+                liveRes = rows
+                liveNote = if (rows.isEmpty()) "Tidak ada hasil. Detail: $raw" else ""
+            } catch (e: Exception) {
+                liveNote = "Gagal menjalankan: ${e.message}"
+            }
+            liveBusy = false
+        }
     }
 
     // ---------- performa & rekam FPS ----------
