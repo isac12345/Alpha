@@ -222,6 +222,19 @@ fun ToolsScreen(vm: AppViewModel) {
     }
 
     AlphaCard {
+        Label("Cek fitur")
+        txt("Menguji sungguhan apakah tweak modul jalan di HP ini. Selesai sekitar 10 detik. Buka game dulu kalau mau ikut cek sumber FPS.", 11.sp, muted())
+        Pill(if (vm.liveBusy) "MENGUJI..." else "CEK SEMUA FITUR", { vm.runLiveCheck() }, solid = !vm.liveBusy, enabled = !vm.liveBusy)
+        vm.liveRes.forEach { (st, name, note) ->
+            Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                txt((if (st == "OK") "\u2713 " else if (st == "GAGAL") "\u2717 " else "\u2013 ") + name, 13.sp,
+                    if (st == "OK") Mint else if (st == "GAGAL") Coral else muted(), maxLines = 1)
+                txt(note, 11.sp, muted())
+            }
+        }
+    }
+
+    AlphaCard {
         Label("Performa & FPS")
         txt("Rekam data FPS, riwayat sesi, dan bandingkan Performa vs Overdrive: semua di satu layar.", 11.sp, muted())
         Pill(if (FpsLog.on) "SEDANG MEREKAM FPS (${FpsLog.rows})" else "BUKA PERFORMA & FPS", { vm.go("perf") }, solid = FpsLog.on)

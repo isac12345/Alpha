@@ -131,6 +131,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun updateSaver(v: Boolean) { saver = v; prefs.saver = v }
     fun updateAutostart(v: Boolean) { autostart = v; prefs.autostart = v }
 
+    // ---------- cek fitur ----------
+    var liveRes by mutableStateOf<List<Triple<String, String, String>>>(emptyList())
+    var liveBusy by mutableStateOf(false)
+    fun runLiveCheck() {
+        if (liveBusy) return
+        viewModelScope.launch { liveBusy = true; liveRes = Alpha.livecheck(); liveBusy = false }
+    }
+
     // ---------- performa & rekam FPS ----------
     var fpsFiles by mutableStateOf<List<FpsFile>>(emptyList())
     var fpsSel by mutableStateOf<List<String>>(emptyList())

@@ -460,7 +460,7 @@ _gh_re() { printf '%s' "$1" | sed 's/\./\\./g'; }
 _gh_render_restore() {
     [ -f "$GH_REND_PREV" ] || return 0
     _ghl1=$(sed -n '1p' "$GH_REND_PREV" 2>/dev/null)
-    _ghx=${_ghl1%%|*}
+    _ghx=${_ghl1%%\|*}
     # Pilihan global pengguna (render_backend.conf) adalah nilai yang HARUS berlaku di luar game; bila penanda
     # kosong tapi global bukan default, pulihkan ke global (bukan ke kosong).
     _ghg=$(tr -d '[:space:]' < "${ALPHA_RENDER_CONF:-$GH_STATE/render_backend.conf}" 2>/dev/null)
@@ -582,7 +582,7 @@ _gh_gm_off() {
     [ -f "$GH_GM_MARK" ] || return 0
     _ghg_p=$(sed -n '1p' "$GH_GM_MARK" 2>/dev/null)
     rm -f "$GH_GM_MARK"
-    _ghg_p=${_ghg_p%%|*}
+    _ghg_p=${_ghg_p%%\|*}
     [ -n "$_ghg_p" ] || return 0
     _gh_gamecmd_ok && cmd game reset "$_ghg_p" >/dev/null 2>&1
     _gh_log RESTORED "game mode override dibuang untuk $_ghg_p"
@@ -621,7 +621,7 @@ _gh_angle_restore() {
     _gha_l=$(sed -n '1p' "$GH_ANGLE_PREV" 2>/dev/null)
     rm -f "$GH_ANGLE_PREV"
     command -v settings >/dev/null 2>&1 || return 0
-    _gha_pp=${_gha_l%%|*}; _gha_r=${_gha_l#*|}; _gha_pv=${_gha_r%%|*}
+    _gha_pp=${_gha_l%%\|*}; _gha_r=${_gha_l#*\|}; _gha_pv=${_gha_r%%\|*}
     if [ -n "$_gha_pp" ]; then
         settings put global angle_gl_driver_selection_pkgs "$_gha_pp" >/dev/null 2>&1
         settings put global angle_gl_driver_selection_values "$_gha_pv" >/dev/null 2>&1
@@ -649,8 +649,8 @@ _gh_preload() {
     _gpl_cd=$(_gh_conf PRELOAD_COOLDOWN 600); _gh_num "$_gpl_cd" || _gpl_cd=600
     if [ -f "$GH_PRELOAD_T" ]; then
         _gpl_l=$(sed -n '1p' "$GH_PRELOAD_T" 2>/dev/null)
-        if [ "${_gpl_l%%|*}" = "$_gpl_pkg" ]; then
-            _gpl_t=${_gpl_l#*|}
+        if [ "${_gpl_l%%\|*}" = "$_gpl_pkg" ]; then
+            _gpl_t=${_gpl_l#*\|}
             _gh_num "$_gpl_t" && [ $((_gpl_now - _gpl_t)) -lt "$_gpl_cd" ] && return 0
         fi
     fi
@@ -808,7 +808,7 @@ gh_tick() {
     fi
     if [ -f "$GH_REND_PREV" ]; then
         _ght_r=$(sed -n '1p' "$GH_REND_PREV" 2>/dev/null)
-        _ght_r=${_ght_r#*|}
+        _ght_r=${_ght_r#*\|}
         if _gh_num "$_ght_r" && [ $((_ght_now - _ght_r)) -ge "$GH_RENDER_TIMEOUT" ]; then
             _gh_render_restore
         fi
@@ -816,14 +816,14 @@ gh_tick() {
     # Peluncuran yang tidak pernah masuk foreground: ANGLE dan Game Mode override dibuang setelah timeout yang sama
     if [ -f "$GH_ANGLE_PREV" ]; then
         _ght_a=$(sed -n '1p' "$GH_ANGLE_PREV" 2>/dev/null)
-        _ght_a=${_ght_a#*|}; _ght_a=${_ght_a#*|}
+        _ght_a=${_ght_a#*\|}; _ght_a=${_ght_a#*\|}
         if _gh_num "$_ght_a" && [ $((_ght_now - _ght_a)) -ge "$GH_RENDER_TIMEOUT" ]; then
             _gh_angle_restore
         fi
     fi
     if [ -f "$GH_GM_MARK" ]; then
         _ght_g=$(sed -n '1p' "$GH_GM_MARK" 2>/dev/null)
-        _ght_g=${_ght_g#*|}
+        _ght_g=${_ght_g#*\|}
         if _gh_num "$_ght_g" && [ $((_ght_now - _ght_g)) -ge "$GH_RENDER_TIMEOUT" ]; then
             _gh_gm_off
         fi

@@ -769,7 +769,7 @@ class FloatingOverlay(private val ctx: Context, private val prefs: Prefs) {
     }
 
     private fun toggle() {
-        mode = if (mode == MODE_PILL) MODE_PANEL else if (mode == MODE_THIN) MODE_PANEL else if (prefs.flStartThin) MODE_THIN else MODE_PILL
+        mode = if (mode == MODE_PILL) MODE_PANEL else if (mode == MODE_THIN) MODE_PANEL else MODE_PILL
         applyMode()
         root?.post { clamp() }
     }

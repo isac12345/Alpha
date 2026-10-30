@@ -146,6 +146,13 @@ object Alpha {
 
     suspend fun setMemclean(on: Boolean): Boolean = ctl("memclean ${if (on) "on" else "off"}").code == 0
 
+    /** Cek fitur langsung: daftar (status, nama, keterangan) dengan status OK/GAGAL/LEWAT. */
+    suspend fun livecheck(): List<Triple<String, String, String>> =
+        ctl("livecheck", 60_000L).out.lines().mapNotNull { l ->
+            val p = l.split('|', limit = 3)
+            if (p.size == 3 && p[0] in listOf("OK", "GAGAL", "LEWAT")) Triple(p[0], p[1], p[2]) else null
+        }
+
     suspend fun trim(): String = ctl("trim force", 180_000L).out.lines().lastOrNull { it.isNotBlank() }.orEmpty()
 
     suspend fun gameScan(): List<String> =

@@ -27,6 +27,7 @@
 #   game scan [add [profil] [fps]] | game seed <pkg>   cari game terpasang dari daftar seed, daftarkan sekaligus
 #   shield status|lists|import|enable|disable|remove|allow|on|off|apply   pemblokir iklan berbasis hosts
 #   bugreport                 arsip log + state ke /sdcard/Download untuk dilaporkan
+#   livecheck                 cek langsung semua fitur (STATUS|nama|ket), ~10 dtk
 #   trim [force]              fstrim semua partisi (tidak saat game aktif / baterai < 15%)
 #   mem status                tekanan memori (PSI), RAM, kemampuan kernel (hanya baca)
 #   mglru status|on|off       MGLRU eksperimental (default off; on = nyalakan, off = pulihkan nilai asli)
@@ -534,6 +535,7 @@ case "$1" in
     autoctl) cmd_autoctl "$2" ;;
     renderrestore) _gh_render_restore; [ -f "$GH_REND_PREV" ] && echo "pending: $(cat "$GH_REND_PREV")" || echo "OK: tidak ada penanda; renderer=$(getprop debug.hwui.renderer)" ;;
     features) gh_caps; mf_caps ;;
+    livecheck) sh "$COMMON/livecheck.sh" ;;
     trim) sh "$COMMON/trim.sh" "$2" ;;
     gamefx) cmd_gamefx "$2" "$3" "$4" "$5" ;;
     mitigation) cmd_mitigation "$2" "$3" "$4" ;;

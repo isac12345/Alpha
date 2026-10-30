@@ -251,6 +251,7 @@ set_perm "$MODPATH/common/memfx.sh" 0 0 0755
 set_perm "$MODPATH/common/trim.sh" 0 0 0755
 set_perm "$MODPATH/common/bugreport.sh" 0 0 0755
 set_perm "$MODPATH/common/shield.sh" 0 0 0755
+set_perm "$MODPATH/common/livecheck.sh" 0 0 0755
 # modul31: .bin hanya ada di zip tahap rilis (encode shc), tidak ada di
 # zip git. Guard [ -f ] supaya tidak error "stat failed" saat file absen
 # (biang error tiap flash, bersih maupun timpa). Tak ada yang mengeksekusi
