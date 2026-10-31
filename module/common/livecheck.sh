@@ -27,7 +27,7 @@ for n in "$CPUFREQ"/policy*/scaling_min_freq; do
 done
 [ "$ok" -gt 0 ] && [ "$bad" -eq 0 ] && ln OK "Overdrive: lantai CPU" "$ok kluster bisa diatur" || ln GAGAL "Overdrive: lantai CPU" "ok=$ok gagal=$bad"
 g=""
-for d in "$DEVFREQ"/*gpu*; do [ -f "$d/min_freq" ] && [ -f "$d/max_freq" ] && { g=$d; break; }; done
+for d in "$DEVFREQ"/*gpu* "$DEVFREQ"/*mali* "$DEVFREQ"/*kgsl* "$DEVFREQ"/*ged* "$DEVFREQ"/*pvr* /sys/class/kgsl/kgsl-3d0/devfreq; do [ -f "$d/min_freq" ] && [ -f "$d/max_freq" ] && { g=$d; break; }; done
 if [ -n "$g" ]; then
     v=$(cat "$g/min_freq" 2>/dev/null)
     if printf '%s' "$v" > "$g/min_freq" 2>/dev/null; then ln OK "Overdrive: lantai GPU" "${g##*/} bisa diatur"; else ln GAGAL "Overdrive: lantai GPU" "${g##*/} tidak bisa ditulis"; fi

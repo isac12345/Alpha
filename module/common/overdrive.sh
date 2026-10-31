@@ -141,8 +141,12 @@ pick_freq() {
 top_freq() { printf '%s\n' $1 | sort -n 2>/dev/null | tail -n 1; }
 
 gpu_dir() {
-    for _d in "$DEVFREQ"/*gpu*; do
-        [ -f "$_d/min_freq" ] && [ -f "$_d/max_freq" ] && { printf '%s' "$_d"; return 0; }
+    # Unisoc/Mali/generik: devfreq yang namanya gpu/mali; Qualcomm: kgsl; lainnya: ged/pvr/3d
+    for _d in "$DEVFREQ"/*gpu* "$DEVFREQ"/*mali* "$DEVFREQ"/*kgsl* "$DEVFREQ"/*ged* "$DEVFREQ"/*pvr* "$DEVFREQ"/*3d0*; do
+        [ -f "$_d/min_freq" ] && [ -f "$_d/max_freq" ] && [ -f "$_d/available_frequencies" ] && { printf '%s' "$_d"; return 0; }
+    done
+    for _d in /sys/class/kgsl/kgsl-3d0/devfreq; do
+        [ -f "$_d/min_freq" ] && [ -f "$_d/max_freq" ] && [ -f "$_d/available_frequencies" ] && { printf '%s' "$_d"; return 0; }
     done
     return 1
 }
