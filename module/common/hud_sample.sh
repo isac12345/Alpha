@@ -304,7 +304,7 @@ sample() {
     _s_pkg="$1"
     _s_fps=""
     _s_lat=""
-    if [ -n "$_s_pkg" ] && ! src_dead; then
+    if [ -n "$_s_pkg" ]; then
         if [ "$CNT_FAIL" -lt 3 ]; then
             sf_counter; _s_cnt=$SC_RES
             case "$_s_cnt" in
@@ -328,12 +328,11 @@ sample() {
                 LAYER_FAIL=0
             else
                 LAYER_FAIL=$((LAYER_FAIL + 1))
-                if [ "$LAYER_FAIL" -ge 3 ] && [ "$LIGHT" != 1 ]; then
+                # timestats itu berat: dicoba hanya beberapa kali; pencarian layer (ringan) tetap jalan terus,
+                # supaya FPS muncul begitu layer game ada (mis. setelah layar loading)
+                if [ "$LAYER_FAIL" -ge 3 ] && { [ "$LAYER_FAIL" -le 6 ] || [ $((LAYER_FAIL % 10)) -eq 0 ]; } && [ "$LIGHT" != 1 ]; then
                     ts_fps "$_s_pkg" && _s_fps=$TS_RES
                     [ -n "$_s_fps" ] || dbg_dump "$_s_pkg"
-                fi
-                if [ "$LAYER_FAIL" -ge 6 ] && [ -z "$_s_fps" ]; then
-                    SRC_DEAD=1; SRC_N=0
                 fi
             fi
         fi
