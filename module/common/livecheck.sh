@@ -11,6 +11,12 @@ alive() { # $1=pidfile $2=pola cmdline
     [ -n "$_p" ] && [ -r "/proc/$_p/cmdline" ] && tr '\000' ' ' < "/proc/$_p/cmdline" 2>/dev/null | grep -q "$2"
 }
 
+# --- perangkat (buat laporan dukungan lintas HP)
+sdk=$(getprop ro.build.version.sdk 2>/dev/null); soc=$(getprop ro.hardware 2>/dev/null); abi=$(getprop ro.product.cpu.abi 2>/dev/null)
+ln OK "Perangkat" "$(getprop ro.product.model 2>/dev/null) | $soc | Android API $sdk | $abi"
+case "$abi" in arm64*) ;; *) ln GAGAL "Arsitektur" "modul hanya mendukung ARM64 (ini: $abi)" ;; esac
+[ "${sdk:-0}" -ge 31 ] 2>/dev/null && ln OK "Versi Android" "API $sdk: semua fitur" || ln LEWAT "Versi Android" "API ${sdk:-?}: fas-rs dan Game Mode tidak tersedia, sisanya jalan"
+
 # --- proses modul
 alive "$STATE_DIR/monitor.pid" monitor.sh && ln OK "Monitor" "jalan" || ln GAGAL "Monitor" "tidak jalan"
 alive "$STATE_DIR/watchdog.pid" watchdog.sh && ln OK "Watchdog" "jalan" || ln GAGAL "Watchdog" "tidak jalan"
